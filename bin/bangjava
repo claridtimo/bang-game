@@ -54,8 +54,17 @@ done
 # add all necessary JAR files and $BANG_HOME to the CLASSPATH
 CLASSPATH="$BANG_HOME/assets/build/staging"
 
-for JAR in $BANG_HOME/build/$JARS/*.jar; do
+# our own project jars (1.1-SNAPSHOT) go on the classpath first so that classes
+# vendored into them (e.g. the LWJGL 2 com.threerings.openal copy in the shared
+# jar) shadow the copies inside dependency jars
+for JAR in $BANG_HOME/build/$JARS/*-SNAPSHOT.jar; do
     CLASSPATH=$CLASSPATH:$JAR
+done
+for JAR in $BANG_HOME/build/$JARS/*.jar; do
+    case "$JAR" in
+        *-SNAPSHOT.jar) ;;
+        *) CLASSPATH=$CLASSPATH:$JAR ;;
+    esac
 done
 export CLASSPATH
 
