@@ -23,7 +23,7 @@ files also exist per module but they are stale; Gradle is the build.
 
 Local setup before running:
 1. Copy each `etc/*.dist` file to `etc/test/<name-without-.dist>` (e.g. `etc/deployment.properties.dist`
-   → `etc/test/deployment.properties`). The `copyConfig` tasks bake `etc/${deployment}/` files
+   → `etc/test/deployment.properties`). The `processResources` tasks bake `etc/${deployment}/` files
    into the built jars; `deployment` defaults to `test` (set in the root `build.gradle`).
 2. The server needs MySQL: create `bang` and `ooouser` databases and set
    `db.default.*` / `db.userdb.url` / `db.sitedb.url` in `etc/test/server.properties`.

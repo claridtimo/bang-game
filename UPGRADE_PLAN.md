@@ -2,7 +2,7 @@
 
 Goal: upgrade Bang! Howdy to **Java 21 LTS + Gradle 8**, modernizing dependencies along the
 way, while keeping the vendored jME engine fork. Acceptance bar: **the full game runs** —
-`gradle deploy` succeeds, the server boots against MySQL, the client renders, and the `test`
+`./gradlew deploy` succeeds, the server boots against MySQL, the client renders, and the `test`
 user can log in and reach a game. A scoped roadmap for a later jMonkeyEngine 3.8 port is
 included as Phase 5 (not executed in this effort).
 
@@ -65,15 +65,15 @@ The critical path. One agent, one branch, no parallelism (every module's build f
    `com.mysql.jdbc.Driver` alias in configs or update to `com.mysql.cj.jdbc.Driver`),
    commons-* minor bumps only if compilation forces them. ehcache 1.6, getdown 1.4,
    lwjgl 2.9.2, gdx 1.5.4 **unchanged**.
-4. Get `gradle compileJava` green across all modules on JDK 21. Expected work:
-   - Regenerate generated RPC classes: `gradle client:shared:genService` with
+4. Get `./gradlew compileJava` green across all modules on JDK 21. Expected work:
+   - Regenerate generated RPC classes: `./gradlew client:shared:genService` with
      narya-tools 1.19 (large mechanical diff — keep as its own commit).
    - Guice 3→5.1 fallout in `server` bootstrap (`BangServer` / `PresentsServer` wiring).
    - depot 1.7→1.8 API changes in `server/persist` and `*/server/persist` records
      (use `../narya` + Central depot sources as reference).
    - Misc JDK 21 compile errors (removed/encapsulated APIs, varargs/generics strictness).
 
-Exit: `./gradlew build -x test` green on JDK 21; `gradle deploy` produces
+Exit: `./gradlew build -x test` green on JDK 21; `./gradlew deploy` produces
 `build/client`, `build/server`, `build/assets`.
 
 ## Phase 2 — Runtime fixing (parallel agents in worktrees)
@@ -88,7 +88,7 @@ Streams (each its own worktree branch off `modernize`):
 - **Stream B — server runtime.** Get `./bin/bangserver` to boot and build its schema:
   depot 1.8 against MySQL 8 (schema creation, migrations), Connector/J 8 behavior
   (timezone, auth plugin), ehcache 1.6 on JDK 21 (bump to 2.x only if broken), Guice
-  runtime errors, `gradle server:createTestUser`. Enable narya's deserialization
+  runtime errors, `./gradlew server:createTestUser`. Enable narya's deserialization
   whitelist at startup (`setAllowedClassPrefixes`: `com.threerings.`, `com.samskivert.`,
   `java.lang.`, `java.util.` — verify the exact set narya requires) and confirm Bang's
   large streamed objects (boards) fit the new 65k container cap, raising the configured
@@ -102,10 +102,10 @@ Exit: client renders the town view; server reaches "Bang server initialized"; as
 
 ## Phase 3 — Integration & acceptance (coordinator)
 
-1. Merge streams into `modernize`; full `gradle deploy` from clean.
+1. Merge streams into `modernize`; full `./gradlew deploy` from clean.
 2. End-to-end: server up → `createTestUser` → client login as `test`/`yeehaw` → reach
    saloon → start a game vs. tinhorns (AI) or `-tutorial` → play several turns.
-3. `gradle test` green (3 existing unit test classes — fix, don't delete).
+3. `./gradlew test` green (3 existing unit test classes — fix, don't delete).
 4. Sweep logs for swallowed errors; document required JVM flags and MySQL setup in README.
 5. Update CLAUDE.md (build commands change: `./gradlew`, no legacy-Gradle warning).
 

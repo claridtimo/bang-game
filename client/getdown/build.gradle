@@ -18,5 +18,5 @@ tasks.register("copyAssets", Copy) {
 }
 
 tasks.register("deploy") {
+  dependsOn "copyAssets"
 }
-deploy.dependsOn "copyAssets"
