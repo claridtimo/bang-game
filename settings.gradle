@@ -1,1 +1,2 @@
-include 'app', 'assets', 'bui', 'client/shared', 'client/desktop', 'client/getdown', 'jme', 'server', 'tools'
+rootProject.name = 'bang'
+include 'app', 'assets', 'bui', 'client:shared', 'client:desktop', 'client:getdown', 'jme', 'server', 'tools'

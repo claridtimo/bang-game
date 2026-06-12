@@ -1,29 +1,29 @@
 dependencies {
-  compile project(":client/shared")
-  compile "com.samskivert:depot:1.7"
-  compile "com.threerings:ooo-user:1.4.5"
-  compile "net.sf.ehcache:ehcache:1.6.0"
-  compile "mysql:mysql-connector-java:5.1.6"
-  compile "commons-digester:commons-digester:1.8"
+  api project(":client:shared")
+  api "com.samskivert:depot:1.8"
+  api "com.threerings:ooo-user:1.4.5"
+  api "net.sf.ehcache:ehcache:1.6.0"
+  runtimeOnly "mysql:mysql-connector-java:8.0.33"
+  api "commons-digester:commons-digester:1.8"
 }
 
-task copyConfig (type: Copy) {
-  from "../etc/${deployment}"
-  into sourceSets.main.output.resourcesDir
-  include "deployment.properties"
-  include "server.properties"
+// bake the deployment configs into our jar alongside our other resources
+processResources {
+  from("../etc/${deployment}") {
+    include "deployment.properties"
+    include "server.properties"
+  }
 }
-processResources.dependsOn "copyConfig"
 
-task createTestUser(type:JavaExec) {
+tasks.register("createTestUser", JavaExec) {
   systemProperty "ooo.propfile", "server"
   args(["create", "test", "yeehaw", "test@test.com"])
-  main = "com.threerings.user.tools.UserTool"
+  mainClass = "com.threerings.user.tools.UserTool"
   classpath = sourceSets.main.runtimeClasspath
 }
 
-task deploy (type: Sync) {
+tasks.register("deploy", Sync) {
   from jar
-  from configurations.runtime
+  from configurations.runtimeClasspath
   into project.file("../build/server")
 }

@@ -1,6 +1,6 @@
 dependencies {
-  compile project(":client/desktop")
-  compile project(":assets")
+  api project(":client:desktop")
+  api project(":assets")
 }
 
 // TODO: copy jar files from client/*.jar, stripping version/snapshot
@@ -9,13 +9,14 @@ dependencies {
 // TODO: copy assets/*.jar, stripping version/snapshot
 // TODO: subst assets/*.jar as resource/uresource resources
 
-task copyAssets (type :Copy) {
+tasks.register("copyAssets", Copy) {
+  dependsOn ":assets:deploy"
   from("../../build/assets") {
     rename "(.*)-$version\\.jar", '$1.jar'
   }
   into project.file("../../build/getdown")
 }
 
-task deploy << {
+tasks.register("deploy") {
 }
 deploy.dependsOn "copyAssets"

@@ -1,4 +1,4 @@
 dependencies {
-  compile project(":jme")
-  testCompile "junit:junit:4.11"
+  api project(":jme")
+  testImplementation "junit:junit:4.13.2"
 }

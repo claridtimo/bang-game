@@ -7,3 +7,4 @@ etc/bang-client.pro
 etc/proguard/*.map
 log/*.log
 .gradle
+build/
