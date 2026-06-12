@@ -47,14 +47,14 @@ server_auth = com.threerings.bang.server.ooo.OOOAuthenticator
 # this and need only be specified in cases where they differ from the
 # defaults
 
-db.default.driver = com.mysql.jdbc.Driver
-db.default.url = jdbc:mysql://DBHOST:3306/bang
+db.default.driver = com.mysql.cj.jdbc.Driver
+db.default.url = jdbc:mysql://DBHOST:3306/bang?serverTimezone=UTC
 db.default.username = USERNAME
 db.default.password = PASSWORD
 
 # These overrides are needed for the OOO user database
-db.userdb.url = jdbc:mysql://USERDBHOST:3306/ooouser
-db.sitedb.url = jdbc:mysql://USERDBHOST:3306/ooouser
+db.userdb.url = jdbc:mysql://USERDBHOST:3306/ooouser?serverTimezone=UTC
+db.sitedb.url = jdbc:mysql://USERDBHOST:3306/ooouser?serverTimezone=UTC
 
 #
 # Bits for the OOO authenticator

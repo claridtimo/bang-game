@@ -11,16 +11,14 @@ goes through a forked jMonkeyEngine/LWJGL layer. Code is BSD-licensed; media (ev
 
 ## Build and run
 
-Built with Gradle, but uses legacy syntax (`compile` configurations, `task foo <<` leftShift
-operator), which requires an old Gradle (4.x or earlier — the leftShift operator was removed in
-Gradle 5). There is no Gradle wrapper. Maven `pom.xml` files also exist per module but the README
-documents Gradle as the build.
+Built with Gradle 8.14 (via the checked-in wrapper) on a JDK 21 toolchain. Maven `pom.xml`
+files also exist per module but they are stale; Gradle is the build.
 
 ```sh
-gradle deploy                  # build everything into build/client, build/server, build/assets
-gradle test                    # run unit tests
-gradle client:shared:test --tests '*RatingUnitTest'   # run a single test class
-gradle server:createTestUser   # create user `test` / password `yeehaw` in the user DB
+./gradlew deploy                  # build everything into build/client, build/server, build/assets
+./gradlew test                    # run unit tests
+./gradlew client:shared:test --tests '*RatingUnitTest'   # run a single test class
+./gradlew server:createTestUser   # create user `test` / password `yeehaw` in the user DB
 ```
 
 Local setup before running:
@@ -64,7 +62,7 @@ Understanding the Presents pattern is essential to navigating this code:
 - `server/` holds `*Manager` (place lifecycle) and `*Provider` (service implementations).
 - `*Marshaller`, `*Dispatcher`, and `*Provider` stubs are **generated** from the `*Service`
   interfaces by the `client/shared` `genService` task — don't edit generated classes by hand;
-  re-run `gradle client:shared:genService` after changing a `*Service` interface.
+  re-run `./gradlew client:shared:genService` after changing a `*Service` interface.
 
 Note that most server-side game logic lives in `client/shared` (in the `*/server` subpackages),
 not in the `server` module — the `server` module mainly adds persistence and the
@@ -78,4 +76,4 @@ server runs in cluster mode as one node per town.
 Resource pipeline: `assets/rsrc/` contains XML definitions (tutorials, avatar articles/aspects,
 color definitions) that get compiled to serialized binary form, 3D models compiled from
 `model.properties` files, and avatar component PNGs bundled into jars — all wired into
-`assets:processResources`. Asset changes generally require re-running `gradle assets:deploy`.
+`assets:processResources`. Asset changes generally require re-running `./gradlew assets:deploy`.
