@@ -3,7 +3,7 @@
 
 package com.threerings.bang.admin.data;
 
-import javax.annotation.Generated;
+import javax.annotation.processing.Generated;
 
 import com.threerings.presents.data.InvocationMarshaller;
 
