@@ -143,6 +143,17 @@ tasks.register("compileModels") {
     ant.updatepropheight() {
       fileset(dir: "rsrc", includes: "**/prop.properties")
     }
+
+    // CompileModelTask swallows per-file errors (and one observed build produced zero
+    // outputs while still reporting success), so verify the staged output count matches
+    // the source count and fail loudly on any shortfall.
+    def expected = fileTree("rsrc").matching { include "**/model.properties" }.files.size()
+    def actual = fileTree(stagingDir).matching { include "**/model.dat" }.files.size()
+    if (actual < expected) {
+      throw new GradleException("Model compilation incomplete: ${actual} model.dat " +
+        "file(s) in ${stagingDir} for ${expected} model.properties source(s). " +
+        "Check the compileModels output for errors.")
+    }
   }
 }
 processResources.dependsOn "compileModels"
@@ -182,6 +193,9 @@ towns.each { town ->
 tasks.register("deploy", Sync) {
   from("build/libs", stagingDir)
   include "**/*.jar"
+  // the assets module's own (empty) java jar is meaningless to the client; ship only the
+  // general/per-town resource jars and the avatar bundles under rsrc/
+  exclude "assets-*.jar"
   into "../build/assets"
   includeEmptyDirs = false
 }
