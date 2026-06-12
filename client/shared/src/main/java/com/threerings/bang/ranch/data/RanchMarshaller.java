@@ -3,7 +3,7 @@
 
 package com.threerings.bang.ranch.data;
 
-import javax.annotation.Generated;
+import javax.annotation.processing.Generated;
 
 import com.threerings.util.Name;
 

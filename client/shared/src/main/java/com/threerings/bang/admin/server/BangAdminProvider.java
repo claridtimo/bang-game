@@ -3,7 +3,7 @@
 
 package com.threerings.bang.admin.server;
 
-import javax.annotation.Generated;
+import javax.annotation.processing.Generated;
 
 import com.threerings.presents.server.InvocationProvider;
 

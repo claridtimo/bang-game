@@ -154,7 +154,7 @@ public class PieceChooser extends JPanel
                 return;
             }
             if (getParent() != null) { // keep top level in original order
-                @SuppressWarnings("unchecked") List<Object> list = children;
+                List<javax.swing.tree.TreeNode> list = children;
                 Collections.sort(list, NAME_COMPARATOR);
             }
             for (Object child : children) {

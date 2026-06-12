@@ -1,13 +1,13 @@
 dependencies {
-  compile project(":client/shared")
-  compile project(":tools")
+  api project(":client:shared")
+  api project(":tools")
 }
 
 ext {
   stagingDir = "build/staging"
 }
 
-task copyResources (type: Copy) {
+tasks.register("copyResources", Copy) {
   from "."
   into stagingDir
   include "rsrc/**"
@@ -25,14 +25,14 @@ task copyResources (type: Copy) {
 }
 processResources.dependsOn "copyResources"
 
-task copyOggs (type: Copy) {
+tasks.register("copyOggs", Copy) {
   from "."
   into stagingDir
   include "rsrc/**/*.ogg"
 }
 processResources.dependsOn "copyOggs"
 
-task copyTownBits (type: Copy) {
+tasks.register("copyTownBits", Copy) {
   from "."
   into stagingDir
   include "rsrc/bonuses/**/*.png"
@@ -52,120 +52,134 @@ task copyTownBits (type: Copy) {
 }
 processResources.dependsOn "copyTownBits"
 
-task genConfigs << {
-  ant.taskdef(classpath: configurations.tools.asPath, name: "confcomp",
-              classname: "com.threerings.tools.CompiledConfigTask")
+tasks.register("genConfigs") {
+  dependsOn configurations.tools
+  doLast {
+    ant.taskdef(classpath: configurations.tools.asPath, name: "confcomp",
+                classname: "com.threerings.tools.CompiledConfigTask")
 
-  // compiles our tutorial XML definitions
-  ant.confcomp(dest: stagingDir,
-               parser: "com.threerings.bang.game.tools.xml.TutorialConfigParser") {
-    fileset(dir: "rsrc/tutorials", includes: "**/*.xml")
+    // compiles our tutorial XML definitions
+    ant.confcomp(dest: stagingDir,
+                 parser: "com.threerings.bang.game.tools.xml.TutorialConfigParser") {
+      fileset(dir: "rsrc/tutorials", includes: "**/*.xml")
+    }
+
+    // creates the serialized color repository config
+    ant.confcomp(dest: stagingDir,
+                 parser: "com.threerings.media.image.tools.xml.ColorPositoryParser",
+                 configdef: "rsrc/config/media/colordefs.xml")
+    // creates the serialized article and aspect catalogs
+    ant.confcomp(dest: stagingDir,
+                 parser: "com.threerings.bang.avatar.tools.xml.ArticleCatalogParser",
+                 configdef: "rsrc/avatars/articles.xml")
+    ant.confcomp(dest: stagingDir,
+                 parser: "com.threerings.bang.avatar.tools.xml.AspectCatalogParser",
+                 configdef: "rsrc/avatars/aspects.xml")
+    ant.confcomp(dest: stagingDir,
+                 parser: "com.threerings.bang.avatar.tools.xml.BucklePartCatalogParser",
+                 configdef: "rsrc/avatars/buckle_parts.xml")
   }
-
-  // creates the serialized color repository config
-  ant.confcomp(dest: stagingDir,
-               parser: "com.threerings.media.image.tools.xml.ColorPositoryParser",
-               configdef: "rsrc/config/media/colordefs.xml")
-  // creates the serialized article and aspect catalogs
-  ant.confcomp(dest: stagingDir,
-               parser: "com.threerings.bang.avatar.tools.xml.ArticleCatalogParser",
-               configdef: "rsrc/avatars/articles.xml")
-  ant.confcomp(dest: stagingDir,
-               parser: "com.threerings.bang.avatar.tools.xml.AspectCatalogParser",
-               configdef: "rsrc/avatars/aspects.xml")
-  ant.confcomp(dest: stagingDir,
-               parser: "com.threerings.bang.avatar.tools.xml.BucklePartCatalogParser",
-               configdef: "rsrc/avatars/buckle_parts.xml")
 }
 processResources.dependsOn "genConfigs"
 
 // builds the avatar component bundles
-task genBundles << {
-  ant.taskdef(classpath: configurations.tools.asPath, name: "metabundle",
-              classname: "com.threerings.cast.bundle.tools.MetadataBundlerTask")
+tasks.register("genBundles") {
+  dependsOn configurations.tools
+  doLast {
+    ant.taskdef(classpath: configurations.tools.asPath, name: "metabundle",
+                classname: "com.threerings.cast.bundle.tools.MetadataBundlerTask")
 
-  def avatarDir = project.file(stagingDir + "/rsrc/avatars")
-  avatarDir.mkdirs()
+    def avatarDir = project.file(stagingDir + "/rsrc/avatars")
+    avatarDir.mkdirs()
 
-  ant.metabundle(actiondef: "rsrc/avatars/actions.xml", classdef: "rsrc/avatars/classes.xml",
-                 target: "${avatarDir}/metadata.jar")
+    ant.metabundle(actiondef: "rsrc/avatars/actions.xml", classdef: "rsrc/avatars/classes.xml",
+                   target: "${avatarDir}/metadata.jar")
 
-  ant.taskdef(classpath: configurations.tools.asPath, name: "cbundle",
-              classname: "com.threerings.cast.bundle.tools.ComponentBundlerTask")
+    ant.taskdef(classpath: configurations.tools.asPath, name: "cbundle",
+                classname: "com.threerings.cast.bundle.tools.ComponentBundlerTask")
 
-  towns.each { town ->
-    [ "male", "female" ].each { sex ->
-      def townDir = "rsrc/avatars/${town}"
-      // <mkdir dir="${deploy.dir}/rsrc/avatars/${comp.bundle}"/>
-      ant.cbundle(actiondef: "rsrc/avatars/actions.xml", mapfile: "rsrc/avatars/compmap.txt",
-                  root: townDir,
-                  target: "${stagingDir}/${townDir}/${sex}/components.jar") {
-        fileset(dir: "${townDir}/${sex}") {
-          include(name: "**/*.png")
-          exclude(name: "**/*_shadow.png")
-          exclude(name: "**/*_crop.png")
-          exclude(name: "components/**")
+    towns.each { town ->
+      [ "male", "female" ].each { sex ->
+        def townDir = "rsrc/avatars/${town}"
+        // <mkdir dir="${deploy.dir}/rsrc/avatars/${comp.bundle}"/>
+        ant.cbundle(actiondef: "rsrc/avatars/actions.xml", mapfile: "rsrc/avatars/compmap.txt",
+                    root: townDir,
+                    target: "${stagingDir}/${townDir}/${sex}/components.jar") {
+          fileset(dir: "${townDir}/${sex}") {
+            include(name: "**/*.png")
+            exclude(name: "**/*_shadow.png")
+            exclude(name: "**/*_crop.png")
+            exclude(name: "components/**")
+          }
         }
       }
     }
-  }
 
-  ant.cbundle(actiondef: "rsrc/avatars/actions.xml", mapfile: "rsrc/avatars/compmap.txt",
-              root: "rsrc/avatars/",
-              target: "${avatarDir}/buckle/components.jar") {
-    fileset(dir: "rsrc/avatars/buckle") {
-      include(name: "**/*.png")
-      exclude(name: "**/*_crop.png")
-      exclude(name: "components/**")
+    ant.cbundle(actiondef: "rsrc/avatars/actions.xml", mapfile: "rsrc/avatars/compmap.txt",
+                root: "rsrc/avatars/",
+                target: "${avatarDir}/buckle/components.jar") {
+      fileset(dir: "rsrc/avatars/buckle") {
+        include(name: "**/*.png")
+        exclude(name: "**/*_crop.png")
+        exclude(name: "components/**")
+      }
     }
   }
 }
 processResources.dependsOn "genBundles"
 
 // compiles our model XML into binary form
-task compileModels << {
-  ant.taskdef(classpath: configurations.tools.asPath, name: "compile",
-              classname: "com.threerings.jme.tools.CompileModelTask")
-  ant.compile(dest: stagingDir) {
-    fileset(dir: "rsrc",  includes: "**/model.properties")
-  }
+tasks.register("compileModels") {
+  dependsOn configurations.tools
+  doLast {
+    ant.taskdef(classpath: configurations.tools.asPath, name: "compile",
+                classname: "com.threerings.jme.tools.CompileModelTask")
+    ant.compile(dest: stagingDir) {
+      fileset(dir: "rsrc",  includes: "**/model.properties")
+    }
 
-  ant.taskdef(classpath: configurations.tools.asPath, name: "updatepropheight",
-              classname: "com.threerings.bang.tools.UpdatePropHeightTask")
-  ant.updatepropheight() {
-    fileset(dir: "rsrc", includes: "**/prop.properties")
+    ant.taskdef(classpath: configurations.tools.asPath, name: "updatepropheight",
+                classname: "com.threerings.bang.tools.UpdatePropHeightTask")
+    ant.updatepropheight() {
+      fileset(dir: "rsrc", includes: "**/prop.properties")
+    }
   }
 }
 processResources.dependsOn "compileModels"
 
 // generates lists of props, units, etc.
-task updateLists (type: Exec) {
+tasks.register("updateLists", Exec) {
+  // the list generation expects the staging area to have been populated
+  mustRunAfter "copyResources", "copyOggs", "copyTownBits", "genConfigs", "genBundles",
+               "compileModels"
   commandLine "./update_lists", stagingDir, towns.join(",")
 }
 processResources.dependsOn "updateLists"
 
 // package our assets into a bunch of jar files
-task generalJar (type: Jar) {
+tasks.register("generalJar", Jar) {
+  dependsOn processResources
   from stagingDir
   include "rsrc/**"
   exclude "**/frontier_town/**"
   exclude "**/indian_post/**"
   exclude "**/boom_town/**"
   exclude "**/*.jar"
-  baseName = "general"
+  archiveBaseName = "general"
 }
 jar.dependsOn "generalJar"
 towns.each { town ->
-  tasks.create(name: "${town}_jar", type: Jar) {
+  tasks.register("${town}_jar", Jar) {
+    dependsOn processResources
     from stagingDir
     include "rsrc/**/$town/**"
     exclude "**/*.jar"
-    baseName = "$town"
+    archiveBaseName = "$town"
   }
   jar.dependsOn "${town}_jar"
 }
 
-task deploy (type: Sync) {
+tasks.register("deploy", Sync) {
   from("build/libs", stagingDir)
   include "**/*.jar"
   into "../build/assets"

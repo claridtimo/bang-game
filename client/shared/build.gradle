@@ -1,24 +1,27 @@
 dependencies {
-  compile project(":app")
-  compile "com.samskivert:samskivert:1.9"
-  compile "com.threerings:narya:${naryaVersion}"
-  compile "com.threerings:nenya:${nenyaVersion}"
-  compile "com.threerings:vilya:1.6"
-  compile "com.threerings:getdown:1.4"
-  compile "com.threerings:ooo-util:1.4.1"
-  compile "commons-io:commons-io:1.4"
-  compile "org.jcraft:jorbis:0.0.17"
+  api project(":app")
+  api "com.samskivert:samskivert:1.10"
+  api "com.threerings:narya:${naryaVersion}"
+  api "com.threerings:nenya:${nenyaVersion}"
+  api "com.threerings:vilya:1.7.1"
+  api "com.threerings:getdown:1.4"
+  api "com.threerings:ooo-util:1.5"
+  api "commons-io:commons-io:1.4"
+  api "org.jcraft:jorbis:0.0.17"
 
-  testCompile "junit:junit:4.8.1"
+  testImplementation "junit:junit:4.13.2"
 }
 
-task genService << {
-  ant.taskdef(classpath: configurations.tools.asPath,
-              resource: "com/threerings/presents/tools.properties")
+tasks.register("genService") {
+  dependsOn configurations.tools
+  doLast {
+    ant.taskdef(classpath: configurations.tools.asPath,
+                resource: "com/threerings/presents/tools.properties")
 
-  ant.path(id: "classpath", location: configurations.compile.asPath)
-  ant.genservice(header: "../../lib/SOURCE_HEADER",
-                 classpathref: "classpath") {
-    fileset(dir: "src/main/java", includes: "**/*Service.java")
+    ant.path(id: "classpath", path: sourceSets.main.compileClasspath.asPath)
+    ant.genservice(header: "../../lib/SOURCE_HEADER",
+                   classpathref: "classpath") {
+      fileset(dir: "src/main/java", includes: "**/*Service.java")
+    }
   }
 }
