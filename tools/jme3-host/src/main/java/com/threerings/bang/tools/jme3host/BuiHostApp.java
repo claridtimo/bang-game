@@ -7,8 +7,14 @@ package com.threerings.bang.tools.jme3host;
 import java.io.StringReader;
 
 import com.jme3.app.SimpleApplication;
+import com.jme3.app.state.ScreenshotAppState;
+import com.jme3.post.SceneProcessor;
+import com.jme3.profile.AppProfiler;
 import com.jme3.renderer.RenderManager;
+import com.jme3.renderer.ViewPort;
+import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.system.AppSettings;
+import com.jme3.texture.FrameBuffer;
 
 import com.jmex.bui.BButton;
 import com.jmex.bui.BContainer;
@@ -78,6 +84,18 @@ public class BuiHostApp extends SimpleApplication
             throw new RuntimeException("Failed to build BUI scene", ioe);
         }
         _root.addWindow(_window);
+
+        // 3. render BUI through a SceneProcessor on the GUI viewport (the design in
+        //    docs/jme3-bui-port.md). postQueue runs with the GUI viewport's ORTHO camera
+        //    active and renders into the GUI viewport's framebuffer -- exactly BUI's pixel,
+        //    bottom-left-origin coordinate space -- so no camera swap or y-flip is needed.
+        guiViewPort.addProcessor(new BuiProcessor());
+
+        // a framebuffer screenshot grabber (writes a PNG straight from GL, independent of any
+        // X11 grab timing) -- the authoritative proof artifact. Attached to the GUI viewport
+        // AFTER the BUI processor so its postFrame grab sees BUI already drawn.
+        _shotter = new ScreenshotAppState(System.getProperty("shot.dir", "/tmp") + "/", "jme3-bui-fb");
+        stateManager.attach(_shotter);
     }
 
     /** Builds a window exercising solid fill, border outline, text (label + button), and a
@@ -128,37 +146,84 @@ public class BuiHostApp extends SimpleApplication
         if (_root != null && _window != null && !_packed) {
             // pack and center once the display dimensions are live.
             _window.pack();
-            _window.center();
+            // center manually: BWindow.center() reads the backend's display size, which is
+            // only populated inside beginFrame (render thread) -- it is still 0 here in update.
+            int w = settings.getWidth(), h = settings.getHeight();
+            _window.setLocation((w - _window.getWidth()) / 2, (h - _window.getHeight()) / 2);
             _window.validate();
             _packed = true;
+            System.err.println("BUI window bounds: x=" + _window.getX() + " y=" + _window.getY() +
+                " w=" + _window.getWidth() + " h=" + _window.getHeight() +
+                " components=" + _window.getComponentCount());
         }
-        // capture a screenshot a few frames in, then exit (so the run is self-terminating).
-        if (_packed && ++_frames == EXIT_AFTER_FRAMES) {
-            stop();
+        if (_packed) {
+            _frames++;
+            // give the scene a few frames to settle, then grab a framebuffer screenshot.
+            if (_frames == SHOT_FRAME) {
+                _shotter.takeScreenshot();
+            }
+            // exit on a schedule so the run is self-terminating (also gives an X11 grab a
+            // window to fire in, and lets the screenshot flush to disk).
+            if (_frames >= EXIT_AFTER_FRAMES) {
+                stop();
+            }
         }
     }
 
-    @Override
-    public void simpleRender (RenderManager rm)
+    /**
+     * Renders BUI during the GUI viewport's queue flush. At {@code postQueue} we are drawing
+     * into the GUI viewport's framebuffer; we switch the render manager into jME3's built-in
+     * 2D ORTHO overlay mode ({@code setCamera(cam, true)}, 1 unit == 1 pixel, origin
+     * bottom-left -- exactly BUI's coordinate space) for the BUI draws, then restore the
+     * camera so the GUI bucket flush that follows is undisturbed.
+     */
+    protected class BuiProcessor implements SceneProcessor
     {
-        if (_root == null) {
-            return;
+        public void initialize (RenderManager rm, ViewPort vp) {
+            _rm = rm;
+            _initialized = true;
         }
-        int w = settings.getWidth(), h = settings.getHeight();
-        _backend.beginFrame(rm, w, h);
-        try {
-            _root.renderWindows();
-        } finally {
-            _backend.endFrame();
+        public boolean isInitialized () {
+            return _initialized;
         }
+        public void postQueue (RenderQueue rq) {
+            if (_root == null || _rm == null) {
+                return;
+            }
+            int w = settings.getWidth(), h = settings.getHeight();
+            // RenderManager.setCamera(cam, true) installs jME3's built-in pixel-space 2D ORTHO
+            // overlay matrix (origin bottom-left, 1 unit == 1 pixel) sized to the camera's
+            // width/height -- exactly BUI's coordinate space. This is the same matrix the GUI
+            // bucket uses; the stock gui-viewport camera's own (perspective-ish) frustum is
+            // irrelevant under this overlay mode, which is why the earlier draws were clipped.
+            _rm.setCamera(guiViewPort.getCamera(), true);
+            _backend.beginFrame(_rm, w, h);
+            try {
+                _root.renderWindows();
+            } finally {
+                _backend.endFrame();
+                // restore non-overlay camera so the GUI bucket flush after us is undisturbed.
+                _rm.setCamera(guiViewPort.getCamera(), false);
+            }
+        }
+        public void preFrame (float tpf) {}
+        public void postFrame (FrameBuffer out) {}
+        public void reshape (ViewPort vp, int w, int h) {}
+        public void cleanup () { _initialized = false; }
+        public void setProfiler (AppProfiler profiler) {}
+
+        protected RenderManager _rm;
+        protected boolean _initialized;
     }
 
     protected Jme3RenderBackend _backend;
     protected BuiRootNode _root;
     protected BWindow _window;
+    protected ScreenshotAppState _shotter;
     protected boolean _packed;
     protected int _frames;
 
     protected static final int WIDTH = 1024, HEIGHT = 768;
-    protected static final int EXIT_AFTER_FRAMES = 600;  // ~10s @ 60fps; overridden by run
+    protected static final int SHOT_FRAME = 30;          // grab once the scene has settled
+    protected static final int EXIT_AFTER_FRAMES = 480;  // ~8s @ 60fps, self-terminating
 }

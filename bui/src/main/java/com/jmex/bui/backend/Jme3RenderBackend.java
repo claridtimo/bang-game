@@ -50,6 +50,11 @@ public class Jme3RenderBackend implements BRenderBackend
         _solid.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
         _solid.getAdditionalRenderState().setDepthTest(false);
         _solid.getAdditionalRenderState().setDepthWrite(false);
+        // The GUI viewport's ortho camera looks toward +Z, while a jME3 Quad's front face
+        // (CCW winding) has a +Z normal -- so the camera sees the quad's BACK face. With the
+        // default Back cull mode that culls every BUI primitive (the symptom: geometry shows
+        // in the render stats but nothing rasterizes). Disable face culling for flat UI quads.
+        _solid.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
     }
 
     /**
