@@ -23,3 +23,13 @@ dependencies {
 application {
   mainClass = "com.threerings.bang.tools.j3o.ModelToJ3o"
 }
+
+// full-corpus parity + coverage harness (see VerifyCorpus). Run:
+//   ./gradlew :tools:j3o-converter:verifyCorpus
+// pointed at the staged resource tree the untouched compileModels step produces.
+tasks.register("verifyCorpus", JavaExec) {
+  group = "verification"
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = "com.threerings.bang.tools.j3o.VerifyCorpus"
+  args = [ rootProject.file("assets/build/staging/rsrc").absolutePath ]
+}
