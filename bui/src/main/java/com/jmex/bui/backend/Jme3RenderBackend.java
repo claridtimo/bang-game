@@ -182,7 +182,7 @@ public class Jme3RenderBackend implements BRenderBackend
             int x1 = Math.max(x, store.x), y1 = Math.max(y, store.y),
                 x2 = Math.min(x + width, store.x + store.width),
                 y2 = Math.min(y + height, store.y + store.height);
-            setClip(x, y, Math.max(0, x2 - x1), Math.max(0, y2 - y1));
+            setClip(x1, y1, Math.max(0, x2 - x1), Math.max(0, y2 - y1));
         } else {
             setClip(x, y, width, height);
         }

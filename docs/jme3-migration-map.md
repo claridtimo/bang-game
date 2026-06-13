@@ -483,7 +483,7 @@ These are **not migrated** — the pipeline already rebuilds them from XML every
 ### 5.2 Convert offline (binary is the source of truth — no XML to regenerate from)
 | Asset | Count | Format | Action |
 |---|---|---|---|
-| `.board` (game boards) | 168 (`assets/rsrc/boards/<n>/`, + town backdrops) | fork `BinaryExporter` Savable graph (`BoardFile`→`BangBoard`+`Piece[]`) | one-time converter: load with the **legacy fork reader retained as a tool**, re-save via jME3 (or via Narya streaming — see §6). The server reads these at startup; the board *editor* writes them. |
+| `.board` (game boards) | 168 (165 in `data/boards/<town>/<n>/` under `server_root`, + 3 menu `town.board` backdrops in `assets/rsrc/menu/<town>/`) | fork `BinaryExporter` Savable graph (`BoardFile`→`BangBoard`+`Piece[]`) | one-time converter: load with the **legacy fork reader retained as a tool**, re-save via jME3 (or via Narya streaming — see §6). The server reads `data/boards` at startup (`BoardManager.mapBoards(new File(ServerConfig.serverRoot, "data/boards"))`, BoardManager.java:44); the board *editor* writes them. |
 | bounty `.game` | 196 (`assets/rsrc/bounties/…`) | fork `BinaryExporter` (`BangConfig`+`Criterion` Savables) | same one-time converter. |
 | `particles.jme` | 60 (`assets/rsrc/effects/…`) | fork `BinaryExporter` `ParticleGeometry` | converter must **re-author** as jME3 `ParticleEmitter` params (structural mismatch §2.11) — not a mechanical re-save; likely a parameter-extraction script + hand tuning. |
 
@@ -509,8 +509,10 @@ mechanical re-saves; particles are re-authoring (folded into risk #5).
   Narya-`Streamable` for the **wire** (server→client), but the **file** is jME binary.
   This makes the 168+196 files a jME-format migration concern, exactly the kind
   UPGRADE_PLAN Phase 5 must own — they do **not** "rebuild from XML."
-- **Boards live in `assets/rsrc/boards/`** (168 verified), consistent with
-  engine-notes; the earlier draft's "`data/boards/`" note is corrected to `rsrc/`.
+- **Game boards live in `data/boards/<town>/<n>/` under `server_root`** (165 files;
+  `BoardManager.java:44`), with only the 3 menu `town.board` backdrops under
+  `assets/rsrc/menu/`. There is no `assets/rsrc/boards/` directory. `engine-notes.md`
+  is correct; an earlier draft of this map wrongly "corrected" it to `rsrc/` — reverted.
 - **`CompileModelTask` is project code** (app/.../jme/tools/CompileModelTask.java),
   not nenya-tools as UPGRADE_PLAN Phase 5 step 2 implies ("the XML→`.jme` binary
   compiler (`CompileModelTask`)" — it *is* the fork-binary compiler, and **we own its
