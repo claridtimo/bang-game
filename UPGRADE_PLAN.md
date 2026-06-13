@@ -121,30 +121,48 @@ Exit = acceptance bar. User runs `/code-review ultra` on the final diff.
   before deleting, propose list first.
 - Address high-value `-Xlint` warnings; leave cosmetic ones.
 
-## Phase 5 — jME 3.x port roadmap (target latest stable; 3.9.0 as of June 2026) (NOT executed; planning artifact)
+## Phase 5 — jME 3.x port roadmap (target latest stable; 3.9.0 as of June 2026)
 
-Scoped outline for a future campaign, in dependency order:
+Step 1 (inventory) and prototypes for steps 2 (model pipeline) and 3 (BUI) are DONE on the
+`JMEupgrade` branch — see `docs/jme3-migration-map.md`, `docs/jme3-model-pipeline.md`,
+`docs/jme3-bui-port.md` and the `tools/j3o-converter` module. The map supersedes the
+estimates below; corrections from it are folded in here. Verified scope: **239 fork-importing
+files, 93 distinct fork classes → 18 DIRECT / 41 ADAPT / 25 REBUILD / 10 DROP**.
 
-1. **Inventory** (1–2 agent-days): catalog the fork API surface actually used by the 240
-   client files + BUI; map each class to its jME 3.x equivalent (`com.jme.scene.Node` →
-   `com.jme3.scene.Node`, controllers → `Control`s, fixed-function material states →
-   `Material`/shader params). Output: migration table + risk list.
-2. **Model pipeline**: replace the XML→`.jme` binary compiler (`CompileModelTask`) with a
-   converter to jME3 `.j3o` (likely via a custom loader reusing the existing XML parse);
-   this unblocks everything visual.
-3. **BUI**: port BUI's render layer to jME3 (quad/texture/text rendering) — BUI's API stays,
-   its internals change. Alternative: migrate UI to Lemur (jME3's de-facto UI lib) — bigger
-   diff, better support.
-4. **Core client**: `app` module (`com.threerings.jme.*` framework: JmeApp loop, camera
-   handlers, sprites/effects) onto jME3's application model.
-5. **Game board renderer**: terrain splatting, water, skies, particle effects
-   (`rsrc/effects/*/particles.jme`) — the highest-effort, highest-fidelity-risk area.
-6. **Switch windowing to LWJGL3** (comes free with jME3) and then optionally bump libGDX
-   or remove it entirely (it only does window/input, which jME3 covers).
+Ordering (bottom-up; steps 1–4 are engine-agnostic and land while the legacy LWJGL2 host
+still boots — the LWJGL2→LWJGL3 switch is a single atomic cutover at step 5, NOT a free late
+step):
+
+1. **Inventory & API map** — DONE (`docs/jme3-migration-map.md`).
+2. **Model pipeline** — prototype DONE (310/310 mesh-stat parity via `tools/j3o-converter`).
+   Note `CompileModelTask` is **project-owned** (in `app/`, emits `model.dat` — not nenya-tools,
+   not `.jme`), so we own the rewrite. Recommendation from the prototype: a runtime jME3
+   `AssetLoader<Model>` reading `model.dat` directly rather than a build-time `.j3o` bake
+   (ModelCache already re-resolves colorization/variants/detail at runtime). ~76% of models are
+   static (full fidelity now); animated/skinned 21% map onto `com.jme3.anim`
+   (`AnimClip`/`TransformTrack`, `Armature`+`SkinningControl`). ~2–3 agent-weeks for full coverage.
+3. **BUI render layer** — seam + compile-isolated jME3 backend DONE. Decision: **reimplement
+   BUI internals on jME3** (not Lemur — BUI's 42 `renderComponent(Renderer)` paint-hook overrides
+   can't be expressed in retained-mode Lemur). Text ports for free: `AWTTextFactory` already
+   renders to a `BufferedImage`, whose BGR/ABGR bytes map onto jME3 `BGR8`/`ABGR8` with no
+   reshuffle. Remaining: type-token swap across bui+app+client/shared, `Jme3RootNode`+input,
+   `BGeomView` on ViewPorts, cursor/window glue (with step 5).
+4. **Core client**: `app` module (`com.threerings.jme.*`: JmeApp loop, camera handlers,
+   sprite/path system, ShaderCache) onto jME3's application model.
+5. **Atomic LWJGL2→LWJGL3 cutover** at the app-host boundary (`BangDesktop`/`BangApp`/
+   `EditorDesktop`): the two engines cannot share a window/GL context, so gdx+LWJGL2 flips to
+   jME3+LWJGL3 in one move, landed together with step 4. **This drags sound with it** — retiring
+   gdx removes the OpenAL device owner, so the vendored `com.threerings.openal` package must move
+   to LWJGL3 (or jME3 audio) in the same step. Then the board renderer: terrain splatting, water,
+   skies, and particle effects (60 `particles.jme` files, structural rewrite).
+6. **Asset conversion tool** (NEW — absent from the original plan): the 168 `.board` + 196
+   `.game` files are jME-fork `BinaryExporter` Savables with **no XML source**; they need a
+   one-time fork→jME3 conversion tool, not a recompile (310 `model.dat` DO regenerate from XML).
 7. Per-town visual regression pass against screenshots captured from the Phase 3 build.
 
-Estimate: 2–3 months of agent-driven work with human visual review; gains modern
-macOS/ARM support and a maintained engine.
+Revised estimate (from the verified map): **~70–110 agent-days (3.5–5.5 months)** for the
+REBUILD work before integration/regression — the earlier "2–3 months" is optimistic but
+reachable with heavy parallelism. Gains modern macOS/ARM support and a maintained engine.
 
 ## Risk register
 
