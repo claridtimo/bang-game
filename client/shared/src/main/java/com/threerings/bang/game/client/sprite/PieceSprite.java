@@ -494,16 +494,17 @@ public class PieceSprite extends Sprite
             new ResultAttacher<Spatial>(_view.getPieceNode()) {
             public void requestCompleted (Spatial result) {
                 super.requestCompleted(result);
-                rot.mult(ParticleCache.Z_UP_ROTATION,
-                    result.getLocalRotation());
+                // jME3: mutating getLocalRotation()/getLocalTranslation() in place does not flag
+                // the transform dirty, so build the values and assign them via set*.
+                result.setLocalRotation(rot.mult(ParticleCache.Z_UP_ROTATION));
                 if (center) {
-                    rot.multLocal(result.getLocalTranslation().set(
-                        0f, 0f, _piece.getHeight() *
-                            TILE_SIZE * 0.5f)).addLocal(trans);
+                    Vector3f off = new Vector3f(0f, 0f,
+                        _piece.getHeight() * TILE_SIZE * 0.5f);
+                    result.setLocalTranslation(rot.multLocal(off).addLocal(trans));
                 } else {
-                    result.getLocalTranslation().set(trans);
+                    result.setLocalTranslation(new Vector3f(trans));
                 }
-            }      
+            }
         });
     }
     

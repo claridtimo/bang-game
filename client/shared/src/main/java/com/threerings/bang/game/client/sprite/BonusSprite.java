@@ -106,7 +106,7 @@ public class BonusSprite extends ActiveSprite
             _ctx.loadParticles(effect, new ResultAttacher<Spatial>(this) {
                 public void requestCompleted (Spatial result) {
                     super.requestCompleted(result);
-                    result.getLocalTranslation().set(0, 0,
+                    result.setLocalTranslation(0, 0,
                         _piece.getHeight() * 0.5f * TILE_SIZE);
                 }
             });
