@@ -9,11 +9,11 @@ import java.io.IOException;
 import java.awt.Transparency;
 import java.awt.image.BufferedImage;
 
-import com.jme.input.InputHandler;
-import com.jme.renderer.Renderer;
+import com.jme3.asset.AssetManager;
+import com.jme3.renderer.Camera;
+import com.jme3.renderer.RenderManager;
 import com.jme3.scene.Node;
-import com.jme.scene.Spatial;
-import com.jme.system.DisplaySystem;
+import com.jme3.scene.Spatial;
 
 import com.jmex.bui.BImage;
 import com.jmex.bui.BRootNode;
@@ -303,12 +303,20 @@ public class BasicClient
             return _pcache;
         }
 
-        public DisplaySystem getDisplay () {
-            return _app.getContext().getDisplay();
+        // jME3 cutover: the fork DisplaySystem service-locator (getDisplay/getRenderer) and the
+        // polled InputHandler (getInputHandler) are gone. The context now surfaces the jME3
+        // AssetManager / RenderManager / Camera the app owns; input is wired at the Phase-3 host
+        // (registerWith(InputManager)).
+        public AssetManager getAssetManager () {
+            return _app.getContext().getAssetManager();
         }
 
-        public Renderer getRenderer () {
-            return _app.getContext().getRenderer();
+        public RenderManager getRenderManager () {
+            return _app.getContext().getRenderManager();
+        }
+
+        public Camera getCamera () {
+            return _app.getContext().getCamera();
         }
 
         public CameraHandler getCameraHandler () {
@@ -321,10 +329,6 @@ public class BasicClient
 
         public Node getInterface () {
             return _app.getContext().getInterface();
-        }
-
-        public InputHandler getInputHandler () {
-            return _app.getContext().getInputHandler();
         }
 
         public BRootNode getRootNode () {

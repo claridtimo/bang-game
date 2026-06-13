@@ -10,17 +10,11 @@ import java.io.PrintStream;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
-import com.jme.input.InputHandler;
-import com.jme.renderer.Camera;
-import com.jme.util.LoggingSystem;
+import java.util.logging.Logger;
 
-import com.jmex.bui.BButton;
-import com.jmex.bui.BComponent;
+import com.jme3.renderer.Camera;
+
 import com.jmex.bui.BRootNode;
-import com.jmex.bui.PolledRootNode;
-import com.jmex.bui.event.ActionEvent;
-import com.jmex.bui.event.BEvent;
-import com.jmex.bui.event.TextEvent;
 
 import com.samskivert.util.FormatterUtil;
 import com.samskivert.util.LoggingLogProvider;
@@ -39,9 +33,7 @@ import com.threerings.jme.JmeApp;
 import com.threerings.jme.camera.CameraHandler;
 
 import com.threerings.bang.game.client.GameCameraHandler;
-import com.threerings.bang.game.client.GameInputHandler;
 
-import com.threerings.bang.client.bui.SelectableIcon;
 import com.threerings.bang.util.DeploymentConfig;
 
 import static com.threerings.bang.Log.log;
@@ -86,8 +78,9 @@ public class BangApp extends JmeApp
             }
         }
 
-        // turn off JME's verbose logging
-        LoggingSystem.getLogger().setLevel(Level.WARNING);
+        // turn off jME3's verbose logging (fork LoggingSystem.getLogger() -> java.util.logging
+        // for the com.jme3 logger tree)
+        Logger.getLogger("com.jme3").setLevel(Level.WARNING);
 
         // set up the proper logging services
         com.samskivert.util.Log.setLogProvider(new LoggingLogProvider());
@@ -118,7 +111,11 @@ public class BangApp extends JmeApp
         //     app.run(server, ports, username, password);
         // }
 
-    @Override // documentation inherited
+    // jME3 cutover: this was the gdx ApplicationListener create() lifecycle hook; JmeApp is now a
+    // jME3-typed skeleton with no create()/update()/cleanup() loop (those are the Phase-3 host
+    // flip). The host will call this after installing the engine services via JmeApp.init(...).
+    // TODO(phase3-host): re-anchor this to the jME3 SimpleApplication lifecycle
+    // (simpleInitApp/simpleUpdate/destroy).
     public void create ()
     {
         // configure our debug log
@@ -134,10 +131,14 @@ public class BangApp extends JmeApp
             return;
         }
 
-        super.create();
+        // TODO(phase3-host): the fork chained super.create() to run the fork JmeApp display/loop
+        // init; the jME3 host installs services via JmeApp.init(AssetManager,RenderManager,Camera)
+        // instead. Left unchained until the host flip.
 
-        // two-pass transparency is expensive
-        _ctx.getRenderManager().getQueue().setTwoPassTransparency(false);
+        // TODO(phase3-host): the fork disabled its transparent-queue two-pass rendering here
+        // (renderer.getQueue().setTwoPassTransparency(false)). jME3 has no such switch; transparent
+        // sorting is the RenderQueue TransparentComparator (verify billboard/particle layering at
+        // Phase 4). No-op until the host/render flip.
 
         // // turn on the FPS display if we're profiling
         // if (_profiling) {
@@ -148,8 +149,9 @@ public class BangApp extends JmeApp
         _client = new BangClient();
         _client.init(this, false);
 
-        // speed up key input
-        _input.setActionSpeed(150f);
+        // TODO(phase3-host): the fork sped up polled key input via _input.setActionSpeed(150f).
+        // The polled fork InputHandler is gone; key-repeat / input tuning is configured on the
+        // jME3 InputManager at the Phase-3 host flip.
     }
 
     public void run (String server, int[] ports, String username, String password)
@@ -199,36 +201,25 @@ public class BangApp extends JmeApp
         return new GameCameraHandler(camera);
     }
 
-    @Override // documentation inherited
-    protected InputHandler createInputHandler (CameraHandler camhand)
-    {
-        return new GameInputHandler(camhand);
-    }
+    // TODO(phase3-host): the fork created the polled GameInputHandler (createInputHandler override)
+    // and wired it into the fork InputHandler. JmeApp no longer has a createInputHandler hook;
+    // GameInputHandler is the Phase-3 input seam (GodViewHandler.registerWith(InputManager)),
+    // installed by the host once it owns the jME3 InputManager.
 
     @Override // documentation inherited
     protected BRootNode createRootNode ()
     {
-        return new PolledRootNode(_timer, _input) {
-            protected boolean dispatchEvent (BComponent target, BEvent event) {
-                boolean dispatched = super.dispatchEvent(target, event);
-                if (event instanceof ActionEvent && target instanceof BButton &&
-                    !(target instanceof SelectableIcon)) {
-                    // allow buttons to have special feedback sounds
-                    BangUI.FeedbackSound sound = (BangUI.FeedbackSound)
-                        target.getProperty("feedback_sound");
-                    if (sound == null) {
-                        sound = BangUI.FeedbackSound.BUTTON_PRESS;
-                    }
-                    BangUI.play(sound);
-                } else if (event instanceof TextEvent) {
-                    BangUI.play(BangUI.FeedbackSound.KEY_TYPED);
-                }
-                return dispatched;
-            }
-        };
+        // TODO(phase3-host): the fork returned a PolledRootNode(_timer, _input) (LWJGL2/gdx input
+        // glue, deleted in the bui migration) that also routed BUI button/text events to feedback
+        // sounds. The jME3 Jme3RootNode (RawInputListener-fed) is installed at the Phase-3 host
+        // flip; the feedback-sound dispatch hook (BangUI.play on ActionEvent/TextEvent for buttons)
+        // moves there. Until then there is no BUI root node.
+        return null;
     }
 
-    @Override // documentation inherited
+    // jME3 cutover: the fork JmeApp called initLighting() during display init to set up the global
+    // LightState; jME3 has no such hook (lights attach per-Spatial via the board renderer). Kept as
+    // a no-op the Phase-3 host can call.
     protected void initLighting ()
     {
         // handle lights in board view
@@ -270,18 +261,17 @@ public class BangApp extends JmeApp
         reportInitFailure(_client, t);
     }
 
-    @Override // documentation inherited
+    // jME3 cutover: the fork JmeApp drove a per-frame update(long)/cleanup() loop; the jME3 host
+    // owns the loop at Phase 3. These keep the Bang-side per-frame and teardown work; the host
+    // calls them from simpleUpdate()/destroy() once the flip lands.
+    // TODO(phase3-host): re-anchor to the jME3 Application update/teardown.
     protected void update (long frameTick)
     {
-        super.update(frameTick);
         _client._soundmgr.updateStreams(_frameTime);
     }
 
-    @Override // documentation inherited
     protected void cleanup ()
     {
-        super.cleanup();
-
         // let the client clean things up before we shutdown
         _client.willExit();
 
