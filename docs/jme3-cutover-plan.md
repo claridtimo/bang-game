@@ -608,6 +608,9 @@ fidelity + Phase-3 input):
   hear) — restore to audible-by-default before ship.
 - Remove the now-vestigial jME3 `Savable` impls left on the board/config data classes (they stream
   via Narya now; the Savable side is unused).
+- Remove the Phase-6b WASD-verification log lines in `app/.../camera/GodViewHandler.java` (the
+  one-shot `registerWith` + first-`onAnalog` logging added to prove the input fix — harmless but
+  host-code noise once the fix is trusted).
 - Update CLAUDE.md + docs/engine-notes.md for the new jME3 / LWJGL3 stack.
 
 ## Acceptance
