@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import com.jme3.math.Vector2f;
-import com.jme.renderer.Renderer;
+import com.jme3.renderer.RenderManager;
 import com.jme3.util.BufferUtils;
 
 import com.jmex.bui.BImage;
@@ -241,7 +241,7 @@ public abstract class BaseAvatarView extends BLabel
     }
 
     @Override // documentation inherited
-    protected void renderComponent (Renderer renderer)
+    protected void renderComponent (RenderManager renderer)
     {
         renderImage(renderer);
         renderScroll(renderer);
@@ -249,7 +249,7 @@ public abstract class BaseAvatarView extends BLabel
         super.renderComponent(renderer);
     }
 
-    protected void renderImage (Renderer renderer)
+    protected void renderImage (RenderManager renderer)
     {
         if (_image != null) {
             int ix = (getWidth() - _image.getWidth())/2;
@@ -263,7 +263,7 @@ public abstract class BaseAvatarView extends BLabel
         return (_scroll == null ? (getHeight() - _image.getHeight()) : _scroll.getHeight())/2;
     }
 
-    protected void renderScroll (Renderer renderer)
+    protected void renderScroll (RenderManager renderer)
     {
         if (getText() != null && _scroll != null) {
             int ix = (getWidth() - _scroll.getWidth())/2;
@@ -271,7 +271,7 @@ public abstract class BaseAvatarView extends BLabel
         }
     }
 
-    protected void renderFrame (Renderer renderer)
+    protected void renderFrame (RenderManager renderer)
     {
         if (_frame != null) {
             _frame.render(renderer, 0, 0, _alpha);

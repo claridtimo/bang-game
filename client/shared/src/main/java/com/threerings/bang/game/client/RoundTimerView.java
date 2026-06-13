@@ -11,7 +11,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 
 import com.jme3.math.FastMath;
-import com.jme.renderer.Renderer;
+import com.jme3.renderer.RenderManager;
 
 import com.jmex.bui.BImage;
 import com.jmex.bui.BWindow;
@@ -166,7 +166,7 @@ public class RoundTimerView extends BWindow
     }
 
     @Override // documentation inherited
-    protected void renderComponent (Renderer renderer)
+    protected void renderComponent (RenderManager renderer)
     {
         super.renderComponent(renderer);
 

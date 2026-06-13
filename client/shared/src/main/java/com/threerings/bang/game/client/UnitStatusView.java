@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 import com.jme3.math.ColorRGBA;
-import com.jme.renderer.Renderer;
+import com.jme3.renderer.RenderManager;
 import com.jmex.bui.BButton;
 import com.jmex.bui.BContainer;
 import com.jmex.bui.BComponent;
@@ -310,7 +310,7 @@ public class UnitStatusView extends BWindow
         }
 
         @Override // documentation inherited
-        public void renderComponent (Renderer renderer)
+        public void renderComponent (RenderManager renderer)
         {
             if (_sprite.isSelected()) {
                 if (_opened.getParent() == this) {
@@ -601,7 +601,7 @@ public class UnitStatusView extends BWindow
         }
 
         @Override // documentation inherited
-        protected void renderComponent (Renderer renderer)
+        protected void renderComponent (RenderManager renderer)
         {
             super.renderComponent(renderer);
 

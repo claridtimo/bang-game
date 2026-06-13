@@ -11,7 +11,7 @@ import com.jmex.bui.event.ActionEvent;
 import com.jmex.bui.event.ActionListener;
 import com.jmex.bui.layout.GroupLayout;
 import com.jme3.math.ColorRGBA;
-import com.jme.renderer.Renderer;
+import com.jme3.renderer.RenderManager;
 
 import com.samskivert.util.Interval;
 import com.threerings.util.MessageBundle;
@@ -55,7 +55,7 @@ public class OverlayChatView extends BWindow
             add(_history[ii] = new MessageLabel());
         }
         add(_input = new BTextField(BangUI.TEXT_FIELD_MAX_LENGTH) {
-            public void render (Renderer renderer) {
+            public void render (RenderManager renderer) {
                 if (hasFocus()) {
                     super.render(renderer);
                 }

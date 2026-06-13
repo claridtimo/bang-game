@@ -13,7 +13,7 @@ import java.net.ConnectException;
 import java.net.URL;
 
 import com.jme3.math.ColorRGBA;
-import com.jme.renderer.Renderer;
+import com.jme3.renderer.RenderManager;
 
 import com.jmex.bui.BButton;
 import com.jmex.bui.BContainer;
@@ -378,7 +378,7 @@ public class LogonView extends BWindow
     }
 
     @Override // documentation inherited
-    protected void renderBackground (Renderer renderer)
+    protected void renderBackground (RenderManager renderer)
     {
         super.renderBackground(renderer);
 

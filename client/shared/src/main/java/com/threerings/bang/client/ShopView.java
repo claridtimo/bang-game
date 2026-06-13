@@ -6,7 +6,7 @@ package com.threerings.bang.client;
 import java.util.ArrayList;
 
 import com.jme3.math.ColorRGBA;
-import com.jme.renderer.Renderer;
+import com.jme3.renderer.RenderManager;
 
 import com.jmex.bui.BButton;
 import com.jmex.bui.BContainer;
@@ -172,7 +172,7 @@ public abstract class ShopView extends BWindow
     }
 
     @Override // documentation inherited
-    protected void renderBackground (Renderer renderer)
+    protected void renderBackground (RenderManager renderer)
     {
         super.renderBackground(renderer);
 
