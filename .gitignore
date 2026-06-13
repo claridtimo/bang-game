@@ -8,3 +8,4 @@ etc/proguard/*.map
 log/*.log
 .gradle
 build/
+baseline/

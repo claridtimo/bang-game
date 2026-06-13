@@ -1137,10 +1137,13 @@ public class BoardView extends BComponent
     {
         int bg = (_board.getFogDensity() > 0f) ?
             _board.getFogColor() : _board.getSkyHorizonColor();
-        // jME3: the viewport clear color is set on the main ViewPort, which the host owns
-        // (Phase 3). Cache it so the host can apply it; the sky dome covers most of the frame
-        // regardless. (Phase-3 wiring: ctx main viewport setBackgroundColor.)
         _backgroundColor = RenderUtil.createColorRGBA(bg);
+        // apply it to the host-owned main 3D ViewPort so any sliver beyond the sky dome (and the
+        // frame before the dome gradient is built) clears to the board's horizon/fog tone rather
+        // than black.
+        if (_ctx.getApp() != null) {
+            _ctx.getApp().setViewportBackground(_backgroundColor);
+        }
     }
 
     /**

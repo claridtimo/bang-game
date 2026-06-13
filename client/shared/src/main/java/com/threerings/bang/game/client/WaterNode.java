@@ -73,20 +73,14 @@ public class WaterNode extends Node
         _editorMode = editorMode;
         _highDetail = BangPrefs.isHighDetail();
 
-        // build the surface material (specular water look). Phase 4 replaces this with the custom
-        // water MatDef (Fresnel sphere-map / reflection) ported from shaders/water.{vert,frag}.
-        _material = new Material(ctx.getAssetManager(), "Common/MatDefs/Light/Lighting.j3md");
-        _material.setBoolean("UseMaterialColors", true);
-        _material.setColor("Diffuse", ColorRGBA.Black);
-        _material.setColor("Ambient", ColorRGBA.Black);
-        _material.setColor("Specular", ColorRGBA.White);
-        _material.setFloat("Shininess", 32f);
+        // build the surface material: the custom Bang water MatDef does GL_SPHERE_MAP texgen of the
+        // (wave-perturbed) surface normal against a Fresnel sphere map (water-color <-> sky-color by
+        // reflectivity), reproducing the fork's fixed-function EM_SPHERE reflection look.
+        _material = new Material(ctx.getAssetManager(), "shaders/BangWater.j3md");
+        _material.setFloat("Alpha", WATER_ALPHA);
         RenderUtil.applyBlendAlpha(_material);
         RenderUtil.applyBackCull(_material);
         setQueueBucket(com.jme3.renderer.queue.RenderQueue.Bucket.Transparent);
-
-        // attach the board's primary light so the specular highlight works
-        addLight(light);
     }
 
     /**
@@ -186,10 +180,20 @@ public class WaterNode extends Node
             com.jme3.texture.image.ColorSpace.sRGB);
         Texture2D sphereMap = new Texture2D(img);
         sphereMap.setMagFilter(MagFilter.Bilinear);
-        sphereMap.setWrap(WrapMode.Repeat);
-        // The fork bound this as an EM_SPHERE environment map; the Phase-4 water MatDef will sample
-        // it as a Fresnel/reflection map. For now bind it as the diffuse map for a visible surface.
-        _material.setTexture("DiffuseMap", sphereMap);
+        sphereMap.setWrap(WrapMode.EdgeClamp);
+        // bound as the Fresnel sphere map sampled via GL_SPHERE_MAP texgen in BangWater.vert.
+        _material.setTexture("SphereMap", sphereMap);
+
+        // fog ambience
+        float density = _board.getFogDensity();
+        if (density > 0f) {
+            int fc = _board.getFogColor();
+            _material.setBoolean("UseFog", true);
+            _material.setColor("FogColor", new ColorRGBA(
+                ((fc >> 16) & 0xFF) / 255f, ((fc >> 8) & 0xFF) / 255f,
+                (fc & 0xFF) / 255f, 1f));
+            _material.setFloat("FogDensity", density);
+        }
     }
 
     /**
