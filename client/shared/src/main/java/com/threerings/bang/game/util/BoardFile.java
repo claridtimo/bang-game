@@ -10,13 +10,13 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.jme.util.export.InputCapsule;
-import com.jme.util.export.JMEExporter;
-import com.jme.util.export.JMEImporter;
-import com.jme.util.export.OutputCapsule;
-import com.jme.util.export.Savable;
-import com.jme.util.export.binary.BinaryExporter;
-import com.jme.util.export.binary.BinaryImporter;
+import com.jme3.export.InputCapsule;
+import com.jme3.export.JmeExporter;
+import com.jme3.export.JmeImporter;
+import com.jme3.export.OutputCapsule;
+import com.jme3.export.Savable;
+import com.jme3.export.binary.BinaryExporter;
+import com.jme3.export.binary.BinaryImporter;
 
 import com.threerings.bang.game.data.BangBoard;
 import com.threerings.bang.game.data.BoardData;
@@ -120,7 +120,8 @@ public class BoardFile
     }
 
     // from interface Savable
-    public void read (JMEImporter im)
+    @SuppressWarnings("unchecked")
+    public void read (JmeImporter im)
         throws IOException
     {
         InputCapsule capsule = im.getCapsule(this);
@@ -135,7 +136,7 @@ public class BoardFile
     }
 
     // from interface Savable
-    public void write (JMEExporter ex)
+    public void write (JmeExporter ex)
         throws IOException
     {
         OutputCapsule capsule = ex.getCapsule(this);
@@ -144,7 +145,8 @@ public class BoardFile
         capsule.write(scenarios, "scenarios", DEF_SCENARIOS);
         capsule.write(players, "players", 2);
         capsule.write(board, "board", null);
-        capsule.writeSavableArrayList(pieces, "pieces", NO_PIECES);
+        capsule.writeSavableArrayList(
+            pieces == null ? null : new ArrayList<Piece>(pieces), "pieces", NO_PIECES);
         capsule.write(privateBoard, "private", false);
     }
 

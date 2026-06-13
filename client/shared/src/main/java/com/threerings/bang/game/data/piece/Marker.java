@@ -5,10 +5,10 @@ package com.threerings.bang.game.data.piece;
 
 import java.io.IOException;
 
-import com.jme.util.export.JMEExporter;
-import com.jme.util.export.JMEImporter;
-import com.jme.util.export.InputCapsule;
-import com.jme.util.export.OutputCapsule;
+import com.jme3.export.JmeExporter;
+import com.jme3.export.JmeImporter;
+import com.jme3.export.InputCapsule;
+import com.jme3.export.OutputCapsule;
 
 import com.threerings.bang.game.client.sprite.MarkerSprite;
 import com.threerings.bang.game.client.sprite.PieceSprite;
@@ -141,7 +141,7 @@ public class Marker extends Piece
     }
 
     @Override // documentation inherited
-    public void read (JMEImporter im)
+    public void read (JmeImporter im)
         throws IOException
     {
         super.read(im);
@@ -150,7 +150,7 @@ public class Marker extends Piece
     }
     
     @Override // documentation inherited
-    public void write (JMEExporter ex)
+    public void write (JmeExporter ex)
         throws IOException
     {
         super.write(ex);

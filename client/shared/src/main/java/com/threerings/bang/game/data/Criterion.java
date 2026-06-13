@@ -5,7 +5,7 @@ package com.threerings.bang.game.data;
 
 import java.util.HashSet;
 
-import com.jme.util.export.Savable;
+import com.jme3.export.Savable;
 
 import com.threerings.io.SimpleStreamableObject;
 
