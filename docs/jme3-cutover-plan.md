@@ -405,9 +405,9 @@ approaching the fork baselines in `baseline/fork-before/`):
   jME3 `ParticleEmitter` params (combat-effect icons already render). The `*Emission` controllers
   exist as jME3 `AbstractControl`s from Phase 2, awaiting real emitters.
 
-### Known live-render defects (observed on a live board, 2026-06-13 — TODO, cluster-1/3 visual fidelity)
-These surfaced while verifying water on a live in-game board (Thunderbird Rock); they are NOT water
-bugs but were noticed in the same render and are queued here so they aren't lost:
+### Phase 4f — TODO: remaining live-render & input defects (cluster-1/3 fidelity + Phase-3 input)
+Defects observed on live boards (2026-06-13), grouped as a formal sub-phase. Reproduce/diagnose with
+the `bin/devtest` run sheet and the `RenderToPng` harness:
 
 - **Claim/counter numbers render sideways (rotated ~90°).** The floating gold-claim nugget count is a
   camera-facing billboard. `GenericCounterNode.createGeometry` (and `CounterSprite`) now do
@@ -436,42 +436,49 @@ bugs but were noticed in the same render and are queued here so they aren't lost
   as the horse item — diagnose via `RenderToPng` on that unit's model through `ModelCache` and compare
   to the fork; check the unit's `model.dat`→`.j3o` bake (mesh/skin/anim) and its `UnitSprite`/
   `ActiveSprite` material/animation binding. Probably shares a root cause with the horse big-shot.
+- **WASD camera panning doesn't work at all** (functional, not cosmetic). `GodViewHandler` is a jME3
+  `AnalogListener`, but its `registerWith(InputManager)` was deferred at the Phase-3 host flip and is
+  never called, so keyboard pan/zoom never reaches the camera. Wire it in the jME3 host
+  (`BangApp`/`GameInputHandler`). Until fixed, agents can't pan to compose shots — pick boards whose
+  default camera frames the subject.
 
-### Phase 5 — Editor + visual regression
-- `bangeditor` on a jME3 AWT canvas; per-town visual regression against pre-cutover screenshots.
+### Phase 5 — Agent testability (brought forward — ahead of the editor)
 
-### Phase 6 — Cleanup
-- Delete the `jme` fork module, gdx, LWJGL2 deps, and the cutover scaffolding. Update CLAUDE.md
-  and engine-notes for the new stack.
+Brought forward from its original spot (was Phase 7): these harnesses directly accelerate the editor
+regression (Phase 6) and diagnosing the 4f defects, so they come first. This is a real-time 3D OpenGL
+networked game — the hard part of agent-driven work is that an agent can neither reliably *see* the
+rendered output (X-grabs off `DISPLAY=:1` are flaky) nor deterministically *drive* gameplay; there is
+no Playwright equivalent (an OpenGL framebuffer has no DOM). `bin/devtest` (4d) already covers the
+live-client path. JDK 25 and a JUnit 4→5 bump do **not** help (JDK 21 already has JFR + helpful NPEs;
+the bottleneck is coverage of a hard-to-assert app, not the runner). The two harnesses to finish:
+
+1. **Headless offscreen render-to-PNG (highest value; seed already built).** Generalize the existing
+   `tools/j3o-converter` `RenderToPng`/`RenderWaterToPng` into a board/scene/model render-to-PNG that
+   runs windowless on a `FrameBuffer`, so agents diff deterministic snapshots against
+   `baseline/fork-before/` instead of flaky X-grabs. Feeds CI visual regression and per-change checks
+   (incl. the 4f sprite defects + the Phase-6 editor regression).
+2. **Headless Narya bot client + server-side dobj assertions.** A rendering-free client that logs in,
+   drives gameplay through the service API, and asserts on distributed-object state — the closest
+   thing to "Playwright for this game." Leans on the existing AI/`-autoplay`/bot + the Narya wire.
+
+Supporting, lower priority: fold the converter harnesses (j3o 310/310, board 364/364) + the 3 unit
+tests into a JUnit + CI gate (AssertJ for ergonomics; JUnit 5 optional, not the point); JFR for
+frame-timing/perf telemetry. Not worth doing for tooling reasons: JDK 25, the JUnit major bump.
+
+### Phase 6 — Editor + visual regression
+- `bangeditor` on a jME3 AWT canvas; per-town visual regression against pre-cutover screenshots,
+  driven by the Phase-5 offscreen render harness.
+
+### Phase 7 — Cleanup
+- Delete the `jme` fork module and the remaining cutover scaffolding once nothing references it.
+- Drop the now-unnecessary deps: bare `gdx` (kept only as a transitional keycode-constant source —
+  replace with jME3 keycodes) and any lingering LWJGL2 bits.
+- **Revert the dev mute:** `BangPrefs.SILENT` is muted-by-default on this branch (`-Dsound=true` to
+  hear) — restore to audible-by-default before ship.
+- Remove the now-vestigial jME3 `Savable` impls left on the board/config data classes (they stream
+  via Narya now; the Savable side is unused).
+- Update CLAUDE.md + docs/engine-notes.md for the new jME3 / LWJGL3 stack.
 
 ## Acceptance
 Client + editor run on jME3 3.9 / LWJGL3 with gameplay and per-town visuals preserved
 (the Phase 3 acceptance bar from UPGRADE_PLAN, re-verified on the new engine).
-
-## Phase 7 — Agent testability (post-cutover follow-up, not part of cutover acceptance)
-
-Rationale: this is a real-time 3D OpenGL networked game, so the hard part of agent-driven work is
-that an agent can neither reliably *see* the rendered output (screen-grabs off `DISPLAY=:1` are
-flaky — window focus, timing, the "Idled Out" inactivity timer) nor deterministically *drive*
-gameplay. There is no Playwright equivalent: an OpenGL framebuffer has no DOM/semantic tree to
-query. JDK 25 and a JUnit 4→5 bump do **not** help here (JDK 21 already has JFR + helpful NPEs; the
-test bottleneck is coverage of a hard-to-assert app, not the runner). The leverage is two bespoke
-harnesses, both leaning on infrastructure the cutover already produced:
-
-1. **Headless offscreen render-to-PNG harness (highest value).** Render a specific
-   scene/board/model to a jME3 `FrameBuffer` → PNG with no window, on demand and deterministically.
-   Replaces flaky X-display grabs with scriptable visual snapshots an agent can diff against
-   baselines (e.g. `baseline/fork-before/`). Builds on the Phase-3 `ScreenshotAppState` hook + the
-   model/board loaders. Enables visual regression in CI and per-change visual verification.
-2. **Headless Narya bot client + server-side dobj assertions.** A rendering-free client that logs
-   in, drives gameplay through the service API, and asserts on distributed-object state — the
-   closest thing to "Playwright for this game." Leans on the existing AI/`-autoplay`/bot
-   infrastructure and the Narya wire protocol; verifies game logic with zero graphics.
-
-Supporting, lower priority: fold the converter verification harnesses (j3o 310/310, board 364/364)
-and the 3 existing unit tests into a JUnit + CI gate (add AssertJ for ergonomics — JUnit 5 optional,
-not the point); `xdotool` for crude live-window input injection; JFR for frame-timing/perf telemetry.
-Not worth doing for tooling reasons: JDK 25, the JUnit major bump.
-
-Also a Phase-6 reminder captured here: `BangPrefs.SILENT` is muted-by-default on this branch as a
-dev convenience — revert it to opt-in (audible default, `-Dsound` no longer needed) before ship.
