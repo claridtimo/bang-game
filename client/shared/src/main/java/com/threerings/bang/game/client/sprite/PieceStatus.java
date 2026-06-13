@@ -7,18 +7,17 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.geom.Arc2D;
 
-import com.jme.image.Texture;
+import com.jme3.material.Material;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.math.ColorRGBA;
-import com.jme.renderer.Renderer;
-
+import com.jme3.renderer.RenderManager;
+import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
-import com.jme.scene.SharedMesh;
-import com.jme.scene.Spatial;
-import com.jme.scene.shape.Quad;
-import com.jme.scene.state.RenderState;
-import com.jme.scene.state.TextureState;
+import com.jme3.scene.shape.Quad;
+import com.jme3.texture.Texture;
+import com.jme3.texture.Texture.WrapMode;
+import com.jme3.texture.Texture2D;
 
 import com.jmex.bui.background.BBackground;
 
@@ -33,6 +32,20 @@ import static com.threerings.bang.client.BangMetrics.*;
 
 /**
  * A helper class to manage the composition of our piece status display.
+ *
+ * <h3>jME3 cutover (Phase 2, cluster 1)</h3>
+ *
+ * The fork textured the status onto the highlight node via a {@code SharedMesh} (now
+ * {@link TerrainNode.SharedHighlight}, a {@link Geometry} sharing the highlight's mesh) and onto a
+ * set of {@code Quad}s for the iconic UI status. Each layer now carries its own {@link Material}
+ * (textured + colour-param tinted) instead of a fork {@code TextureState} + batch default colour.
+ *
+ * <p><b>Deferred to Phase 3/4:</b> the fork rotated each status texture to follow the camera via
+ * {@code Texture.setRotation/setTranslation} ({@link #rotateWithCamera}); jME3 {@code Texture2D}
+ * carries no transform, so the camera-aligned spin is a UV / billboard concern left for the board
+ * renderer pass. The iconic {@link BBackground} drew the quads in immediate mode
+ * ({@code Quad.draw(Renderer)}); jME3 has no immediate draw, so the icon background is a Phase-3
+ * BUI render-path concern and renders nothing for now.
  */
 public class PieceStatus extends Node
 {
@@ -43,11 +56,7 @@ public class PieceStatus extends Node
     public static final int ICON_SIZE = 64;
 
     /**
-     * Creates a piece status helper with the supplied piece sprite highlight
-     * node. The status will be textured onto the highlight node (using a
-     * {@link SharedMesh}) and will be textured onto a set of quads which will
-     * be used to display our iconic unit status (which we make available as a
-     * {@link BBackground}.
+     * Creates a piece status helper with the supplied piece sprite highlight node.
      */
     public PieceStatus (BasicContext ctx, TerrainNode.Highlight highlight)
     {
@@ -55,14 +64,10 @@ public class PieceStatus extends Node
     }
 
     /**
-     * Creates a piece status helper with the supplied piece sprite highlight
-     * node. The status will be textured onto the highlight node (using a
-     * {@link SharedMesh}) and will be textured onto a set of quads which will
-     * be used to display our iconic unit status (which we make available as a
-     * {@link BBackground}.
+     * Creates a piece status helper with the supplied piece sprite highlight node.
      *
-     * @param color the primary indicator color, or <code>null</code> to use
-     * the one corresponding to the piece owner
+     * @param color the primary indicator color, or <code>null</code> to use the one corresponding
+     * to the piece owner
      * @param dcolor the darker indicator color, or <code>null</code>
      */
     public PieceStatus (
@@ -76,46 +81,48 @@ public class PieceStatus extends Node
 
         loadTextures();
 
-        _info = new SharedMesh[numLayers()];
-        _icon = new Quad[numLayers()];
+        _info = new TerrainNode.SharedHighlight[numLayers()];
+        _infoMats = new Material[numLayers()];
+        _icon = new Geometry[numLayers()];
+        _iconMats = new Material[numLayers()];
         // configure the info layers
         for (int ii = 0; ii < _info.length; ii++) {
-            _info[ii] = new TerrainNode.SharedHighlight(
-                "info" + ii, highlight);
-            _info[ii].setRenderQueueMode(Renderer.QUEUE_TRANSPARENT);
-            _info[ii].setRenderState(ctx.getRenderManager().createTextureState());
-            _info[ii].updateRenderState();
+            _info[ii] = new TerrainNode.SharedHighlight("info" + ii, highlight);
+            _infoMats[ii] = newLayerMaterial();
+            _info[ii].setMaterial(_infoMats[ii]);
             attachChild(_info[ii]);
 
-            _icon[ii] = new Quad("icon" + ii, ICON_SIZE, ICON_SIZE);
-            _icon[ii].setRenderState(ctx.getRenderManager().createTextureState());
-            _icon[ii].setRenderState(RenderUtil.blendAlpha);
-            _icon[ii].getLocalTranslation().x = ICON_SIZE/2f;
-            _icon[ii].getLocalTranslation().y = ICON_SIZE/2f;
-            _icon[ii].updateGeometricState(0, true);
-            _icon[ii].updateRenderState();
+            _icon[ii] = new Geometry("icon" + ii, new Quad(ICON_SIZE, ICON_SIZE));
+            _iconMats[ii] = newLayerMaterial();
+            _icon[ii].setMaterial(_iconMats[ii]);
+            RenderUtil.setOverlay(_icon[ii]);
+            _icon[ii].setLocalTranslation(ICON_SIZE/2f, ICON_SIZE/2f, 0f);
         }
     }
 
+    /** Creates a fresh textured/colour-tinted layer material (Unshaded + Color, alpha-blended). */
+    protected Material newLayerMaterial ()
+    {
+        Material mat = new Material(_ctx.getAssetManager(),
+            "Common/MatDefs/Misc/Unshaded.j3md");
+        mat.setColor("Color", new ColorRGBA(ColorRGBA.White));
+        RenderUtil.applyBlendAlpha(mat);
+        return mat;
+    }
+
     /**
-     * Called to keep our textures rotated in line with the camera.
+     * Called to keep our textures rotated in line with the camera. jME3 {@code Texture2D} has no
+     * transform; the camera-aligned spin is deferred to the board-renderer/billboard pass.
      */
     public void rotateWithCamera (Quaternion camrot, Vector3f camtrans)
     {
-        for (int ii = 0; ii < _info.length; ii++) {
-            if (_info[ii].getCullMode() != CULL_ALWAYS) {
-                Texture tex = getTextureState(_info[ii]).getTexture(0);
-                if (tex != null) {
-                    tex.setRotation(camrot);
-                    tex.setTranslation(camtrans);
-                }
-            }
-        }
+        // no-op on jME3 (texture transform deferred to Phase 4)
     }
 
     /**
-     * Returns a background that can be used to render this unit's status in
-     * iconic form in the unit status user interface.
+     * Returns a background that can be used to render this unit's status in iconic form in the unit
+     * status user interface. jME3: the fork drew the icon quads in immediate mode; that draw path
+     * is a Phase-3 BUI concern, so this background renders nothing for now.
      */
     public BBackground getIconBackground ()
     {
@@ -126,13 +133,9 @@ public class PieceStatus extends Node
             public int getMinimumHeight () {
                 return ICON_SIZE;
             }
-            public void render (Renderer renderer, int x, int y,
+            public void render (RenderManager renderer, int x, int y,
                                 int width, int height, float alpha) {
-                for (int ii = 0; ii < _icon.length; ii++) {
-                    if (_icon[ii].getCullMode() != CULL_ALWAYS) {
-                        _icon[ii].draw(renderer);
-                    }
-                }
+                // jME3: immediate-mode quad draw is gone; the icon UI render is Phase-3 BUI work.
             }
         };
     }
@@ -144,13 +147,12 @@ public class PieceStatus extends Node
     {
         Vector3f trans = highlight.getLocalTranslation();
         for (int ii = 0; ii < _info.length; ii++) {
-            _info[ii].getLocalTranslation().set(trans);
+            _info[ii].setLocalTranslation(new Vector3f(trans));
         }
     }
 
     /**
-     * Recomposites if necessary our status texture and updates the texture
-     * state.
+     * Recomposites if necessary our status texture and updates the materials.
      */
     public void update (Piece piece, boolean selected)
     {
@@ -158,30 +160,38 @@ public class PieceStatus extends Node
             // set up our starting outline color the first time we're updated
             _owner = piece.owner;
             ColorRGBA color = getColor(), dcolor = getDarkerColor();
-            _info[0].getBatch(0).getDefaultColor().set(dcolor);
-            _icon[0].getBatch(0).getDefaultColor().set(dcolor);
+            setLayerColor(0, dcolor);
             for (int ii = 1; ii < recolorLayers(); ii++) {
-                _info[ii].getBatch(0).getDefaultColor().set(color);
-                _icon[ii].getBatch(0).getDefaultColor().set(color);
+                setLayerColor(ii, color);
             }
-            getTextureState(_info[0]).setTexture(_damout.createSimpleClone());
-            getTextureState(_icon[0]).setTexture(_damout.createSimpleClone());
+            setLayerTexture(0, _damout);
         }
 
         int dlevel = Math.max(0, (int)Math.floor(piece.damage/10f));
         if (_dlevel != dlevel) {
             _dlevel = dlevel;
-            Texture dtex = _damtexs[dlevel];
-            getTextureState(_info[1]).setTexture(dtex.createSimpleClone());
-            getTextureState(_icon[1]).setTexture(dtex.createSimpleClone());
+            setLayerTexture(1, _damtexs[dlevel]);
         }
 
         if (_selected != selected) {
             _selected = selected;
             ColorRGBA color = _selected ? ColorRGBA.White : getDarkerColor();
-            _info[0].getBatch(0).getDefaultColor().set(color);
-            _icon[0].getBatch(0).getDefaultColor().set(color);
+            setLayerColor(0, color);
         }
+    }
+
+    /** Sets the colour param on both the info and icon material for the given layer. */
+    protected void setLayerColor (int layer, ColorRGBA color)
+    {
+        _infoMats[layer].setColor("Color", new ColorRGBA(color));
+        _iconMats[layer].setColor("Color", new ColorRGBA(color));
+    }
+
+    /** Sets the texture on both the info and icon material for the given layer. */
+    protected void setLayerTexture (int layer, Texture tex)
+    {
+        _infoMats[layer].setTexture("ColorMap", tex);
+        _iconMats[layer].setTexture("ColorMap", tex);
     }
 
     /**
@@ -205,10 +215,7 @@ public class PieceStatus extends Node
      */
     protected void loadTextures ()
     {
-        if (_tempstate == null) {
-            // we'll use this to load our textures into OpenGL as we go
-            _tempstate = _ctx.getRenderManager().createTextureState();
-
+        if (_damtexs == null) {
             // we generate ten discrete damage levels and pick the closest one
             // to represent a unit's damage (this is to avoid slow and
             // expensive BufferedImage rendering during the game)
@@ -216,14 +223,14 @@ public class PieceStatus extends Node
                 PPRE + "health_meter_empty.png");
             BufferedImage full = _ctx.getImageCache().getBufferedImage(
                 PPRE + "health_meter_full.png");
-            _damtexs = new Texture[11];
+            _damtexs = new Texture2D[11];
             _damtexs[0] = RenderUtil.createTexture(_ctx, ImageCache.createImage(full, false));
             _damtexs[10] = RenderUtil.createTexture(_ctx, ImageCache.createImage(empty, false));
             for (int ii = 1; ii < 10; ii++) {
                 _damtexs[ii] = createDamageTexture(_ctx, empty, full, ii*10);
             }
             for (int ii = 0; ii < _damtexs.length; ii++) {
-                prepare(_damtexs[ii]);
+                _damtexs[ii].setWrap(WrapMode.Clamp);
             }
             _damout = prepare("damage_outline.png");
         }
@@ -245,27 +252,15 @@ public class PieceStatus extends Node
         return numLayers();
     }
 
-    protected Texture prepare (String path)
+    protected Texture2D prepare (String path)
     {
-        Texture tex = RenderUtil.createTexture(_ctx,
+        Texture2D tex = RenderUtil.createTexture(_ctx,
             _ctx.getImageCache().getImage(PPRE + path, false));
-        return prepare(tex);
+        tex.setWrap(WrapMode.Clamp);
+        return tex;
     }
 
-    protected Texture prepare (Texture texture)
-    {
-        texture.setWrap(Texture.WM_BCLAMP_S_BCLAMP_T);
-        _tempstate.setTexture(texture);
-        RenderUtil.ensureLoaded(_tempstate);
-        return texture;
-    }
-
-    protected final TextureState getTextureState (Spatial spatial)
-    {
-        return (TextureState)spatial.getRenderState(RenderState.RS_TEXTURE);
-    }
-
-    protected static Texture createDamageTexture (
+    protected static Texture2D createDamageTexture (
         BasicContext ctx, BufferedImage empty, BufferedImage full, int level)
     {
         BufferedImage target = ImageCache.createCompatibleImage(STATUS_SIZE, STATUS_SIZE, true);
@@ -292,12 +287,13 @@ public class PieceStatus extends Node
     protected int _owner = -2, _dlevel = -1;
     protected boolean _selected;
 
-    protected SharedMesh[] _info;
-    protected Quad[] _icon;
+    protected TerrainNode.SharedHighlight[] _info;
+    protected Material[] _infoMats;
+    protected Geometry[] _icon;
+    protected Material[] _iconMats;
 
-    protected static TextureState _tempstate;
-    protected static Texture[] _damtexs;
-    protected static Texture _damout;
+    protected static Texture2D[] _damtexs;
+    protected static Texture2D _damout;
 
     /** Defines the amount by which the damage arc image is inset from a
      * full quarter circle (on each side): 8 degrees. */
