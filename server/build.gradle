@@ -17,11 +17,26 @@ processResources {
   }
 }
 
-tasks.register("createTestUser", JavaExec) {
+tasks.register("createTestUserAccount", JavaExec) {
   systemProperty "ooo.propfile", "server"
   args(["create", "test", "yeehaw", "test@test.com"])
   mainClass = "com.threerings.user.tools.UserTool"
   classpath = sourceSets.main.runtimeClasspath
+}
+
+tasks.register("setTestUserBirthday", JavaExec) {
+  systemProperty "ooo.propfile", "server"
+  // give the test user a birthday well over 13 years ago; without one the auth server's
+  // COPPA gate treats the account as under 13 and blocks it from the multiplayer game
+  args(["test", "1990-01-01"])
+  mainClass = "com.threerings.bang.server.tools.SetUserBirthday"
+  classpath = sourceSets.main.runtimeClasspath
+  mustRunAfter "createTestUserAccount"
+}
+
+tasks.register("createTestUser") {
+  description = "Create user test/yeehaw (with an over-13 birthday) in the user DB."
+  dependsOn "createTestUserAccount", "setTestUserBirthday"
 }
 
 tasks.register("deploy", Sync) {
