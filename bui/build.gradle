@@ -1,4 +1,10 @@
 dependencies {
   api project(":jme")
   testImplementation "junit:junit:4.13.2"
+
+  // jME3 render backend (Phase 5 step 3 groundwork). compileOnly so it is NEVER on the
+  // game's runtime classpath: jME3 pulls LWJGL3, which must not meet the shipped LWJGL2
+  // natives. The fork backend remains the default; the jME3 backend is only exercised by a
+  // future jME3 host application that supplies the jME3 + LWJGL3 runtime itself.
+  compileOnly "org.jmonkeyengine:jme3-core:3.9.0-stable"
 }

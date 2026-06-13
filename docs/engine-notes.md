@@ -76,12 +76,18 @@ Pipeline gotchas, all verified the hard way:
 
 ## Boards (maps)
 
-A "board" is a serialized `BoardData` written with Narya's streaming system — `.board` files
-under `data/boards/<town>/<players>/` relative to `server_root` (165 shipped) plus per-town
-menu backdrops (`rsrc/menu/<town>/town.board`). The server loads all boards at startup
-("Loading boards...").
+Two distinct representations, easy to conflate:
+- **On disk**, a `.board` file is a `com.threerings.bang.game.util.BoardFile` serialized in jME's
+  `Savable` binary format — `BoardFile.loadFrom` calls `com.jme.util.export.binary.BinaryImporter`
+  (saved via `BinaryExporter`). So `.board`/`.game` files are jME-fork-format binaries with no XML
+  source: when the fork is replaced (Phase 5) they need a one-time fork→jME3 conversion tool, not
+  a recompile. Files live under `data/boards/<town>/<players>/` relative to `server_root`
+  (165 shipped) plus per-town menu backdrops (`rsrc/menu/<town>/town.board`); the server loads
+  them all at startup ("Loading boards...").
+- **On the wire**, the board's `BoardData` is sent to clients via Narya's streaming system — a
+  separate representation from the on-disk `BoardFile`.
 
-What's actually inside on the wire: `com.threerings.bang.*` piece/board classes,
+What's in the Narya-streamed `BoardData`: `com.threerings.bang.*` piece/board classes,
 `com.threerings.util.StreamableHashMap`, `java.lang.String`, and primitive arrays. The
 largest single array is the town-board heightfield: **201×201 = 40,401 elements** (a `byte[]`,
 ~40 KB payload) — comfortably under narya 1.19's default 65,536 container cap, but worth knowing if

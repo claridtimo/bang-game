@@ -5,7 +5,7 @@
 
 package com.jmex.bui;
 
-import com.jme.system.DisplaySystem;
+import com.jmex.bui.backend.BackendProvider;
 
 import com.jmex.bui.layout.BLayoutManager;
 
@@ -58,8 +58,8 @@ public class BPopupWindow extends BWindow
         pack();
 
         // adjust x and y to ensure that we fit on the screen
-        int width = DisplaySystem.getDisplaySystem().getWidth();
-        int height = DisplaySystem.getDisplaySystem().getHeight();
+        int width = BackendProvider.get().getDisplayWidth();
+        int height = BackendProvider.get().getDisplayHeight();
         x = Math.min(width - getWidth(), x);
         y = above ?
             Math.min(height - getHeight(), y) : Math.max(0, y - getHeight());

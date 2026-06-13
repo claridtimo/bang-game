@@ -5,11 +5,10 @@
 
 package com.jmex.bui;
 
-import org.lwjgl.opengl.GL11;
-
 import com.jme.renderer.ColorRGBA;
 import com.jme.renderer.Renderer;
 
+import com.jmex.bui.backend.BackendProvider;
 import com.jmex.bui.event.ActionEvent;
 import com.jmex.bui.event.BEvent;
 import com.jmex.bui.event.FocusEvent;
@@ -358,12 +357,9 @@ public class BTextField extends BTextComponent
             int cx = insets.left - _txoff + _cursx;
             BComponent.applyDefaultStates();
             ColorRGBA c = getColor();
-            GL11.glColor4f(c.r, c.g, c.b, c.a);
-            GL11.glBegin(GL11.GL_LINE_STRIP);
-            GL11.glVertex2f(cx, insets.bottom);
             int cheight = getTextFactory().getHeight();
-            GL11.glVertex2f(cx, insets.bottom + cheight);
-            GL11.glEnd();
+            BackendProvider.get().drawLine(cx, insets.bottom, cx, insets.bottom + cheight,
+                c.r, c.g, c.b, c.a);
         }
     }
 

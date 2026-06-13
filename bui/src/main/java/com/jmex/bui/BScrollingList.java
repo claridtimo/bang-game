@@ -5,7 +5,7 @@
 
 package com.jmex.bui;
 
-import org.lwjgl.opengl.GL11;
+import com.jmex.bui.backend.BackendProvider;
 
 import java.util.Collection;
 import java.util.ArrayList;
@@ -286,7 +286,7 @@ public abstract class BScrollingList<V, C extends BComponent> extends BContainer
         protected void renderComponent (Renderer renderer)
         {
             Insets insets = getInsets();
-            GL11.glTranslatef(0, _offset, 0);
+            BackendProvider.get().translate(0, _offset);
             boolean scissored = intersectScissorBox(_srect,
                 getAbsoluteX() + insets.left,
                 getAbsoluteY() + insets.bottom,
@@ -299,7 +299,7 @@ public abstract class BScrollingList<V, C extends BComponent> extends BContainer
                 }
             } finally {
                 restoreScissorState(scissored, _srect);
-                GL11.glTranslatef(0, -_offset, 0);
+                BackendProvider.get().translate(0, -_offset);
             }
         }
 

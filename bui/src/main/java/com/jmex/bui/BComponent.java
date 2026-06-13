@@ -5,20 +5,15 @@
 
 package com.jmex.bui;
 
-import java.nio.IntBuffer;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import org.lwjgl.opengl.GL11;
 import com.badlogic.gdx.Input.Keys;
 
 import com.jme.renderer.ColorRGBA;
-import com.jme.renderer.RenderContext;
 import com.jme.renderer.Renderer;
-import com.jme.system.DisplaySystem;
-import com.jme.util.geom.BufferUtils;
 
+import com.jmex.bui.backend.BackendProvider;
 import com.jmex.bui.background.BBackground;
 import com.jmex.bui.border.BBorder;
 import com.jmex.bui.event.BEvent;
@@ -50,13 +45,7 @@ public class BComponent
 
     public static void applyDefaultStates ()
     {
-        RenderContext ctx = DisplaySystem.getDisplaySystem().getCurrentContext();
-        for (int ii = 0; ii < Renderer.defaultStateList.length; ii++) {
-            if (Renderer.defaultStateList[ii] != null &&
-                Renderer.defaultStateList[ii] != ctx.getCurrentState(ii)) {
-                Renderer.defaultStateList[ii].apply();
-            }
-        }
+        BackendProvider.get().applyDefaultStates();
     }
 
     /**
@@ -617,7 +606,7 @@ public class BComponent
         if (!_visible) {
             return;
         }
-        GL11.glTranslatef(_x, _y, 0);
+        BackendProvider.get().translate(_x, _y);
 
         try {
             // render our background
@@ -630,7 +619,7 @@ public class BComponent
             renderBorder(renderer);
 
         } finally {
-            GL11.glTranslatef(-_x, -_y, 0);
+            BackendProvider.get().translate(-_x, -_y);
         }
     }
 
@@ -992,19 +981,7 @@ public class BComponent
     protected static boolean intersectScissorBox (
         Rectangle store, int x, int y, int width, int height)
     {
-        boolean enabled = GL11.glIsEnabled(GL11.GL_SCISSOR_TEST);
-        if (enabled) {
-            GL11.glGetInteger(GL11.GL_SCISSOR_BOX, _bbuf);
-            store.set(_bbuf.get(0), _bbuf.get(1), _bbuf.get(2), _bbuf.get(3));
-            int x1 = Math.max(x, store.x), y1 = Math.max(y, store.y),
-                x2 = Math.min(x + width, store.x + store.width),
-                y2 = Math.min(y + height, store.y + store.height);
-            GL11.glScissor(x, y, Math.max(0, x2 - x1), Math.max(0, y2 - y1));
-        } else {
-            GL11.glEnable(GL11.GL_SCISSOR_TEST);
-            GL11.glScissor(x, y, width, height);
-        }
-        return enabled;
+        return BackendProvider.get().intersectScissorBox(store, x, y, width, height);
     }
 
     /**
@@ -1016,11 +993,7 @@ public class BComponent
      */
     protected static void restoreScissorState (boolean enabled, Rectangle rect)
     {
-        if (enabled) {
-            GL11.glScissor(rect.x, rect.y, rect.width, rect.height);
-        } else {
-            GL11.glDisable(GL11.GL_SCISSOR_TEST);
-        }
+        BackendProvider.get().restoreScissorState(enabled, rect);
     }
 
     protected BContainer _parent;
@@ -1041,9 +1014,6 @@ public class BComponent
     protected BBorder[] _borders = new BBorder[getStateCount()];
     protected BBackground[] _backgrounds = new BBackground[getStateCount()];
     protected BCursor _cursor;
-
-    /** Temporary storage for scissor box queries. */
-    protected static IntBuffer _bbuf = BufferUtils.createIntBuffer(16);
 
     protected static final int STATE_COUNT = 3;
     protected static final String[] STATE_PCLASSES = { null, "hover", "disabled" };
