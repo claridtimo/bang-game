@@ -9,6 +9,12 @@ dependencies {
   api "commons-io:commons-io:1.4"
   api "org.jcraft:jorbis:0.0.17"
 
+  // TODO(phase3-sound): the vendored com.threerings.openal package is still LWJGL2-based; it
+  // moves to LWJGL3/jME3 audio in Phase 3 (the host flip), at which point this dep is dropped.
+  // Kept here so the vendored package compiles now that the fork `jme` (which used to supply
+  // LWJGL2) is off client/shared's classpath.
+  implementation "org.lwjgl.lwjgl:lwjgl:2.9.2"
+
   testImplementation "junit:junit:4.13.2"
 }
 
