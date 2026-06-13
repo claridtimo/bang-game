@@ -44,7 +44,7 @@ while [ ! -z "$1" ]; do
             ;;
 
         -build)
-            ant
+            "$BANG_HOME/gradlew" -p "$BANG_HOME" deploy
             if [ $? != 0 ]; then
                 echo "Compilation failed."
                 exit 255
