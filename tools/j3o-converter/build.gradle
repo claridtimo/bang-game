@@ -79,3 +79,16 @@ tasks.register("renderToPng", JavaExec) {
       "${rsrc}/../../../${modelType.replaceAll('/', '_')}.png"
   args = [ rsrc, modelType, out ]
 }
+
+// Phase 4c: render the Bang! water surface (BangWater.j3md) headlessly, reproducing WaterNode's
+// material + Fresnel sphere map + a wave-displaced surface, so the sphere-map reflection can be
+// inspected/verified without a live server or a fork-format .board. Pass -Pframe=<float> to
+// advance the waves (compare two frames to confirm animation).
+tasks.register("renderWaterToPng", JavaExec) {
+  classpath = sourceSets.main.output + configurations.renderToPngRuntime
+  mainClass = "com.threerings.bang.tools.j3o.RenderWaterToPng"
+  def rsrc = rootProject.file("assets/build/staging/rsrc").absolutePath
+  def out = project.hasProperty("out") ? project.property("out").toString() : "/tmp/p4c-water.png"
+  def frame = project.hasProperty("frame") ? project.property("frame").toString() : "0"
+  args = [ rsrc, out, frame ]
+}
