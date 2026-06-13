@@ -336,7 +336,9 @@ public class BangBotClient
             int tick = ((Number)event.getValue()).intValue();
             if (tick > _lastTick) {
                 _lastTick = tick;
-                _sawTickAdvance |= (tick >= 0);
+                // a real simulation tick is >0; tick==0 is the round-start reset the server emits
+                // (BangManager.tick((short)0)) before any unit acts, so it must not count here.
+                _sawTickAdvance |= (tick > 0);
             }
             // count units once the board is live
             if (tick == 0 && _bangobj != null && _bangobj.pieces != null) {

@@ -73,6 +73,10 @@ public class RenderSceneToPng extends OffscreenRenderApp
         float cell = 1f;
         for (int i = 0; i < n; i++) {
             models[i] = loadSpec(_specs[i]);
+            // a freshly loaded/cloned model has a null world bound until its geometric state is
+            // computed; an un-posed spec never gets that update from poseAnimation, so measure it
+            // here or its footprint reads null and it would not grow the grid cell (-> overlap).
+            models[i].updateGeometricState();
             BoundingBox bb = (BoundingBox)models[i].getWorldBound();
             if (bb != null) {
                 cell = Math.max(cell, Math.max(bb.getXExtent(), bb.getYExtent()) * 2.6f);
