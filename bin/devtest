@@ -4,6 +4,7 @@
 #
 # It removes the recurring setup friction that has repeatedly broken automated test runs:
 #   1. kill any stale Bang processes and free the server port (47624)
+#   1b. seed any missing etc/test/ local config from etc/*.dist (gitignored; fresh worktrees)
 #   2. verify MySQL is up and the bang/yeehaw account connects
 #   3. ./gradlew deploy (unless --no-deploy) and abort on failure
 #   4. start the server and WAIT until it logs "Server listening" (never launch the client early)
@@ -63,6 +64,32 @@ while [ $# -gt 0 ]; do
 done
 
 SERVER_PID=""; CLIENT_PID=""
+
+# Seed any missing local config: etc/test/ is gitignored, so a fresh checkout/worktree has no
+# local config, which bakes a blank server_auth into the jars and trips the server's fail-fast
+# (see ServerConfig.getAuthenticator). For each etc/*.dist, copy it to etc/test/<name-without-.dist>
+# when the target is absent; NEVER overwrite an existing file. Idempotent and safe to re-run. Must
+# run before deploy, since deploy bakes etc/test/ into the jars. NOTE: this seeds a working *default*
+# config only — the MySQL db.* credentials in etc/test/server.properties must still be correct for
+# the server to fully start (see the MySQL check below / README); seeding just removes the
+# missing-file failure, it does not provision MySQL.
+seed_etc_test () {
+  mkdir -p "$HERE/etc/test"
+  local seeded=0 dist name target
+  for dist in "$HERE"/etc/*.dist; do
+    [ -e "$dist" ] || continue
+    name="$(basename "$dist" .dist)"
+    target="$HERE/etc/test/$name"
+    if [ ! -e "$target" ]; then
+      cp "$dist" "$target"
+      echo "[devtest] seeded etc/test/$name from $(basename "$dist")"
+      seeded=1
+    fi
+  done
+  [ "$seeded" = 1 ] && echo "[devtest] (etc/test seeding done; gitignored — edit db.* in etc/test/server.properties for MySQL)"
+  return 0
+}
+
 free_port () { for _ in $(seq 1 20); do ss -tln 2>/dev/null | grep -q ":$PORT " || return 0; sleep 0.5; done; return 1; }
 bang_running () { pgrep -f "com.threerings.bang.(client.BangDesktop|server.BangServer|editor.EditorDesktop)" >/dev/null 2>&1; }
 kill_bang () {
@@ -141,6 +168,9 @@ PY
 echo "[devtest] cleaning up any stale Bang processes..."
 kill_bang; sleep 1
 free_port || echo "[devtest] WARN: port $PORT still occupied after cleanup."
+
+# 1b. seed missing local config (etc/test/ is gitignored) BEFORE deploy bakes it into the jars
+seed_etc_test
 
 # 2. MySQL reachable as bang/yeehaw?
 echo "[devtest] checking MySQL (bang/yeehaw)..."
