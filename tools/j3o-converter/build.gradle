@@ -76,7 +76,7 @@ tasks.register("renderToPng", JavaExec) {
   def modelType = project.hasProperty("modelType") ?
       project.property("modelType").toString() : "props/frontier_town/buildings/saloon"
   def out = project.hasProperty("out") ? project.property("out").toString() :
-      "${rsrc}/../../../${modelType.replaceAll('/', '_')}.png"
+      "/tmp/${modelType.replaceAll('/', '_')}.png"
   args = [ rsrc, modelType, out ]
 }
 
@@ -108,7 +108,7 @@ tasks.register("renderModelToPng", JavaExec) {
   def modelType = project.hasProperty("modelType") ?
       project.property("modelType").toString() : "units/frontier_town/shotgunner"
   def out = project.hasProperty("out") ? project.property("out").toString() :
-      "${rsrc}/../../../${modelType.replaceAll('/', '_')}.png"
+      "/tmp/${modelType.replaceAll('/', '_')}.png"
   def cmd = [ rsrc, modelType, out ]
   if (project.hasProperty("anim")) {
     cmd += project.property("anim").toString()
