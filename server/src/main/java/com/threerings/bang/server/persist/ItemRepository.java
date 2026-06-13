@@ -137,7 +137,9 @@ public class ItemRepository extends SimpleRepository
                             return false;
                         }
                     }
-                    stmt = conn.prepareStatement(insert);
+                    // Connector/J 8 requires generated keys to be requested explicitly for
+                    // the liaison.lastInsertedId(conn, stmt, ...) call below to work
+                    stmt = conn.prepareStatement(insert, Statement.RETURN_GENERATED_KEYS);
                     stmt.setBoolean(1, item.isGangOwned());
                     stmt.setInt(2, item.getOwnerId());
                     stmt.setInt(3, itemType);
@@ -188,7 +190,7 @@ public class ItemRepository extends SimpleRepository
                     "(GANG_OWNED, OWNER_ID, ITEM_TYPE, ITEM_DATA, GANG_ID, EXPIRES) " +
                     "values (FALSE, ?, ?, ?, ?, ?)";
                 try {
-                    stmt = conn.prepareStatement(query);
+                    stmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
                     stmt.setInt(2, itemType);
                     stmt.setBytes(3, itemData);
                     stmt.setInt(4, gangId);
