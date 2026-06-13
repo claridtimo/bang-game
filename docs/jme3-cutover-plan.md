@@ -545,9 +545,13 @@ quads), `frontier_town/fire` (orange flame tongues + smoke), `frontier_town/dust
 `boom_town/barrel_explosion`. Tight point-clouds (`fireflies`) saturate at the bbox framing — a
 harness zoom artifact on a tiny bound, not a converter defect; the live board view (camera far back)
 shows them as discrete dots. The `*Emission` controllers (Phase 2 `AbstractControl`s) now have real
-emitters to drive. NOTE: a live `bin/devtest` run was blocked by an unrelated server-bootstrap NPE
-(`BangServer$Module` `ServerConfig.getAuthenticator()` returns null with the local `etc/test`
-config) — independent of the build-time-only particle change.
+emitters to drive. NOTE: a live `bin/devtest` run in the agent's worktree was blocked by a
+server-bootstrap NPE — **a worktree-setup artifact, not a code regression** (the canonical checkout
+bootstraps fine; the Phase-5 bot agent played a full live game). Root cause: `etc/test/` is
+gitignored, so a freshly-created worktree has no local config; the server's `server_auth` then bakes
+in blank, `ServerConfig.getAuthenticator()` returns null on the blank key, and `BangServer$Module`'s
+`bind(Authenticator.class).to(null)` (BangServer:116) throws an opaque Guice NPE far from the cause.
+Addressed in Phase 6z (fail-fast on the misconfig + auto-seed `etc/test/` in `bin/devtest`).
 
 **6b — remaining live-render & input defects** (observed on live boards 2026-06-13; cluster-1/3
 fidelity + Phase-3 input):
@@ -647,6 +651,24 @@ fidelity + Phase-3 input):
   `GodViewHandler received camera input. [action=forward, ...]`, and before/after screenshots show the
   board pan (camera location moved). A-key likewise pans. Without focus, WASD now reaches the camera;
   with a focused text field, BUI still consumes keys (correct).
+
+### Phase 6z — Dev-loop robustness (surfaced by the Phase-6a live-run NPE)
+Two small fixes that came out of the Phase-6a server-bootstrap NPE (see the 6a note above): the NPE
+was a worktree-setup artifact (gitignored `etc/test/` missing → blank `server_auth`), made worse by
+a silent-null misconfig path. Harden both so a fresh checkout/worktree "just runs".
+
+- **#1 — fail-fast on a misconfigured authenticator.** `ServerConfig.getAuthenticator()`
+  (`server/.../ServerConfig.java`) returns `null` when `server_auth` is blank (or the class fails to
+  load), and `BangServer$Module.configure` (`BangServer:116`) does `bind(Authenticator.class).to(
+  null)` → an opaque Guice NPE far from the cause. Make it fail fast with a clear, actionable message
+  (e.g. "server_auth is not configured / class X not found — copy etc/*.dist to etc/test/") thrown at
+  the config read, rather than letting a null reach Guice. Don't silently swallow the
+  `Class.forName` failure either.
+- **#2 — auto-seed `etc/test/` in `bin/devtest`.** `etc/test/` is gitignored, so fresh worktrees
+  (every background agent) have no local config and trip the above. Have `bin/devtest` (early, before
+  the deploy step) copy any missing `etc/*.dist` → `etc/test/<name-without-.dist>` when the target is
+  absent (never overwrite an existing file), and log what it seeded. This removes a recurring
+  agent-testability snag (the Phase-5 theme). Keep it idempotent and safe to re-run.
 
 ### Phase 7 — Editor + visual regression
 - `bangeditor` on a jME3 AWT canvas; per-town visual regression against pre-cutover screenshots,
