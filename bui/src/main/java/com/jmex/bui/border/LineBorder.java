@@ -5,16 +5,11 @@
 
 package com.jmex.bui.border;
 
-import org.lwjgl.opengl.GL11;
-
 import com.jme.renderer.ColorRGBA;
-import com.jme.renderer.RenderContext;
 import com.jme.renderer.Renderer;
-import com.jme.scene.state.gdx.records.LineRecord;
-import com.jme.system.DisplaySystem;
 
 import com.jmex.bui.BComponent;
-import com.jmex.bui.BImage;
+import com.jmex.bui.backend.BackendProvider;
 import com.jmex.bui.util.Insets;
 
 /**
@@ -46,19 +41,10 @@ public class LineBorder extends BBorder
         super.render(renderer, x, y, width, height, alpha);
 
         BComponent.applyDefaultStates();
-        BImage.blendState.apply();
+        BackendProvider.get().applyBlendState();
 
-        RenderContext ctx = DisplaySystem.getDisplaySystem().getCurrentContext();
-        ((LineRecord)ctx.getLineRecord()).applyLineWidth(_width);
-        float offset = _width / 2f;
-        GL11.glColor4f(_color.r, _color.g, _color.b, _color.a * alpha);
-        GL11.glBegin(GL11.GL_LINE_STRIP);
-        GL11.glVertex2f(x + offset, y + offset);
-        GL11.glVertex2f(x + width - offset, y + offset);
-        GL11.glVertex2f(x + width - offset, y + height - offset);
-        GL11.glVertex2f(x + offset, y + height - offset);
-        GL11.glVertex2f(x + offset, y + offset);
-        GL11.glEnd();
+        BackendProvider.get().drawRectOutline(x, y, width, height, _width,
+            _color.r, _color.g, _color.b, _color.a * alpha);
     }
 
     protected ColorRGBA _color;

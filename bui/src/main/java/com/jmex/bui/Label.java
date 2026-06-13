@@ -5,7 +5,7 @@
 
 package com.jmex.bui;
 
-import org.lwjgl.opengl.GL11;
+import com.jmex.bui.backend.BackendProvider;
 
 import com.jme.renderer.ColorRGBA;
 import com.jme.renderer.Renderer;
@@ -238,7 +238,7 @@ public class Label
      */
     public void render (Renderer renderer, int x, int y, int contWidth, int contHeight, float alpha)
     {
-        GL11.glTranslatef(x, y, 0);
+        BackendProvider.get().translate(x, y);
         try {
             if (_icon != null) {
                 _icon.render(renderer, _ix, _iy, alpha);
@@ -247,7 +247,7 @@ public class Label
                 renderText(renderer, contWidth, contHeight, alpha);
             }
         } finally {
-            GL11.glTranslatef(-x, -y, 0);
+            BackendProvider.get().translate(-x, -y);
         }
     }
 
