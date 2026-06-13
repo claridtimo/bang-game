@@ -62,6 +62,13 @@ public final class ModelMeshAccess
         return mesh._sphereMapped;
     }
 
+    /** The skin's weight groups (bones + interleaved weights per contiguous vertex run),
+     * in the same order the deformer walks vertices. */
+    public static SkinMesh.WeightGroup[] weightGroups (SkinMesh mesh)
+    {
+        return mesh._weightGroups;
+    }
+
     private ModelMeshAccess ()
     {
     }

@@ -43,6 +43,9 @@ public class Jme3ImageBacking implements BImageBacking
         _material.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
         _material.getAdditionalRenderState().setDepthTest(false);
         _material.getAdditionalRenderState().setDepthWrite(false);
+        // The GUI ortho camera looks toward +Z and a jME3 Quad's front face (+Z normal) faces
+        // away from it, so the default Back cull mode would discard every textured UI quad.
+        _material.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
     }
 
     // documentation inherited from interface BImageBacking

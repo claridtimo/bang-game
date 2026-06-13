@@ -6,10 +6,6 @@ plugins {
   id "application"
 }
 
-ext {
-  jme3Version = "3.9.0-stable"
-}
-
 dependencies {
   // the fork loader (app) plus the game-sprite emission controller classes that 61
   // model.dat files reference by class name during deserialization
@@ -22,4 +18,14 @@ dependencies {
 
 application {
   mainClass = "com.threerings.bang.tools.j3o.ModelToJ3o"
+}
+
+// full-corpus parity + coverage harness (see VerifyCorpus). Run:
+//   ./gradlew :tools:j3o-converter:verifyCorpus
+// pointed at the staged resource tree the untouched compileModels step produces.
+tasks.register("verifyCorpus", JavaExec) {
+  group = "verification"
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = "com.threerings.bang.tools.j3o.VerifyCorpus"
+  args = [ rootProject.file("assets/build/staging/rsrc").absolutePath ]
 }

@@ -7,6 +7,10 @@ allprojects {
     naryaVersion = "1.19"
     nenyaVersion = "1.7.2"
     depotVersion = "1.8"
+    // jME3 is used only by the isolated Phase 5 tool modules + the (dormant, compileOnly)
+    // jME3 BUI backend — centralised so a cutover bump can't leave modules on mismatched
+    // versions (which would crash at runtime once they share a classpath)
+    jme3Version = "3.9.0-stable"
     towns = [ "frontier_town", "indian_post" ]
     // indicates whether we're building for test or production
     // when "package" target is invoked the deployment will be set to "prod"
