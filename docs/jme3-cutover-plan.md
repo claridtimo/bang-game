@@ -331,10 +331,15 @@ approaching the fork baselines in `baseline/fork-before/`):
   scramble (the pink UI cast — ABGR8 endianness) and instant idle-out (`Jme3RootNode` tick stamp
   uninitialized → passive clients logged out in ~10s). Units, fences/small props, combat-effect
   icons, shadows, and the HUD render correctly.
-- **4b — IN PROGRESS:** building/large-prop materials render untextured white (placeholder
-  `Lighting.j3md` bake path doesn't bind their per-submesh textures / or normals/lighting blow out).
-  The last big visible fidelity gap. Fix in the `tools/j3o-converter` bake layer (general, not
-  per-model).
+- **4b — DONE (non-bug):** investigated the untextured-white-buildings report; the bake/resolve/
+  render path is actually correct — 272/272 baked building geometries carry a bound DiffuseMap +
+  normals, and the live frontier-town view (`baseline/jme3-phase4/building-town-after.png`) shows
+  all buildings fully textured (brown wood, signs, windows), matching the fork baseline. The white
+  shot was stale pre-4a state. Deliverable: a headless **`RenderToPng`** offscreen harness (no
+  window; LWJGL3 FrameBuffer through the real load/resolve/clone path) — the Phase-7 #1 tool, seeded
+  early. Caveats: the offscreen harness's own lighting has a blue tint to calibrate (cosmetic,
+  harness-only); the in-game *game* board (vs town view) wasn't re-captured headlessly (autoplay
+  doesn't drive BUI big-shot selection) — high confidence it's fine given same `BoardView` renderer.
 - **4c — TODO (implemented, unverified):** water Fresnel sphere-map reflection (`BangWater.j3md`)
   is written but was never reached in an autoplay session — needs verification on a water board.
 - **4d — TODO:** particles — the 60 `particles.jme` are still a degraded single-blob; re-author as
