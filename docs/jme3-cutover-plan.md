@@ -386,18 +386,21 @@ approaching the fork baselines in `baseline/fork-before/`):
     `BangManager.startRound` NPE at `_rounds[roundId].board.name`. Set `indian_post.town_id =
     indian_post` (local `etc/test/`, gitignored) to serve indian_post boards on that node. Frontier
     boards were unaffected throughout.
-- **4d — TODO (test tooling):** a standard live-run "run sheet" so agents stop re-deriving (and
-  mis-handling) the setup dance — the recurring tax behind most agent run failures (stale server on
-  port 47624 → `BindException`/"connection refused"; MySQL not started/verified; launching the
-  client before the server is `listening`; processes left running for the next agent; flaky
-  screenshots). Deliverable: an executable `bin/devtest` that, in order, (1) kills stale
-  Bang processes + frees 47624, (2) ensures MySQL up and `bang`/`yeehaw` connects, (3) `./gradlew
-  deploy` (green), (4) starts the server and **polls the log until "Server listening"**, (5) launches
-  the client with standard flags (muted, `-test=<board>` `-autoplay` `-Dusername/-Dpassword`),
-  (6) screenshot helper, (7) trap-based teardown that always kills everything; plus a short
-  `docs/running-the-game.md` runbook that every future "run the app" agent brief points at. Pairs
-  with the Phase-7 offscreen harnesses (`RenderToPng`/`RenderWaterToPng`) — those for deterministic
-  model/water shots, `bin/devtest` for the live-client path.
+- **4d — DONE (test tooling):** `bin/devtest` — a standard live-run "run sheet" that ends the
+  recurring setup tax behind most agent run failures. It (1) kills stale Bang processes + frees
+  47624, (2) verifies MySQL up and `bang`/`yeehaw` connects, (3) `./gradlew deploy` (green;
+  `--no-deploy` to skip), (4) starts the server and **polls the log until "Server listening"**,
+  (5) launches the client with standard flags (muted by default; `-test`/`--board` `-autoplay`
+  creds), (5b) **clicks into the window via python-xlib `warp_pointer`+XTest — REQUIRED to start the
+  autoplay game** (without a click you only ever capture the static pre-game screen; the #1 thing
+  that was silently tripping agents), (6) optional `--shot` screenshot, (7) trap-based teardown that
+  waits for process death (with `-9` escalation) and frees the port. Validated end-to-end
+  (cleanup→mysql→server-wait→click→autoplay board→shot→clean teardown). Two gotchas learned and
+  baked in: match the game window on **"howdy"** (not "bang" — that hits a "bang-game" terminal
+  title) and click via window-relative `warp_pointer` (root-coord `translate_coords` returns bogus
+  negatives on this multi-monitor display). Runbook: `docs/running-the-game.md` — every future "run
+  the app" agent brief points at it. Pairs with the Phase-7 offscreen harnesses
+  (`RenderToPng`/`RenderWaterToPng`) for deterministic windowless model/water shots.
 - **4e — TODO:** particles — the 60 `particles.jme` are still a degraded single-blob; re-author as
   jME3 `ParticleEmitter` params (combat-effect icons already render). The `*Emission` controllers
   exist as jME3 `AbstractControl`s from Phase 2, awaiting real emitters.
@@ -428,6 +431,11 @@ bugs but were noticed in the same render and are queued here so they aren't lost
   fork. Likely lives in the model-pipeline cluster (app `Model` facade + `tools/j3o-converter`
   `ModelToJ3o`), not in board rendering. Capture which specific unit (e.g. a frontier_town/indian_post
   mounted big-shot) when reproducing.
+- **Shotgun unit sprite renders incorrectly** (observed live, 2026-06-13). The "shotgun dude" unit
+  (the shotgunner) sprite is wrong on the board. Same model-pipeline-vs-sprite classification needed
+  as the horse item — diagnose via `RenderToPng` on that unit's model through `ModelCache` and compare
+  to the fork; check the unit's `model.dat`→`.j3o` bake (mesh/skin/anim) and its `UnitSprite`/
+  `ActiveSprite` material/animation binding. Probably shares a root cause with the horse big-shot.
 
 ### Phase 5 — Editor + visual regression
 - `bangeditor` on a jME3 AWT canvas; per-town visual regression against pre-cutover screenshots.
