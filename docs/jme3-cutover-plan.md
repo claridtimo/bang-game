@@ -28,7 +28,7 @@ migrated before the host flips — but nothing renders until Phase 3.
 
 ## Phases (sequential on `JRECutover`)
 
-### Phase 1 — Build foundation + `app`/`bui` type migration  ← STARTING NOW
+### Phase 1 — Build foundation + `app`/`bui` type migration
 - Add jme3-core/jme3-lwjgl3/jme3-desktop/jme3-effects/jme3-terrain (root `ext jme3Version`) to the
   modules that will need them; begin retiring the `jme` fork module.
 - Migrate `app` (`com.threerings.jme.*`) and `bui` from `com.jme.*` to `com.jme3.*` per the map:
@@ -36,6 +36,32 @@ migrated before the host flips — but nothing renders until Phase 3.
   render-state objects → `Material`. BUI's seam already abstracts rendering; finish its type-token
   swap (`Renderer`→`RenderManager`, fork `ColorRGBA`→jME3, `BImage extends Quad`).
 - **Checkpoint:** `app` and `bui` compile against jme3-core (game not yet runnable).
+
+**Status (2026-06-13): `bui` DONE; `app` NOT STARTED (blocked on the model-pipeline rebuild).**
+`./gradlew :bui:compileJava` passes against jme3-core with the fork `jme` module off bui's
+compileClasspath (only jme3-core + gdx remain; gdx stays as a GL-free keycode-constant source
+until Phase 3). jME3 is now BUI's only render backend: `BackendProvider` requires an explicit
+`Jme3RenderBackend` install (it needs an `AssetManager`, so no lazy default), the fork backend
+(`JmeRenderBackend`/`JmeImageBacking`) is deleted, the `BImageBacking` seam takes a jME3
+`com.jme3.texture.Image`, `BImage` no longer extends the fork `Quad` (builds an ABGR8/BGR8 jME3
+Image from its AWT raster), and `BRootNode` no longer extends the fork `Geometry` (the fork scene
+hooks became engine-neutral `updateRootState(float)` + `renderWindows(RenderManager)`). `BGeomView`
+is retyped to jME3 `Spatial` with its 3D render deferred to a Phase-3 ViewPort; `BCursor` keeps its
+`BufferedImage` API with the native install deferred to Phase 3; `PolledRootNode` (fork/LWJGL2/gdx
+input glue) was deleted in favour of the Phase-3 `Jme3RootNode`. The `tools:jme3-host` proof harness
+was updated to the new API and still compiles.
+
+`app` was deliberately **not** migrated: the `app` module compiles atomically and its model
+framework (`Model`/`ModelMesh`/`SkinMesh`/`ModelNode` + controllers, ~4.5k LOC, plus
+`CompileModelTask`) is the per-class table's REBUILD risk #1 — `TriMesh`→`Mesh`/`Geometry`,
+batches→`VertexBuffer`s, `GLSLShaderObjectsState` hardware skinning → jME3 anim
+(`SkinningControl`/`Armature`) or a custom skinning MatDef, and re-emission of the embedded
+`SpriteEmission` Savables. That is a design-bearing multi-week rebuild, not a localized type swap,
+and there is no independently-compilable slice of `app` to land first (the model package, `JmeApp`
+host loop, and `ShaderCache` all sit on the same compile unit). Per the campaign's "stop at a
+genuine wall rather than thrash" guidance, `app` is left for a dedicated model-pipeline rebuild
+pass. Note `tools/j3o-converter`'s `ModelConverter` already reads the fork model format into jME3
+spatials and should be the reference / shared code for that rebuild.
 
 ### Phase 2 — `client/shared` migration (the bulk: 164 fork-using files)
 - Drive off the map's per-class table: scene graph, render-state→Material across all sites,
