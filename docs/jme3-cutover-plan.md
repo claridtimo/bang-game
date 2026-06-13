@@ -163,6 +163,8 @@ skeleton until then).
 
 ### Phase 2 — `client/shared` migration (the bulk: 164 fork-using files)
 
+**STATUS (2026-06-13): DONE.** `:client:shared:compileJava`, `:server:compileJava`, and `:assets:compileModels` (310/310 model.dat) are all GREEN; zero fork imports remain outside the deferred-to-Phase-3 vendored `com.threerings.openal` package. `:client:desktop` fails only on the 2 gdx-host-wiring errors (BangDesktop/EditorDesktop) = the Phase-3 flip. Done via a foundation pass + 5 parallel fan-out slices + an integration drive-to-green (50 commits).
+
 **Concrete starting point (the app `Model` facade + the seam edits app's migration forces):**
 
 1. **Write the app `Model` facade** (`com.threerings.jme.model`, fork-free, in app `main`): a jME3
