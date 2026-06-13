@@ -23,8 +23,9 @@ import com.jme3.scene.Spatial;
  *
  * <p>Particle emitters are time-based, so a single first-frame snapshot (the static model harness's
  * mode) shows nothing. This harness steps the emitter a configurable number of logical-state frames
- * (via {@link OffscreenRenderApp#warmupFrames}) before capturing, so particles are alive and spread
- * when the PNG is taken. It reproduces the runtime {@code ParticleCache} framing — the
+ * (in {@link #buildScene}, before the base frames the camera) so particles are alive and spread and
+ * the bounding-box camera frames the live cloud rather than an empty bound. It reproduces the
+ * runtime {@code ParticleCache} framing — the
  * {@code particles.properties} {@code scale} and the y-up&rarr;z-up rotation — so the look matches
  * the live board, then renders against a dark backdrop so additive/alpha particles read clearly.
  *
