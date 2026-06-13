@@ -530,9 +530,9 @@ public class PieceSprite extends Sprite
     }
 
     @Override // documentation inherited
-    public void updateWorldData (float time)
+    public void updateLogicalState (float time)
     {
-        super.updateWorldData(time);
+        super.updateLogicalState(time);
 
         if (_status != null) {
             // of up and forward, use the one with the greater x/y

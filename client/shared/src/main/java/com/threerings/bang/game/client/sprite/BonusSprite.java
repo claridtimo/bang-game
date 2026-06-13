@@ -30,7 +30,7 @@ public class BonusSprite extends ActiveSprite
     {
         super("bonuses", type);
         if (!isHidden()) {
-            addController(_spinner = new Spinner(this, FastMath.PI/2));
+            addControl(_spinner = new Spinner(this, FastMath.PI/2));
         }
     }
 

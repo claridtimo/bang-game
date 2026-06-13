@@ -33,13 +33,14 @@ public class EditorApp extends JmeApp // TODO: use GDX's canvas stuffs
         return canvas;
     }
 
-    @Override // documentation inherited
+    // jME3 cutover: JmeApp is now a jME3-typed skeleton with no create()/loop (Phase-3 host flip);
+    // this is no longer an @Override. The host calls it after installing services via JmeApp.init.
+    // TODO(phase3-host): re-anchor to the jME3 SimpleApplication lifecycle.
     public void create ()
     {
-        super.create();
-
-        // two-pass transparency is expensive
-        _ctx.getRenderManager().getQueue().setTwoPassTransparency(false);
+        // TODO(phase3-host): the fork disabled two-pass transparency here
+        // (getRenderManager().getQueue().setTwoPassTransparency(false)); jME3 has no such switch
+        // (transparent sorting is the RenderQueue TransparentComparator). No-op until the host flip.
 
         // // queue an update to make sure that the context is current before the client's event
         // // handlers start firing.  somehow calling repaint() doesn't have the same effect.
@@ -72,7 +73,8 @@ public class EditorApp extends JmeApp // TODO: use GDX's canvas stuffs
         _camera.update();
     }
 
-    @Override // documentation inherited
+    // jME3 cutover: JmeApp no longer has an initLighting() hook (the fork set up a global
+    // LightState here); the editor handles lights in the board view. Kept as a plain method.
     protected void initLighting ()
     {
         // handle lights in board view

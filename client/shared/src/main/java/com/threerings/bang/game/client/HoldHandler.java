@@ -193,7 +193,7 @@ public class HoldHandler extends EffectHandler
             public void update (float time) {
                 super.update(time);
                 float alpha = Math.min(_accum / _duration, 1f);
-                _sprite.setLocalScale(FastMath.LERP(alpha, 1f, 0.5f));
+                _sprite.setLocalScale(FastMath.interpolateLinear(alpha, 1f, 0.5f));
             }
             public void wasRemoved () {
                 super.wasRemoved();
@@ -235,7 +235,7 @@ public class HoldHandler extends EffectHandler
             public void update (float time) {
                 super.update(time);
                 float alpha = Math.min(_accum / _duration, 1f);
-                _sprite.setLocalScale(FastMath.LERP(alpha, 0.5f, 1f));
+                _sprite.setLocalScale(FastMath.interpolateLinear(alpha, 0.5f, 1f));
             }
             public void wasRemoved () {
                 super.wasRemoved();

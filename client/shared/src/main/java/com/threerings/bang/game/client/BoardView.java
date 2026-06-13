@@ -351,7 +351,7 @@ public class BoardView extends BComponent
                 createPieceSprite(piece, _bangobj.tick);
             }
         }
-        _pnode.updateGeometricState(0, true);
+        _pnode.updateGeometricState();
 
         // create a loading marquee to report loading progress
         if (_toLoad > 0) {
@@ -920,7 +920,7 @@ public class BoardView extends BComponent
         clearMarquee(0f);
 
         // restore the black background color
-        _ctx.getRenderManager().setBackgroundColor(ColorRGBA.Black);
+        // TODO(phase3-host): set the main ViewPort background color (ColorRGBA.Black); host owns the viewport.
 
         // let the child nodes know that they need to clean up any textures
         // they've created
@@ -945,14 +945,16 @@ public class BoardView extends BComponent
             _fadein = null;
         }
         if (_mroot != null) {
-            _ctx.getInterface().detachChild(_mroot);
+            // TODO(phase3-host): the marquee overlay root is rendered by the BUI host,
+            // not attached to the scene graph (BRootNode is no longer a Spatial).
+            _mroot = null;
         }
 
         // clear out the particle pool
         ParticlePool.clear();
 
-        // clear the render queue of any lingering references
-        _ctx.getRenderManager().clearQueue();
+        // TODO(phase3-host): the render queue is owned by the host ViewPort now;
+        // RenderManager.clearQueue(ViewPort) needs the active viewport. No-op until host wiring.
     }
 
     /**
@@ -1017,8 +1019,7 @@ public class BoardView extends BComponent
         }
         ColorRGBA color = RenderUtil.createColorRGBA(
             _board.getGridColor());
-        _grid.getBatch(0).getDefaultColor().set(
-            color.r, color.g, color.b, 0.4f);
+        _grid.setColor(new ColorRGBA(color.r, color.g, color.b, 0.4f));
     }
 
     /**
@@ -1308,7 +1309,7 @@ public class BoardView extends BComponent
 
         // create the marquee, center it and display it
         addMarquee(_marquee = createMarqueeLabel(text),
-            _ctx.getRenderManager().getWidth()/2, _ctx.getRenderManager().getHeight()/2);
+            _ctx.getCamera().getWidth()/2, _ctx.getCamera().getHeight()/2);
     }
 
     /**
@@ -1356,7 +1357,7 @@ public class BoardView extends BComponent
                 "m.loading_pct", String.valueOf(pct)));
         if (_loading == null) {
             addMarquee(_loading = new BLabel(pctstr, "loading_marquee"),
-                _ctx.getRenderManager().getWidth()/2, 100);
+                _ctx.getCamera().getWidth()/2, 100);
         } else {
             _loading.setText(pctstr);
         }
@@ -1382,15 +1383,16 @@ public class BoardView extends BComponent
     {
         if (_mroot == null) {
             // create a bare bones root node above the normal one
-            _ctx.getInterface().attachChild(_mroot = new BRootNode() {
+            // TODO(phase3-host): this overlay root is rendered by the BUI host; with
+            // BRootNode no longer a Spatial it is not attached to the scene graph or z-ordered here.
+            _mroot = new BRootNode() {
                 public long getTickStamp () {
                     return System.currentTimeMillis();
                 }
                 public void rootInvalidated (BComponent root) {
                     root.validate();
                 }
-            });
-            _mroot.setZOrder(-2);
+            };
 
             // the layout centers its components about their positions
             AbsoluteLayout layout = new AbsoluteLayout() {
@@ -1419,8 +1421,8 @@ public class BoardView extends BComponent
                 }
             };
             _mroot.addWindow(_mwindow);
-            _mwindow.setBounds(0, 0, _ctx.getRenderManager().getWidth(),
-                _ctx.getRenderManager().getHeight());
+            _mwindow.setBounds(0, 0, _ctx.getCamera().getWidth(),
+                _ctx.getCamera().getHeight());
         }
         _mwindow.add(marquee, new com.jmex.bui.util.Point(x, y));
     }
@@ -1433,7 +1435,7 @@ public class BoardView extends BComponent
         _mwindow.remove(marquee);
         if (_mwindow.getComponentCount() == 0) {
             _mroot.removeWindow(_mwindow);
-            _ctx.getInterface().detachChild(_mroot);
+            // TODO(phase3-host): overlay root is host-rendered, not scene-graph attached.
             _mwindow = null;
             _mroot = null;
         }
@@ -1703,7 +1705,7 @@ public class BoardView extends BComponent
         float v = FastMath.sin((System.currentTimeMillis() % THROB_PERIOD) *
             FastMath.TWO_PI / THROB_PERIOD) * 0.5f + 0.5f;
         for (Map.Entry<ColorRGBA, ColorRGBA> me : _throbbers.entrySet()) {
-            me.getValue().a = FastMath.LERP(v, me.getKey().a, 1f);
+            me.getValue().a = FastMath.interpolateLinear(v, me.getKey().a, 1f);
         }
     }
 

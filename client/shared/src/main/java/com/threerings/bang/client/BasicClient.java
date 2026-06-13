@@ -43,9 +43,9 @@ import com.threerings.parlor.util.ParlorContext;
 
 import com.threerings.jme.JmeApp;
 import com.threerings.jme.camera.CameraHandler;
+import com.threerings.jme.camera.GodViewHandler;
 import com.threerings.jme.model.Model;
 import com.threerings.jme.util.ImageCache;
-import com.threerings.jme.util.ShaderCache;
 import com.threerings.openal.SoundManager;
 
 import com.threerings.bang.avatar.data.AvatarCodes;
@@ -131,7 +131,6 @@ public class BasicClient
         _msgmgr = new MessageManager(MESSAGE_MANAGER_PREFIX);
         _icache = new ImageCache(_ctx.getResourceManager());
         _tcache = new TextureCache(_ctx);
-        _scache = new ShaderCache(_ctx.getResourceManager());
         _mcache = new ModelCache(_ctx);
         _pcache = new ParticleCache(_ctx);
 
@@ -291,10 +290,6 @@ public class BasicClient
             return _tcache;
         }
 
-        public ShaderCache getShaderCache () {
-            return _scache;
-        }
-
         public ModelCache getModelCache () {
             return _mcache;
         }
@@ -321,6 +316,10 @@ public class BasicClient
 
         public CameraHandler getCameraHandler () {
             return _app.getContext().getCameraHandler();
+        }
+
+        public GodViewHandler getInputHandler () {
+            return _app.getContext().getInputHandler();
         }
 
         public Node getGeometry () {
@@ -389,7 +388,6 @@ public class BasicClient
 
     protected ImageCache _icache;
     protected TextureCache _tcache;
-    protected ShaderCache _scache;
     protected ModelCache _mcache;
     protected ParticleCache _pcache;
     protected CharacterManager _charmgr;

@@ -727,7 +727,7 @@ public class EffectHandler extends BoardView.BoardAction
             public void update (float time) {
                 super.update(time);
                 float alpha = Math.min(_accum / _duration, 1f);
-                _sprite.setLocalScale(FastMath.LERP(alpha, 0.5f, 1f));
+                _sprite.setLocalScale(FastMath.interpolateLinear(alpha, 0.5f, 1f));
                 if (fadeIn && mstate != null) {
                     mstate.setColor("Color", new ColorRGBA(1f, 1f, 1f, alpha));
                 }

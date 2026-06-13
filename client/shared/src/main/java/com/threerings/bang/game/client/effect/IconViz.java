@@ -153,7 +153,7 @@ public class IconViz extends EffectViz
                 } else {
                     alpha = _elapsed / RISE_DURATION;
                     bb.setLocalTranslation(bb.getLocalTranslation().setZ(_zOffset *
-                        FastMath.LERP(alpha, _card ? 1.5f : 0.5f, 1f)));
+                        FastMath.interpolateLinear(alpha, _card ? 1.5f : 0.5f, 1f)));
                     billboardRise(_elapsed);
                 }
                 setChildAlpha(bb, alpha);

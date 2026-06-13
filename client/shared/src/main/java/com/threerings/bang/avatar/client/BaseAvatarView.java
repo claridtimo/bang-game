@@ -94,19 +94,11 @@ public abstract class BaseAvatarView extends BLabel
         getImage(ctx, avatar, new ResultListener<BufferedImage>() {
             public void requestCompleted (BufferedImage base) {
                 Image scaled = base.getScaledInstance(width, height, BufferedImage.SCALE_SMOOTH);
-                if (mirror) {
-                    receiver.requestCompleted(new BImage(scaled) {
-                        public void setTextureCoords (int sx, int sy, int swidth, int sheight) {
-                            // flip the texture coords left-to-right
-                            super.setTextureCoords(sx, sy, swidth, sheight);
-                            FloatBuffer tcoords = getTextureBuffer(0, 0);
-                            swapInBuffer(tcoords, 0, 3);
-                            swapInBuffer(tcoords, 1, 2);
-                        }
-                    });
-                } else {
-                    receiver.requestCompleted(new BImage(scaled));
-                }
+                // TODO(phase3-host): mirrored avatars flipped the BImage's texture coords
+                // left-to-right via the fork Quad's texture buffer (getTextureBuffer). BImage no
+                // longer extends Quad; the left-right flip belongs in the BUI jME3 render backend's
+                // texture-coord setup. Until then the mirror flag renders un-mirrored.
+                receiver.requestCompleted(new BImage(scaled));
             }
             public void requestFailed (Exception cause) {
                 receiver.requestFailed(cause);

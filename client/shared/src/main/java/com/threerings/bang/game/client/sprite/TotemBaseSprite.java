@@ -104,9 +104,9 @@ public class TotemBaseSprite extends TargetablePropSprite
                         BoundingVolume bound = model.getWorldBound();
                         float height = bound.getCenter().z;
                         if (bound instanceof BoundingBox) {
-                            height += ((BoundingBox)bound).zExtent;
+                            height += ((BoundingBox)bound).getZExtent();
                         } else if (bound instanceof BoundingSphere) {
-                            height += ((BoundingSphere)bound).radius;
+                            height += ((BoundingSphere)bound).getRadius();
                         }
                         // translate the base node to the new height
                         setLocalTranslation(_baseTrans.add(

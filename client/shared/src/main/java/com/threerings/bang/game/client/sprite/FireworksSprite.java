@@ -31,7 +31,7 @@ public class FireworksSprite extends BreakableSprite
         String bsource = _model.getProperties().getProperty(
             "ballistic_shot_source");
         _rocketSource = (bsource == null ?
-            null : _model.getDescendant(bsource));
+            null : _model.getChild(bsource));
     }
 
     /**

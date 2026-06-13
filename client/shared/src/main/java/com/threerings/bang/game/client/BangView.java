@@ -532,7 +532,7 @@ public class BangView extends BWindow
             return;
         }
 
-        int width = _ctx.getDisplay().getWidth();
+        int width = _ctx.getCamera().getWidth();
         int gap = 0, wcount = _pswins.length, tgap = 2, offset = 5;
         int tcount = wcount;
         for (int ii = 0; ii < wcount; ii++) {
@@ -574,7 +574,7 @@ public class BangView extends BWindow
     protected void showRoundTimer ()
     {
         if (!_timer.isAdded()) {
-            int height = _ctx.getDisplay().getHeight(), width = _ctx.getDisplay().getWidth();
+            int height = _ctx.getCamera().getHeight(), width = _ctx.getCamera().getWidth();
             _ctx.getRootNode().addWindow(_timer);
             _timer.pack();
             _timer.setLocation(width - _timer.getWidth(), height - _timer.getHeight());
@@ -584,7 +584,7 @@ public class BangView extends BWindow
     protected void showChat ()
     {
         if (!chat.isAdded()) {
-            int width = _ctx.getDisplay().getWidth();
+            int width = _ctx.getCamera().getWidth();
             _ctx.getRootNode().addWindow(chat);
             chat.pack();
             chat.setBounds(5, 80, width - 10, chat.getHeight());
@@ -600,7 +600,7 @@ public class BangView extends BWindow
             log.info("practice view", "height", _practiceView.getHeight(),
                      "width", _practiceView.getWidth());
             _practiceView.setLocation(
-                (_ctx.getDisplay().getWidth() - _practiceView.getWidth())/2, 10);
+                (_ctx.getCamera().getWidth() - _practiceView.getWidth())/2, 10);
         }
     }
 

@@ -17,9 +17,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.lwjgl.opengl.Display;
-import org.lwjgl.opengl.GL11;
-
 import com.badlogic.gdx.Input.Keys;
 
 import com.google.common.collect.Iterables;
@@ -316,8 +313,8 @@ public class BangClient extends BasicClient
             return;
         }
 
-        // set our proper window title
-        Display.setTitle(_ctx.xlate(BangCodes.BANG_MSGS, "m.app_title"));
+        // TODO(phase3-host): set window title on the jME3 context
+        // Display.setTitle(_ctx.xlate(BangCodes.BANG_MSGS, "m.app_title"));
 
         // upgrade getdown if appropriate
         File newgd = new File(localDataDir("code/getdown-pro-new.jar"));
@@ -897,8 +894,9 @@ public class BangClient extends BasicClient
         // update our title to contain our username
         PlayerObject user = _ctx.getUserObject();
         if (!user.tokens.isAnonymous()) {
-            Display.setTitle(
-                _msgmgr.getBundle(BangCodes.BANG_MSGS).get("m.online_title", user.username));
+            // TODO(phase3-host): set window title on the jME3 context
+            // Display.setTitle(
+            //     _msgmgr.getBundle(BangCodes.BANG_MSGS).get("m.online_title", user.username));
         }
 
         // get a reference to the player service
@@ -1100,7 +1098,9 @@ public class BangClient extends BasicClient
         if (BangPrefs.isDetailSet()) {
             return;
         }
-        String renderer = GL11.glGetString(GL11.GL_RENDERER);
+        // TODO(phase3-host): query the GL renderer string from the jME3 context to
+        // auto-pick a default detail level; until the host is wired, skip autodetect.
+        String renderer = null;
         if (renderer == null) {
             return;
         }
@@ -1438,7 +1438,7 @@ public class BangClient extends BasicClient
                 pview.center();
             } else {
                 // size the view to fill the display
-                pview.setBounds(0, 0, _ctx.getDisplay().getWidth(), _ctx.getDisplay().getHeight());
+                pview.setBounds(0, 0, _ctx.getCamera().getWidth(), _ctx.getCamera().getHeight());
             }
 
             // configure the main view; fades the previous view out and fades the new view in

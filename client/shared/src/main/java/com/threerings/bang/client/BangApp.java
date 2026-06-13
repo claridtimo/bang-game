@@ -31,8 +31,10 @@ import com.threerings.presents.client.Client;
 
 import com.threerings.jme.JmeApp;
 import com.threerings.jme.camera.CameraHandler;
+import com.threerings.jme.camera.GodViewHandler;
 
 import com.threerings.bang.game.client.GameCameraHandler;
+import com.threerings.bang.game.client.GameInputHandler;
 
 import com.threerings.bang.util.DeploymentConfig;
 
@@ -201,10 +203,14 @@ public class BangApp extends JmeApp
         return new GameCameraHandler(camera);
     }
 
-    // TODO(phase3-host): the fork created the polled GameInputHandler (createInputHandler override)
-    // and wired it into the fork InputHandler. JmeApp no longer has a createInputHandler hook;
-    // GameInputHandler is the Phase-3 input seam (GodViewHandler.registerWith(InputManager)),
-    // installed by the host once it owns the jME3 InputManager.
+    @Override // documentation inherited
+    protected GodViewHandler createInputHandler (CameraHandler camhand)
+    {
+        // The GameInputHandler object is created now so camera-control logic (round setup,
+        // enable/disable) works; its jME3 InputManager mappings are wired by the Phase-3 host
+        // via GodViewHandler.registerWith(InputManager).
+        return new GameInputHandler(camhand);
+    }
 
     @Override // documentation inherited
     protected BRootNode createRootNode ()

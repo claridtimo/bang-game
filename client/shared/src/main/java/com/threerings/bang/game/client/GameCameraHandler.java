@@ -122,8 +122,8 @@ public class GameCameraHandler extends CameraHandler
             cc = getSmoothedHeight(cx, cy),
             ax = x - fx, ay = y - fy;
 
-        return FastMath.LERP(ax, FastMath.LERP(ay, ff, fc),
-            FastMath.LERP(ay, cf, cc));
+        return FastMath.interpolateLinear(ax, FastMath.interpolateLinear(ay, ff, fc),
+            FastMath.interpolateLinear(ay, cf, cc));
     }
     
     /**

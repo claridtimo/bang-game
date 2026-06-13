@@ -71,7 +71,7 @@ public class UnitStatusView extends BWindow
     {
         if (isAdded()) {
             pack();
-            setLocation(0, _ctx.getDisplay().getHeight()- getHeight());
+            setLocation(0, _ctx.getCamera().getHeight()- getHeight());
         }
     }
 
@@ -541,8 +541,8 @@ public class UnitStatusView extends BWindow
                 setInfluence(null);
                 // clear out our background when our unit dies
                 _bground = null;
-                // and draw our icon at 50% alpha
-                _unit.getBatch(0).getDefaultColor().set(ColorRGBA.White);
+                // and draw our icon at 50% alpha (BImage is no longer a fork Quad, so the tint is
+                // carried by setAlpha; the explicit white default-color reset is no longer needed)
                 setAlpha(0.5f);
                 _isInvalid = false;
             } else {

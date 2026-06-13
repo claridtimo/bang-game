@@ -200,7 +200,8 @@ public class FKeyPopups
         // other hackery to handle taking screen shots
         if (keyCode == Keys.F12) {
             String fname = "bang_screen_" + _sfmt.format(new Date());
-            _ctx.getRenderManager().takeScreenShot(fname);
+            // TODO(phase3-host): screenshots go through a jME3 ScreenshotAppState on the host;
+            // the fork Renderer.takeScreenShot has no RenderManager analogue. No-op until host wiring.
             String msg = MessageBundle.tcompose(
                 "m.screenshot_taken", fname + ".png");
             _ctx.getChatDirector().displayFeedback(BangCodes.BANG_MSGS, msg);

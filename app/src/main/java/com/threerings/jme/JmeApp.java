@@ -35,6 +35,7 @@ import com.jme3.scene.Node;
 import com.jmex.bui.BRootNode;
 
 import com.threerings.jme.camera.CameraHandler;
+import com.threerings.jme.camera.GodViewHandler;
 
 /**
  * Defines a basic application framework providing integration with the Presents networking system
@@ -148,8 +149,10 @@ public class JmeApp
     protected void initInput ()
     {
         _camhand = createCameraHandler(_camera);
+        _inputHandler = createInputHandler(_camhand);
         // the jME3 InputManager mappings (GodViewHandler.registerWith) are installed by the
-        // Phase-3 host once it owns the input manager.
+        // Phase-3 host once it owns the input manager. The handler object exists now so
+        // camera-control logic (enable/disable, round setup) works pre-host.
     }
 
     /**
@@ -158,6 +161,15 @@ public class JmeApp
     protected CameraHandler createCameraHandler (Camera camera)
     {
         return new CameraHandler(camera);
+    }
+
+    /**
+     * Creates the input handler (replacing the fork's polled {@code InputHandler}). Subclasses
+     * override to install a game- or editor-specific handler.
+     */
+    protected GodViewHandler createInputHandler (CameraHandler camhand)
+    {
+        return new GodViewHandler(camhand);
     }
 
     /**
@@ -238,6 +250,11 @@ public class JmeApp
     }
 
     // from interface JmeContext
+    public GodViewHandler getInputHandler () {
+        return _inputHandler;
+    }
+
+    // from interface JmeContext
     public Node getGeometry () {
         return _geom;
     }
@@ -260,6 +277,7 @@ public class JmeApp
     protected RenderManager _renderManager;
     protected Camera _camera;
     protected CameraHandler _camhand;
+    protected GodViewHandler _inputHandler;
 
     protected BRootNode _rnode;
 

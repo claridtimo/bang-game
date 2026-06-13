@@ -540,12 +540,12 @@ public class BangBoardView extends BoardView
         // itself after the duration is up and the particle system has
         // exhausted itself
         Node cnode = new Node("camera") {
-            public void updateWorldData (float time) {
+            public void updateLogicalState (float time) {
                 getLocalTranslation().set(
                     _ctx.getCameraHandler().getCamera().getLocation());
-                super.updateWorldData(time);
+                super.updateLogicalState(time);
                 if ((_accum += time) >= duration &&
-                    getControllers().isEmpty()) {
+                    getNumControls() == 0) {
                     ParticleUtil.stopAndRemove(this);
                 }
             }
@@ -736,7 +736,7 @@ public class BangBoardView extends BoardView
         clearMarquee(0f);
         if (_bangobj.marquee != null) {
             addMarquee(_marquee = createMarqueeLabel(msgs.xlate(_bangobj.marquee)),
-                    _ctx.getRenderManager().getWidth()/2, _ctx.getRenderManager().getHeight()/2 - 90);
+                    _ctx.getCamera().getWidth()/2, _ctx.getCamera().getHeight()/2 - 90);
         }
 
         _pmarquees = new BWindow(_ctx.getStyleSheet(), new AbsoluteLayout()) {
@@ -2107,8 +2107,8 @@ public class BangBoardView extends BoardView
                 dir2 = l2[ii].getDirection();
             Vector3f dir = new Vector3f();
             getDirectionVector(
-                FastMath.LERP(alpha, getAzimuth(dir1), getAzimuth(dir2)),
-                FastMath.LERP(alpha, getElevation(dir1), getElevation(dir2)),
+                FastMath.interpolateLinear(alpha, getAzimuth(dir1), getAzimuth(dir2)),
+                FastMath.interpolateLinear(alpha, getElevation(dir1), getElevation(dir2)),
                 dir);
             _lights[ii].setDirection(dir);
         }

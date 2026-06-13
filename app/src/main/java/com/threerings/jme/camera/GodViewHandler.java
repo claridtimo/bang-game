@@ -91,9 +91,30 @@ public class GodViewHandler
             ZOOM_IN, ZOOM_OUT, TURN_RIGHT, TURN_LEFT, TILT_FORWARD, TILT_BACK);
     }
 
+    /**
+     * Returns whether this handler currently processes input. The fork
+     * {@code InputHandler} carried this flag; it is preserved here so callers can
+     * gate camera input (the actual jME3 input wiring is Phase 3, {@link #registerWith}).
+     */
+    public boolean isEnabled ()
+    {
+        return _enabled;
+    }
+
+    /**
+     * Enables or disables input processing for this handler.
+     */
+    public void setEnabled (boolean enabled)
+    {
+        _enabled = enabled;
+    }
+
     // from interface AnalogListener
     public void onAnalog (String name, float value, float tpf)
     {
+        if (!_enabled) {
+            return;
+        }
         // value already incorporates tpf for analog key triggers
         switch (name) {
         case FORWARD:
@@ -130,4 +151,7 @@ public class GodViewHandler
     }
 
     protected CameraHandler _camhand;
+
+    /** Whether this handler processes input (Phase-3 input wiring honours this flag). */
+    protected boolean _enabled = true;
 }

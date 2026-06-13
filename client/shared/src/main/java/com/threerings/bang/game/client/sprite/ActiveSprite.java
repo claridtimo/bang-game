@@ -161,11 +161,11 @@ public class ActiveSprite extends PieceSprite
     }
     
     @Override // documentation inherited
-    public void updateWorldData (float time)
+    public void updateLogicalState (float time)
     {
         // wait until we're done moving to do any actions or idle animations
         if (isMoving() || _complexAction == ComplexAction.ACTIVE) {
-            super.updateWorldData(time);
+            super.updateLogicalState(time);
             return;
         }
         
@@ -199,7 +199,7 @@ public class ActiveSprite extends PieceSprite
             }
         }
 
-        super.updateWorldData(time);
+        super.updateLogicalState(time);
     }
 
     /** 

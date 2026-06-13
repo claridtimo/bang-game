@@ -402,9 +402,9 @@ public class UnitSprite extends MobileSprite
     }
 
     @Override // documentation inherited
-    public void updateWorldData (float time)
+    public void updateLogicalState (float time)
     {
-        super.updateWorldData(time);
+        super.updateLogicalState(time);
         // jME3: the fork camera-rotated/translated the pending highlight's texture transform each
         // frame to keep the tick icon upright; Texture2D carries no transform, so the camera-
         // aligned pending icon is deferred to the Phase-4 board-renderer billboard/UV pass.

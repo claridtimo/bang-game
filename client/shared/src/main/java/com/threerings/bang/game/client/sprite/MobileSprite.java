@@ -229,9 +229,9 @@ public class MobileSprite extends ActiveSprite
     }
 
     @Override // documentation inherited
-    public void updateWorldData (float time)
+    public void updateLogicalState (float time)
     {
-        super.updateWorldData(time);
+        super.updateLogicalState(time);
 
         if (!isMoving()) {
             checkMoveSound("not moving");

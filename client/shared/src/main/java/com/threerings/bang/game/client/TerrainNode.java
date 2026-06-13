@@ -323,6 +323,18 @@ public class TerrainNode extends Node
         }
 
         /**
+         * Sets the (single) highlight color, replacing the fork's
+         * {@code getBatch(0).getDefaultColor()} access used by shadow-fade callers
+         * (EffectHandler/CrossStatus/EditorBoardView). Applies to both default and hover.
+         */
+        public void setDefaultColor (ColorRGBA color)
+        {
+            _defaultColor = color;
+            _hoverColor = color;
+            updateHoverState();
+        }
+
+        /**
          * Sets the default and hover materials for this highlight. jME3: was fork
          * {@code TextureState}; now {@link Material} (built via {@link RenderUtil}).
          */
@@ -879,19 +891,19 @@ public class TerrainNode extends Node
         if (dx >= 0 && dy >= 0 && dy < _diags.length &&
             dx < _diags[dy].length && _diags[dy][dx]) {
             if ((1f - ax) < ay) {
-                return FastMath.LERP(ax, FastMath.LERP(ay, fc + cf - cc, fc),
-                    FastMath.LERP(ay, cf, cc));
+                return FastMath.interpolateLinear(ax, FastMath.interpolateLinear(ay, fc + cf - cc, fc),
+                    FastMath.interpolateLinear(ay, cf, cc));
             } else {
-                return FastMath.LERP(ax, FastMath.LERP(ay, ff, fc),
-                    FastMath.LERP(ay, cf, cf + fc - ff));
+                return FastMath.interpolateLinear(ax, FastMath.interpolateLinear(ay, ff, fc),
+                    FastMath.interpolateLinear(ay, cf, cf + fc - ff));
             }
         } else {
             if (ax < ay) {
-                return FastMath.LERP(ax, FastMath.LERP(ay, ff, fc),
-                    FastMath.LERP(ay, cc + ff - fc, cc));
+                return FastMath.interpolateLinear(ax, FastMath.interpolateLinear(ay, ff, fc),
+                    FastMath.interpolateLinear(ay, cc + ff - fc, cc));
             } else {
-                return FastMath.LERP(ax, FastMath.LERP(ay, ff, ff + cc - cf),
-                    FastMath.LERP(ay, cf, cc));
+                return FastMath.interpolateLinear(ax, FastMath.interpolateLinear(ay, ff, ff + cc - cf),
+                    FastMath.interpolateLinear(ay, cf, cc));
             }
         }
     }
@@ -958,8 +970,8 @@ public class TerrainNode extends Node
             cc = getShadowHeight(cx, cy),
             ax = x - fx, ay = y - fy;
 
-        return FastMath.LERP(ax, FastMath.LERP(ay, ff, fc),
-            FastMath.LERP(ay, cf, cc));
+        return FastMath.interpolateLinear(ax, FastMath.interpolateLinear(ay, ff, fc),
+            FastMath.interpolateLinear(ay, cf, cc));
     }
 
     protected float getShadowHeight (int x, int y)

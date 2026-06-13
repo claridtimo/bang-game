@@ -70,15 +70,15 @@ public class TreeBedSprite extends ActiveSprite
     }
 
     @Override // documentation inherited
-    public void updateWorldData (float time)
+    public void updateLogicalState (float time)
     {
         // transition into the max texture during the third growth stage
         if (_nextAction > 0 && _action.equals("grow_stage3"))  {
             float alpha = Math.max(0f, (_nextAction - time) /
                 _finalGrowthDuration);
-            setTextureStates(_mtstate, _btstate, alpha);
+            setTextureStates(_mtex, _btex, alpha);
         }
-        super.updateWorldData(time);
+        super.updateLogicalState(time);
     }
 
     @Override // documentation inherited
