@@ -3,9 +3,9 @@
 
 package com.threerings.bang.game.client;
 
-import com.jme.math.FastMath;
-import com.jme.math.Vector3f;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.FastMath;
+import com.jme3.math.Vector3f;
+import com.jme3.math.ColorRGBA;
 import com.jme.scene.Controller;
 import com.jme.scene.state.MaterialState;
 

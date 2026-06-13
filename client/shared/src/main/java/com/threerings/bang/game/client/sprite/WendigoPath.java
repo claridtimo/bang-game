@@ -3,9 +3,9 @@
 
 package com.threerings.bang.game.client.sprite;
 
-import com.jme.math.FastMath;
-import com.jme.math.Quaternion;
-import com.jme.math.Vector3f;
+import com.jme3.math.FastMath;
+import com.jme3.math.Quaternion;
+import com.jme3.math.Vector3f;
 
 import com.threerings.jme.sprite.CubicSplinePath;
 import com.threerings.jme.sprite.PathUtil;

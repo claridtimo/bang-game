@@ -11,7 +11,7 @@ import org.lwjgl.opengl.GL11;
 
 import com.jme.image.Texture;
 import com.jme.renderer.Camera;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.ColorRGBA;
 import com.jme.renderer.RenderContext;
 import com.jme.renderer.Renderer;
 import com.jme.renderer.TextureRenderer;
@@ -19,7 +19,7 @@ import com.jme.scene.Spatial;
 import com.jme.scene.state.RenderState;
 import com.jme.scene.state.gdx.records.TextureStateRecord;
 import com.jme.system.DisplaySystem;
-import com.jme.util.geom.BufferUtils;
+import com.jme3.util.BufferUtils;
 
 /**
  * A texture renderer that renders to and copies from the back buffer (which

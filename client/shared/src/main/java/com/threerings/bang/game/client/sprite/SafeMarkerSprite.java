@@ -4,10 +4,10 @@
 package com.threerings.bang.game.client.sprite;
 
 import com.jme.image.Texture;
-import com.jme.math.FastMath;
-import com.jme.math.Vector3f;
-import com.jme.math.Quaternion;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.FastMath;
+import com.jme3.math.Vector3f;
+import com.jme3.math.Quaternion;
+import com.jme3.math.ColorRGBA;
 import com.jme.scene.state.LightState;
 import com.jme.scene.state.TextureState;
 

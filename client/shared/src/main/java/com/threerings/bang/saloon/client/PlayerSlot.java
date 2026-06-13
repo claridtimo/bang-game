@@ -3,7 +3,7 @@
 
 package com.threerings.bang.saloon.client;
 
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.ColorRGBA;
 import com.jme.renderer.Renderer;
 import com.jmex.bui.BImage;
 import com.jmex.bui.event.BEvent;

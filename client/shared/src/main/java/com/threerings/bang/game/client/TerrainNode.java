@@ -14,20 +14,20 @@ import java.nio.IntBuffer;
 
 import org.lwjgl.opengl.GLContext;
 
-import com.jme.bounding.BoundingBox;
+import com.jme3.bounding.BoundingBox;
 import com.jme.image.Image;
 import com.jme.image.Texture;
 import com.jme.intersection.PickResults;
 import com.jme.intersection.TrianglePickResults;
-import com.jme.math.FastMath;
-import com.jme.math.Plane;
-import com.jme.math.Ray;
-import com.jme.math.Vector2f;
-import com.jme.math.Vector3f;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.FastMath;
+import com.jme3.math.Plane;
+import com.jme3.math.Ray;
+import com.jme3.math.Vector2f;
+import com.jme3.math.Vector3f;
+import com.jme3.math.ColorRGBA;
 import com.jme.renderer.Renderer;
 import com.jme.scene.Line;
-import com.jme.scene.Node;
+import com.jme3.scene.Node;
 import com.jme.scene.SharedMesh;
 import com.jme.scene.Spatial;
 import com.jme.scene.TriMesh;
@@ -39,7 +39,7 @@ import com.jme.scene.state.LightState;
 import com.jme.scene.state.MaterialState;
 import com.jme.scene.state.RenderState;
 import com.jme.scene.state.TextureState;
-import com.jme.util.geom.BufferUtils;
+import com.jme3.util.BufferUtils;
 
 import com.samskivert.util.HashIntMap;
 import com.samskivert.util.IntIntMap;

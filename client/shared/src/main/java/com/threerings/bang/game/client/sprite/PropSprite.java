@@ -3,9 +3,9 @@
 
 package com.threerings.bang.game.client.sprite;
 
-import com.jme.bounding.BoundingBox;
-import com.jme.math.FastMath;
-import com.jme.math.Vector3f;
+import com.jme3.bounding.BoundingBox;
+import com.jme3.math.FastMath;
+import com.jme3.math.Vector3f;
 import com.jme.scene.shape.Box;
 import com.jme.scene.state.LightState;
 

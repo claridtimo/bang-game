@@ -19,7 +19,7 @@ import javax.swing.event.ListSelectionListener;
 
 import com.badlogic.gdx.Input.Keys;
 
-import com.jme.math.Vector3f;
+import com.jme3.math.Vector3f;
 
 import com.jmex.bui.event.KeyEvent;
 import com.jmex.bui.event.MouseEvent;

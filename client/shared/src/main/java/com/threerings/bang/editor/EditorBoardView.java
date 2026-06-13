@@ -9,10 +9,10 @@ import java.awt.image.BufferedImage;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-import com.jme.math.Vector2f;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.Vector2f;
+import com.jme3.math.ColorRGBA;
 import com.jme.renderer.Renderer;
-import com.jme.scene.Node;
+import com.jme3.scene.Node;
 import com.jme.scene.state.RenderState;
 import com.jme.scene.state.WireframeState;
 import com.jme.util.geom.Debugger;

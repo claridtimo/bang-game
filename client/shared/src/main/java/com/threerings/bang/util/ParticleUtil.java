@@ -6,7 +6,7 @@ package com.threerings.bang.util;
 import java.util.ArrayList;
 
 import com.jme.scene.Controller;
-import com.jme.scene.Node;
+import com.jme3.scene.Node;
 import com.jme.scene.Spatial;
 import com.jmex.effects.particles.ParticleController;
 import com.jmex.effects.particles.ParticleGeometry;

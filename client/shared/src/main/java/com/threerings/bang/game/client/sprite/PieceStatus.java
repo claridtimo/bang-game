@@ -8,12 +8,12 @@ import java.awt.image.BufferedImage;
 import java.awt.geom.Arc2D;
 
 import com.jme.image.Texture;
-import com.jme.math.Quaternion;
-import com.jme.math.Vector3f;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.Quaternion;
+import com.jme3.math.Vector3f;
+import com.jme3.math.ColorRGBA;
 import com.jme.renderer.Renderer;
 
-import com.jme.scene.Node;
+import com.jme3.scene.Node;
 import com.jme.scene.SharedMesh;
 import com.jme.scene.Spatial;
 import com.jme.scene.shape.Quad;

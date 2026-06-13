@@ -10,12 +10,12 @@ import java.nio.FloatBuffer;
 
 import java.util.Properties;
 
-import com.jme.bounding.BoundingBox;
+import com.jme3.bounding.BoundingBox;
 import com.jme.image.Texture;
-import com.jme.math.FastMath;
-import com.jme.math.Quaternion;
-import com.jme.math.Vector3f;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.FastMath;
+import com.jme3.math.Quaternion;
+import com.jme3.math.Vector3f;
+import com.jme3.math.ColorRGBA;
 import com.jme.renderer.Renderer;
 import com.jme.scene.Controller;
 import com.jme.scene.SharedMesh;
@@ -28,7 +28,7 @@ import com.jme.util.export.InputCapsule;
 import com.jme.util.export.OutputCapsule;
 import com.jme.util.export.JMEExporter;
 import com.jme.util.export.JMEImporter;
-import com.jme.util.geom.BufferUtils;
+import com.jme3.util.BufferUtils;
 import com.jmex.effects.particles.ParticleMesh;
 
 import com.samskivert.util.RandomUtil;

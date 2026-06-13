@@ -33,7 +33,7 @@ import org.lwjgl.opengl.Display;
 import org.lwjgl.util.WaveData;
 
 import com.jme.image.Image;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.ColorRGBA;
 
 import com.jmex.bui.BButton;
 import com.jmex.bui.BCursor;

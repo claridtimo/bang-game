@@ -5,8 +5,8 @@ package com.threerings.bang.client;
 
 import java.awt.Color;
 
-import com.jme.math.Vector3f;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.Vector3f;
+import com.jme3.math.ColorRGBA;
 
 /**
  * Defines sizes of things.

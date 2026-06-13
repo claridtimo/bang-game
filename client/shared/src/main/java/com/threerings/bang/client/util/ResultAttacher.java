@@ -3,7 +3,7 @@
 
 package com.threerings.bang.client.util;
 
-import com.jme.scene.Node;
+import com.jme3.scene.Node;
 import com.jme.scene.Spatial;
 
 import com.samskivert.util.ResultListener;

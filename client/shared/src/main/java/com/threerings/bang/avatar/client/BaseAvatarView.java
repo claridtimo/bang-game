@@ -15,9 +15,9 @@ import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import com.jme.math.Vector2f;
+import com.jme3.math.Vector2f;
 import com.jme.renderer.Renderer;
-import com.jme.util.geom.BufferUtils;
+import com.jme3.util.BufferUtils;
 
 import com.jmex.bui.BImage;
 import com.jmex.bui.BLabel;

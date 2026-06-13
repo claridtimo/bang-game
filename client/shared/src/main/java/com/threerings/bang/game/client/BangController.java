@@ -13,7 +13,7 @@ import java.util.Comparator;
 
 import com.badlogic.gdx.Input.Keys;
 
-import com.jme.math.FastMath;
+import com.jme3.math.FastMath;
 import com.jmex.bui.BWindow;
 
 import com.samskivert.util.ArrayIntSet;

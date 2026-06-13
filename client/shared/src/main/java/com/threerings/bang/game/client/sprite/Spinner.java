@@ -3,7 +3,7 @@
 
 package com.threerings.bang.game.client.sprite;
 
-import com.jme.math.Quaternion;
+import com.jme3.math.Quaternion;
 import com.jme.scene.Controller;
 import com.jme.scene.Spatial;
 

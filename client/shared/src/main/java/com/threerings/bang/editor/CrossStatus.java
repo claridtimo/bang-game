@@ -8,9 +8,9 @@ import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 
 import com.jme.image.Texture;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.ColorRGBA;
 import com.jme.renderer.Renderer;
-import com.jme.scene.Node;
+import com.jme3.scene.Node;
 import com.jme.scene.SharedMesh;
 import com.jme.scene.Spatial;
 import com.jme.scene.state.RenderState;

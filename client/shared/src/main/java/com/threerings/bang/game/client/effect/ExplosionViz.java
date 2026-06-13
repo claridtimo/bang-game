@@ -4,9 +4,9 @@
 package com.threerings.bang.game.client.effect;
 
 import com.jme.light.PointLight;
-import com.jme.math.FastMath;
-import com.jme.math.Vector3f;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.FastMath;
+import com.jme3.math.Vector3f;
+import com.jme3.math.ColorRGBA;
 import com.jme.scene.Controller;
 import com.jmex.effects.particles.ParticleMesh;
 

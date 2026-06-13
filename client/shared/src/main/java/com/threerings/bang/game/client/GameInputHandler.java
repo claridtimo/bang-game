@@ -6,8 +6,8 @@ package com.threerings.bang.game.client;
 import com.badlogic.gdx.Input.Keys;
 
 import com.jme.input.KeyBindingManager;
-import com.jme.math.FastMath;
-import com.jme.math.Vector3f;
+import com.jme3.math.FastMath;
+import com.jme3.math.Vector3f;
 
 import com.jmex.bui.event.MouseEvent;
 import com.jmex.bui.event.MouseWheelListener;

@@ -5,11 +5,11 @@ package com.threerings.bang.game.client.sprite;
 
 import java.util.ArrayList;
 
-import com.jme.bounding.BoundingBox;
-import com.jme.bounding.BoundingSphere;
-import com.jme.bounding.BoundingVolume;
-import com.jme.math.Vector3f;
-import com.jme.scene.Node;
+import com.jme3.bounding.BoundingBox;
+import com.jme3.bounding.BoundingSphere;
+import com.jme3.bounding.BoundingVolume;
+import com.jme3.math.Vector3f;
+import com.jme3.scene.Node;
 
 import com.threerings.jme.sprite.Sprite;
 import com.threerings.jme.model.Model;

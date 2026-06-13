@@ -4,7 +4,7 @@
 package com.threerings.bang.game.client.effect;
 
 import com.jme.image.Texture;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.ColorRGBA;
 import com.jme.scene.Controller;
 import com.jme.scene.state.MaterialState;
 import com.jme.scene.state.RenderState;

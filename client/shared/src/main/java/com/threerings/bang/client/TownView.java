@@ -16,8 +16,8 @@ import java.util.HashMap;
 import java.util.Properties;
 
 import com.jme.image.Texture;
-import com.jme.math.Vector3f;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.Vector3f;
+import com.jme3.math.ColorRGBA;
 import com.jme.renderer.Renderer;
 import com.jme.scene.state.MaterialState;
 import com.jme.scene.state.RenderState;

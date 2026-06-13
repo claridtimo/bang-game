@@ -6,7 +6,7 @@ package com.threerings.bang.game.client;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.ColorRGBA;
 import com.jme.renderer.Renderer;
 import com.jmex.bui.BButton;
 import com.jmex.bui.BContainer;

@@ -5,11 +5,11 @@ package com.threerings.bang.ranch.client;
 
 import java.util.Properties;
 
-import com.jme.math.FastMath;
-import com.jme.math.Vector3f;
+import com.jme3.math.FastMath;
+import com.jme3.math.Vector3f;
 import com.jme.renderer.Camera;
 import com.jme.renderer.Renderer;
-import com.jme.scene.Node;
+import com.jme3.scene.Node;
 import com.jme.system.DisplaySystem;
 
 import com.jmex.bui.BGeomView;

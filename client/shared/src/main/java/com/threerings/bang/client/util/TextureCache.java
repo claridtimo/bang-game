@@ -18,7 +18,7 @@ import java.util.Map;
 import com.jme.image.Image;
 import com.jme.image.Texture;
 import com.jme.scene.state.TextureState;
-import com.jme.util.geom.BufferUtils;
+import com.jme3.util.BufferUtils;
 
 import com.jmex.bui.util.Rectangle;
 

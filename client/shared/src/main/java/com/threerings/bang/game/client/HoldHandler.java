@@ -5,9 +5,9 @@ package com.threerings.bang.game.client;
 
 import java.awt.Point;
 
-import com.jme.math.FastMath;
-import com.jme.math.Vector3f;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.FastMath;
+import com.jme3.math.Vector3f;
+import com.jme3.math.ColorRGBA;
 import com.jme.scene.state.MaterialState;
 
 import com.threerings.jme.sprite.BallisticPath;

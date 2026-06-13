@@ -6,12 +6,12 @@ package com.threerings.bang.game.client;
 import java.awt.Rectangle;
 import java.nio.FloatBuffer;
 
-import com.jme.bounding.BoundingBox;
-import com.jme.math.Vector3f;
+import com.jme3.bounding.BoundingBox;
+import com.jme3.math.Vector3f;
 import com.jme.scene.Line;
 import com.jme.scene.VBOInfo;
 import com.jme.scene.state.LightState;
-import com.jme.util.geom.BufferUtils;
+import com.jme3.util.BufferUtils;
 
 import com.threerings.bang.client.Config;
 import com.threerings.bang.util.BasicContext;

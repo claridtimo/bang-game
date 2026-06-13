@@ -25,7 +25,7 @@ import com.badlogic.gdx.Input.Keys;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.ColorRGBA;
 import com.jmex.bui.BWindow;
 import com.jmex.bui.event.ActionEvent;
 import com.jmex.bui.event.ActionListener;

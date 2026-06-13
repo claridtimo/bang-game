@@ -12,7 +12,7 @@ import javax.imageio.ImageIO;
 
 import com.badlogic.gdx.Input.Keys;
 
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.ColorRGBA;
 
 import com.jmex.bui.BButton;
 import com.jmex.bui.BContainer;

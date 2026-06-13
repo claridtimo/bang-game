@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Properties;
 
-import com.jme.math.Vector3f;
+import com.jme3.math.Vector3f;
 import com.jme.scene.Controller;
 import com.jme.scene.Spatial;
 import com.jme.util.export.InputCapsule;

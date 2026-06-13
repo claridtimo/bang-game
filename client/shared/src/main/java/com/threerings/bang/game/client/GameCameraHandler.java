@@ -5,8 +5,8 @@ package com.threerings.bang.game.client;
 
 import java.awt.Rectangle;
 
-import com.jme.math.FastMath;
-import com.jme.math.Vector3f;
+import com.jme3.math.FastMath;
+import com.jme3.math.Vector3f;
 import com.jme.renderer.Camera;
 
 import com.threerings.jme.camera.CameraHandler;

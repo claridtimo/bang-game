@@ -3,10 +3,10 @@
 
 package com.threerings.bang.game.client.effect;
 
-import com.jme.util.geom.BufferUtils;
+import com.jme3.util.BufferUtils;
 import com.jme.image.Texture;
-import com.jme.math.Vector2f;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.Vector2f;
+import com.jme3.math.ColorRGBA;
 
 import com.jme.scene.shape.Quad;
 import com.jme.scene.state.TextureState;

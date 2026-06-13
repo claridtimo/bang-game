@@ -12,7 +12,7 @@ import java.util.TimeZone;
 import java.net.ConnectException;
 import java.net.URL;
 
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.ColorRGBA;
 import com.jme.renderer.Renderer;
 
 import com.jmex.bui.BButton;

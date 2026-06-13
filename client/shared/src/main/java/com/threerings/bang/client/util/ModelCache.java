@@ -21,7 +21,7 @@ import com.jme.scene.state.GLSLShaderObjectsState;
 import com.jme.scene.state.RenderState;
 import com.jme.scene.state.TextureState;
 import com.jme.util.ShaderAttribute;
-import com.jme.util.geom.BufferUtils;
+import com.jme3.util.BufferUtils;
 
 import com.samskivert.util.IntListUtil;
 import com.samskivert.util.Interval;

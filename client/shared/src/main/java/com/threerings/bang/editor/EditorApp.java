@@ -11,9 +11,9 @@ import javax.swing.JFrame;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
-import com.jme.math.FastMath;
-import com.jme.math.Matrix3f;
-import com.jme.math.Vector3f;
+import com.jme3.math.FastMath;
+import com.jme3.math.Matrix3f;
+import com.jme3.math.Vector3f;
 
 import com.threerings.bang.client.BangApp;
 import com.threerings.jme.JmeApp;

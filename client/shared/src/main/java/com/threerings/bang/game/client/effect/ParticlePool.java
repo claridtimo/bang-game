@@ -6,11 +6,11 @@ package com.threerings.bang.game.client.effect;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import com.jme.bounding.BoundingBox;
+import com.jme3.bounding.BoundingBox;
 import com.jme.image.Texture;
-import com.jme.math.FastMath;
-import com.jme.math.Vector3f;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.FastMath;
+import com.jme3.math.Vector3f;
+import com.jme3.math.ColorRGBA;
 import com.jme.scene.Controller;
 import com.jme.scene.Spatial;
 import com.jme.scene.state.TextureState;

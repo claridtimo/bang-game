@@ -7,7 +7,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.io.IOException;
 
-import com.jme.math.Vector3f;
+import com.jme3.math.Vector3f;
 import com.jme.util.export.JMEExporter;
 import com.jme.util.export.JMEImporter;
 import com.jme.util.export.InputCapsule;

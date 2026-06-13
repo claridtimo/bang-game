@@ -3,19 +3,19 @@
 
 package com.threerings.bang.game.client.sprite;
 
-import com.jme.bounding.BoundingBox;
+import com.jme3.bounding.BoundingBox;
 import com.jme.image.Texture;
 import com.jme.intersection.PickResults;
-import com.jme.math.Plane;
-import com.jme.math.Ray;
-import com.jme.math.Vector2f;
-import com.jme.math.Vector3f;
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.Plane;
+import com.jme3.math.Ray;
+import com.jme3.math.Vector2f;
+import com.jme3.math.Vector3f;
+import com.jme3.math.ColorRGBA;
 import com.jme.scene.BillboardNode;
-import com.jme.scene.Node;
+import com.jme3.scene.Node;
 import com.jme.scene.shape.Quad;
 import com.jme.scene.state.TextureState;
-import com.jme.util.geom.BufferUtils;
+import com.jme3.util.BufferUtils;
 
 import com.threerings.bang.data.UnitConfig;
 import com.threerings.bang.util.BasicContext;

@@ -5,7 +5,7 @@ package com.threerings.bang.game.client.sprite;
 
 import com.threerings.openal.SoundGroup;
 
-import com.jme.math.Vector3f;
+import com.jme3.math.Vector3f;
 import com.jme.scene.Spatial;
 import com.jme.scene.BillboardNode;
 import com.jme.scene.shape.Quad;

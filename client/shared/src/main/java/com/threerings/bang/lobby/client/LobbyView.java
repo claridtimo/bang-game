@@ -8,7 +8,7 @@ import java.io.FileInputStream;
 
 import org.apache.commons.io.IOUtils;
 
-import com.jme.renderer.ColorRGBA;
+import com.jme3.math.ColorRGBA;
 import com.jmex.bui.BButton;
 import com.jmex.bui.BComboBox;
 import com.jmex.bui.BContainer;
