@@ -7,8 +7,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import com.jme.util.export.binary.BinaryExporter;
-import com.jme.util.export.binary.BinaryImporter;
+import com.jme3.export.binary.BinaryExporter;
+import com.jme3.export.binary.BinaryImporter;
 
 import com.jmex.bui.BButton;
 import com.jmex.bui.BCheckBox;
@@ -434,7 +434,7 @@ public class BountyGameEditor extends BDecoratedWindow
     {
         try {
             File file = getFile(filename);
-            BinaryExporter.getInstance().save(createConfig(), file);
+            BinaryExporter.getInstance().save(createConfig(), file, false);
             _status.setStatus(OfficeCodes.OFFICE_MSGS,
                               MessageBundle.tcompose("m.saved_game", file), false);
 

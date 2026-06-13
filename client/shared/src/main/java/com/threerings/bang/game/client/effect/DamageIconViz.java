@@ -3,13 +3,9 @@
 
 package com.threerings.bang.game.client.effect;
 
-import com.jme3.util.BufferUtils;
-import com.jme.image.Texture;
-import com.jme3.math.Vector2f;
 import com.jme3.math.ColorRGBA;
-
-import com.jme.scene.shape.Quad;
-import com.jme.scene.state.TextureState;
+import com.jme3.math.Vector3f;
+import com.jme3.scene.Geometry;
 
 import com.threerings.bang.client.BangUI;
 import com.threerings.bang.util.BangContext;
@@ -121,21 +117,22 @@ public class DamageIconViz extends IconViz
 
         int readoutidx = 0;
         float offset =  DAMAGE_SIZE * 0.58f;
-        _readout = new Quad[readoutsize];
+        _readout = new Geometry[readoutsize];
         if (_showText) {
-            _dmgTState = _ctx.getRenderManager().createTextureState();
-            _dmgTState.setEnabled(true);
-            Vector2f[] tcoords = new Vector2f[4];
-            Texture tex = RenderUtil.createTextTexture(
+            // jME3: the fork built a TextureState'd quad and animated its alpha via
+            // getDefaultColor(); RenderUtil.createTextQuad yields a textured Geometry whose tint
+            // (and alpha) live on its Unshaded Color material param.
+            Geometry text = RenderUtil.createTextQuad(
                     _ctx, BangUI.DAMAGE_FONT, _color, _dcolor,
-                    String.valueOf(_damage), tcoords, null);
-            _dmgTState.setTexture(tex);
-            float width = ICON_SIZE * tcoords[2].x / tcoords[2].y;
-            _readout[0] = IconConfig.createIcon(_dmgTState, width, ICON_SIZE);
-            _readout[0].setTextureBuffer(0, BufferUtils.createFloatBuffer(tcoords));
-            _readout[0].getBatch(0).getDefaultColor().set(new ColorRGBA());
+                    String.valueOf(_damage));
+            // jME3 / Phase-4 fidelity: the fork sized the damage-number quad to ICON_SIZE tall and
+            // by text aspect ratio (read from the text's tex-coords). createTextQuad builds a
+            // pixel-sized quad; precise per-glyph sizing/centering of the floating damage number is
+            // a Phase-4 visual-review item. We display it at the icon-row origin.
+            initReadoutColor(text);
+            _readout[0] = text;
             readoutidx = 1;
-            offset += width / 2f;
+            offset += ICON_SIZE / 2f;
         }
 
         // Add the attack and defend icons if available
@@ -144,9 +141,10 @@ public class DamageIconViz extends IconViz
                 _readout[readoutidx] = IconConfig.createIcon(_ctx,
                     "influences/icons/" + _attackIcons[ii] + ".png",
                     DAMAGE_SIZE, DAMAGE_SIZE);
-                _readout[readoutidx].getBatch(0).getDefaultColor().set(new ColorRGBA());
-                _readout[readoutidx].getLocalTranslation().x =
-                    offset + ii * DAMAGE_SIZE;
+                initReadoutColor(_readout[readoutidx]);
+                _readout[readoutidx].setLocalTranslation(
+                    offset + ii * DAMAGE_SIZE,
+                    _readout[readoutidx].getLocalTranslation().y, 0f);
                 readoutidx++;
             }
         }
@@ -156,9 +154,10 @@ public class DamageIconViz extends IconViz
                 _readout[readoutidx] = IconConfig.createIcon(_ctx,
                     "influences/icons/" + _defendIcons[ii] + ".png",
                     DAMAGE_SIZE, DAMAGE_SIZE);
-                _readout[readoutidx].getBatch(0).getDefaultColor().set(new ColorRGBA());
-                _readout[readoutidx].getLocalTranslation().x =
-                    -(offset + ii * DAMAGE_SIZE);
+                initReadoutColor(_readout[readoutidx]);
+                _readout[readoutidx].setLocalTranslation(
+                    -(offset + ii * DAMAGE_SIZE),
+                    _readout[readoutidx].getLocalTranslation().y, 0f);
             }
         }
 
@@ -202,12 +201,21 @@ public class DamageIconViz extends IconViz
         setReadoutY(ICON_SIZE);
     }
 
+    /**
+     * Initializes a readout geometry's material {@code Color} to transparent (the fork set the
+     * batch default color to {@code new ColorRGBA()}); the billboard's per-frame alpha control
+     * then fades it in.
+     */
+    protected static void initReadoutColor (Geometry geom)
+    {
+        if (geom.getMaterial() != null && geom.getMaterial().getParam("Color") != null) {
+            geom.getMaterial().setColor("Color", new ColorRGBA(0f, 0f, 0f, 0f));
+        }
+    }
+
     @Override // documentation inherited
     protected void billboardDetached ()
     {
-        if (_dmgTState != null) {
-            _dmgTState.deleteAll();
-        }
         if (attached) {
             if (_sprite != null) {
                 _sprite.damageDetach();
@@ -235,7 +243,8 @@ public class DamageIconViz extends IconViz
         y += _yOffset;
         for (int ii = 0; ii < _readout.length; ii++) {
             if (_readout[ii] != null) {
-                _readout[ii].getLocalTranslation().y = y;
+                Vector3f t = _readout[ii].getLocalTranslation();
+                _readout[ii].setLocalTranslation(t.x, y, t.z);
             }
         }
     }
@@ -263,11 +272,8 @@ public class DamageIconViz extends IconViz
     /** Set to true when we're attached. */
     protected boolean attached;
 
-    /** The readout quad. */
-    protected Quad[] _readout;
-
-    /** The damage indicator texture state. */
-    protected TextureState _dmgTState;
+    /** The readout geometries (text + attack/defend icons). */
+    protected Geometry[] _readout;
 
     /** The yoffset used when multiple damage icons are applied. */
     protected float _yOffset = 0;

@@ -3,9 +3,10 @@
 
 package com.threerings.bang.game.client.effect;
 
-import com.jme.scene.BillboardNode;
-import com.jme.scene.shape.Quad;
 import com.jme3.math.Vector3f;
+import com.jme3.scene.Geometry;
+import com.jme3.scene.Node;
+import com.jme3.scene.control.BillboardControl;
 
 import com.threerings.bang.util.BasicContext;
 import com.threerings.bang.util.IconConfig;
@@ -27,12 +28,14 @@ public class IconInfluenceViz extends InfluenceViz
     public void init (BasicContext ctx, PieceSprite target)
     {
         super.init(ctx, target);
-        _billboard = new BillboardNode("icon_influence");
+        // jME3: fork BillboardNode -> a Node with a BillboardControl (screen-facing orientation).
+        _billboard = new Node("icon_influence");
+        _billboard.addControl(new BillboardControl());
         _billboard.setLocalTranslation(new Vector3f(
                     0f, 0f, target.getHeight() - TILE_SIZE/2));
 
-        Quad iconQuad = IconConfig.createIcon(
-                    ctx, "influences/icons/" + _name + ".png", 
+        Geometry iconQuad = IconConfig.createIcon(
+                    ctx, "influences/icons/" + _name + ".png",
                     ICON_SIZE, ICON_SIZE);
         iconQuad.setLocalTranslation(new Vector3f(0f, TILE_SIZE/4, 0f));
         _billboard.attachChild(iconQuad);
@@ -47,7 +50,7 @@ public class IconInfluenceViz extends InfluenceViz
         }
     }
 
-    protected BillboardNode _billboard;
+    protected Node _billboard;
 
     protected String _name;
 

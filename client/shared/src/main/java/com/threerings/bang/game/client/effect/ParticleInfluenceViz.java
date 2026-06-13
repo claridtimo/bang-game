@@ -3,7 +3,7 @@
 
 package com.threerings.bang.game.client.effect;
 
-import com.jme.scene.Spatial;
+import com.jme3.scene.Spatial;
 
 import com.threerings.bang.client.util.ResultAttacher;
 import com.threerings.bang.game.client.sprite.PieceSprite;
