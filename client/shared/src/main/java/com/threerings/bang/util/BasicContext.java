@@ -3,7 +3,7 @@
 
 package com.threerings.bang.util;
 
-import com.jme.scene.Spatial;
+import com.jme3.scene.Spatial;
 
 import com.jmex.bui.BImage;
 import com.jmex.bui.BStyleSheet;

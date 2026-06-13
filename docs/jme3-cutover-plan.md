@@ -199,6 +199,120 @@ sites, picking, camera, the `*Sprite`/effect framework, `BangBoardView`/`WaterNo
   picking/intersection, camera, the `*Sprite`/effect framework, `BangBoardView`/`WaterNode`/sky.
 - Regenerate nothing; this is hand work. **Checkpoint:** `client:shared` compiles against jme3.
 
+#### Phase 2 FOUNDATION pass — DONE (2026-06-13): what landed + the fan-out assignment
+
+The shared foundation + the mechanical bulk landed on `JRECutover` (4 commits). `client:shared`
+does **not** compile (expected — single compile unit; the REBUILD clusters below remain). What is
+done and compile-clean:
+
+- **app `Model` facade** (`app/.../jme/model/Model.java`, fork-free) — a jME3 `Node` wrapping the
+  `.j3o` content + its `AnimComposer`/`SkinningControl`, re-exposing the full measured client
+  surface (`getEmissionNode`/`getProperties`/`getAnimation`/`start|stop|pause|reverse|
+  fastForwardAnimation`/`getControllers`/`createInstance`/`createPrototype`/`lockInstance`/
+  `hasAnimation`/`setAnimationMode`/`getVariantNames`/`resolveTextures`) + nested
+  `Animation`(`.frameRate`,`getDuration()`)/`CloneCreator`/`AnimationMode`/`AnimationObserver`.
+  **`:app:compileJava` is GREEN.** `ModelTextureResolver` was promoted from `tools/j3o-converter`
+  into app `main` (`com.threerings.jme.model`) as the single home shared by `ModelCache` and the
+  converter; a fork-free `TextureProvider` seam (`getTexture(Geometry, name)→Texture`) was added;
+  the converter now writes `bang.frameRates` user data so the facade re-exposes `frameRate`.
+- **`ModelCache`** re-pointed at `assetManager.loadModel(type+"/model.j3o")` wrapped in the facade;
+  fork VBO/display-list/shader bookkeeping deleted (jME3 owns it); variant/colorization threaded
+  through `ModelTextureResolver`. Returns the facade `Model` (call-site type stable).
+- **Seam edits applied:** `ctx/_ctx.getRenderer()→getRenderManager()` (~80 context sites);
+  `SpatialVisitor<ModelMesh>→<Geometry>` (ModelCache, IronPlate/HeroInfluence viz, TreeBedSprite);
+  fork `Controller.RT_*→JmeUtil.RT_*`; `ColorRGBA.white/black/...→.White/.Black/...` (jME3
+  capitalizes; ~100 sites); `FadeInOutEffect`/`WindowSlider` callers thread
+  `getAssetManager()`/`getCamera().getWidth()/getHeight()`; `BasicContext.loadParticles` Spatial
+  type-token → jME3.
+- **Mechanical DIRECT renames** (104 files): math (`Vector*/Quaternion/Matrix*/FastMath/Ray/
+  Plane`), `ColorRGBA` (renderer→math), `bounding.*`, `scene.Node`, `geom.BufferUtils`→
+  `util.BufferUtils`. **BUI render-hook param `Renderer→RenderManager`** in 33 view/icon/background
+  files whose only fork dep was overriding `render*(Renderer)` (NOT rebuild — BUI's hook type).
+
+Result: fork-importing files in client/shared dropped 132→**99**. The remaining 99 are the
+parallel fan-out. javac caps at 100 errors so the assignment is keyed on remaining fork imports
+(the true work surface), not the truncated error count.
+
+**FAN-OUT ASSIGNMENT (remaining-error breakdown by subsystem, with the dominant fork API each
+cluster still needs).** All paths under `client/shared/.../com/threerings/bang/`.
+
+1. **`*Sprite`/sprite framework — 31 files** (`game/client/sprite/`). Dominant fork API:
+   `scene.Spatial`(ADAPT: setRenderState→Material, queue/cull hints, draw hooks gone),
+   `scene.state.{TextureState,LightState,MaterialState}`→**Material** (REBUILD),
+   `scene.Controller`→`control.AbstractControl` (Path/Spinner/Bouncer + the `*Emission`),
+   `scene.SharedMesh`→shared-Mesh Geometry, `scene.BillboardNode`→`BillboardControl`,
+   `scene.shape.Quad`→Mesh, `image.Texture`→`texture.Texture2D`,
+   `util.export.*`(Savable embedded in models — the emission Savables), `jmex.effects.particles.*`
+   →`ParticleEmitter`. Files: ActiveSprite, MobileSprite, PieceSprite, UnitSprite, PropSprite,
+   BonusSprite, BreakableSprite, CowSprite, BisonSprite, OneArmedBanditSprite, WendigoSprite,
+   ViewpointSprite, MarkerSprite, SafeMarkerSprite, CounterSprite, GenericCounterNode,
+   PieceTarget, PieceStatus, UnitStatus, ShotSprite, FireworksSprite, TreeBedSprite, Spinner,
+   Bouncer, and the emission controllers (FrameEmission, GunshotEmission, MisfireEmission,
+   DudShotEmission, SmokePlumeEmission, ParticleEmission, TransientParticleEmission). **Theme:
+   render-state→Material + Controller→AbstractControl + particles.** The `*Emission` classes are
+   the effects port (Phase 4) and code their `putClone(Controller, Model.CloneCreator)` /
+   `resolveTextures(TextureProvider)` against the facade's now-defined `CloneCreator`/
+   `TextureProvider`.
+2. **Effect viz — 13 files** (`game/client/effect/`). Dominant: `scene.Controller`(REBUILD→
+   AbstractControl), `jmex.effects.particles.*`(REBUILD→ParticleEmitter), render-state→Material,
+   `scene.BillboardNode`, `scene.shape.Quad`. Files: ExplosionViz, RepairViz, WreckViz,
+   HealHeroViz, DamageIconViz, IconViz, IconInfluenceViz, HeroInfluenceViz, IronPlateViz,
+   NoncorporealViz, ParticleEffectViz, ParticleInfluenceViz, ParticlePool. **Theme: particle
+   re-author + render-state→Material overlay.**
+3. **Board renderer + sky/water/terrain (the REBUILD critical path) — 5 files**
+   (`game/client/`): `BoardView` (picking: `intersection.PickResults/TrianglePickResults`→
+   `collideWith`/`CollisionResults`; lights; TextureRenderer), `BangBoardView`, `TerrainNode`
+   (splat combine→custom MatDef), `WaterNode` (reflection FBO + GL-thread init), `SkyNode`
+   (Dome + gradient). **Theme: render-state→Material, multi-texture splat MatDefs, RTT→FrameBuffer,
+   picking→collideWith.** Highest fidelity risk (map §4 risks #3/#4).
+4. **Game handlers + in-game views — 14 files** (`game/client/`): EffectHandler,
+   BallisticShotHandler, RocketHandler, HoldHandler, RobotWaveHandler, AreaDamageHandler,
+   WendigoHandler, GameInputHandler (`input.InputHandler`→Phase-3 InputManager/AnalogListener),
+   GameCameraHandler (`renderer.Camera` ADAPT), GridNode (`scene.Line`→Lines Mesh), BangView,
+   PlayerStatusView, HeroBuildingView, BountyGameOverView. **Theme: Camera/Spatial ADAPT + a few
+   render-state sites; GameInputHandler is the Phase-3 input seam (`GodViewHandler.registerWith`).**
+5. **Game data Savables — 10 files** (`game/data/`, `game/util/BoardFile`): `util.export.*`
+   (Savable/InputCapsule/OutputCapsule/JMEImporter/JMEExporter) + `binary.BinaryImporter/Exporter`.
+   Files: Piece, Prop, Marker, Track, Viewpoint, BangBoard, BoardData, BangConfig, Criterion,
+   BoardFile. **Theme: `com.jme.util.export.*`→`com.jme3.export.*` (ADAPT, case rename JmeImporter/
+   JmeExporter) for the in-memory classes; the on-disk `.board`/`.game` migration is the offline
+   board-converter (Phase 3), NOT a code change here.** Mechanical-ish but touches the wire/save
+   format — pairs with the board-converter doc.
+6. **Central render-state factory + RTT + particle/texture caches — 9 files**: `util/RenderUtil`
+   (587-ln state factory → shared-**Material** library — gates clusters 1-3), `util/IconConfig`,
+   `util/ParticleUtil`, `util/BackTextureRenderer` (`renderer.TextureRenderer`→FrameBuffer),
+   `client/util/{TextureCache,TexturePool,ParticleCache,ResultAttacher}` (`image.{Texture,Image}`,
+   `util.TextureKey/TextureManager`, `scene.state.gdx.records.TextureStateRecord` DROP,
+   `jmex.effects.particles.*`). **Theme: the render-state→Material library + texture/particle
+   loading off fork TextureState onto `Texture2D`/AssetManager.** RenderUtil is the keystone —
+   do it first; clusters 1-3 draw from it.
+7. **Core client/views — 8 files** (`client/`): BangApp, BasicClient (`renderer.Renderer` host
+   wiring → Phase-3), BangUI, BangPrefs, GlobalKeyManager, OptionsView, TownView,
+   `client/bui/WindowFader` (`scene.Controller`→AbstractControl). **Theme: mostly host-seam
+   (`DisplaySystem`/`InputHandler` removal, Phase-3) + a couple Controller/Renderer sites.**
+8. **Editor — 3 files** (`editor/`): EditorBoardView, CameraDolly (`renderer.Camera`),
+   CrossStatus (`scene.Line`/`SharedMesh`), + `jmex.terrain.util.*` heightmaps (ADAPT→jme3-terrain),
+   `scene.state.WireframeState`→`material.RenderState.setWireframe`, `geom.Debugger`. **Editor-only,
+   Phase-5 deferrable.**
+9. **Misc place views — 6 files**: `ranch/client/UnitView` (RTT portrait), `saloon/client/PaperView`,
+   `chat/client/SystemChatView`, `bounty/client/BountyGameEditor`, `bounty/data/{RankCriterion,
+   IntStatCriterion}` (Savable). **Theme: a few render-state/Savable sites; small.**
+
+**Facade/seam API the fan-out codes against (decisions to honour):**
+- `com.threerings.jme.model.Model` (app) is the model handle `ModelCache` returns; it is a jME3
+  `Node`. `getEmissionNode()→Node`, `getControllers()→List<com.jme3.scene.control.Control>` (the
+  effects port populates this), `getAnimation(name)→Model.Animation` (`.frameRate` int +
+  `getDuration()` float). `createInstance()/createPrototype(variant)` clone the content.
+- `com.threerings.jme.model.TextureProvider` is **fork-free**: `Texture getTexture(Geometry, String)`
+  (NOT the fork `TextureState getTexture(String)`). Emission controllers' `resolveTextures` recode
+  to this. `ModelTextureResolver` (app `com.threerings.jme.model`) is the shared re-resolution
+  engine; `textureAssetPath(typePath, name)` is public.
+- `JmeContext`/`BasicContext` seam: `getRenderManager()` (not `getRenderer()`), `getAssetManager()`,
+  `getCamera()` (jME3 `Camera`, has `getWidth()/getHeight()` for screen size — there is **no**
+  `getDisplay()` and **no** `getInputHandler()`). Input is Phase-3 (`registerWith(InputManager)`).
+- `JmeUtil.RT_{CLAMP,WRAP,CYCLE}` replace fork `Controller.RT_*`.
+- `FadeInOutEffect`/`WindowSlider` ctors take `AssetManager` + screen `width,height` up front.
+
 ### Phase 3 — Atomic app-host cutover (the flip)
 - Rewrite `BangDesktop`/`BangApp`/`EditorDesktop` as a jME3 `SimpleApplication` (LWJGL3 context).
 - `Jme3RootNode` + `RawInputListener` → BUI input; install `Jme3RenderBackend`.
