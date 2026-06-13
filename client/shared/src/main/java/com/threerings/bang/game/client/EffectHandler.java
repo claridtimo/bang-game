@@ -9,12 +9,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 
+import com.jme3.material.Material;
+import com.jme3.material.RenderState.BlendMode;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.math.ColorRGBA;
-import com.jme.scene.Spatial;
-import com.jme.scene.state.MaterialState;
-import com.jme.scene.state.RenderState;
+import com.jme3.scene.Spatial;
 
 import com.samskivert.util.ArrayIntSet;
 import com.samskivert.util.Interval;
@@ -702,8 +702,22 @@ public class EffectHandler extends BoardView.BoardAction
         if (sprite == null) {
             return;
         }
-        final MaterialState mstate =
-            (MaterialState)sprite.getRenderState(RenderState.RS_MATERIAL);
+        // jME3 cutover: the fork fetched the sprite's MaterialState and animated its diffuse alpha
+        // to fade a dropped bonus in. jME3 fades via a Material Color alpha. We only need a fade
+        // material when fadeIn is requested.
+        // TODO(sprite-cluster reconcile): overrides the sprite's whole material via setMaterial;
+        // reconcile to the *Sprite framework's per-sprite alpha/colour-modulation seam (cluster 1)
+        // once its render-state->Material port lands, so the textured model material is preserved.
+        final Material mstate;
+        if (fadeIn) {
+            mstate = new Material(_ctx.getAssetManager(),
+                "Common/MatDefs/Misc/Unshaded.j3md");
+            mstate.setColor("Color", new ColorRGBA(1f, 1f, 1f, 0f));
+            mstate.getAdditionalRenderState().setBlendMode(BlendMode.Alpha);
+            sprite.setMaterial(mstate);
+        } else {
+            mstate = null;
+        }
         BallisticShotHandler.PathParams pparams =
             BallisticShotHandler.computePathParams(
                 htrans, sprite.getWorldTranslation());
@@ -714,8 +728,8 @@ public class EffectHandler extends BoardView.BoardAction
                 super.update(time);
                 float alpha = Math.min(_accum / _duration, 1f);
                 _sprite.setLocalScale(FastMath.LERP(alpha, 0.5f, 1f));
-                if (fadeIn) {
-                    mstate.getDiffuse().a = alpha;
+                if (fadeIn && mstate != null) {
+                    mstate.setColor("Color", new ColorRGBA(1f, 1f, 1f, alpha));
                 }
             }
             public void wasRemoved () {
@@ -724,7 +738,7 @@ public class EffectHandler extends BoardView.BoardAction
                 maybeComplete(penderId);
             }
         });
-        sprite.updateGeometricState(0f, true);
+        sprite.updateGeometricState();
     }
 
     /**
@@ -758,20 +772,28 @@ public class EffectHandler extends BoardView.BoardAction
             -2f * PIECE_DROP_HEIGHT / BallisticShotHandler.GRAVITY);
         final int penderId = notePender();
         sprite.getLocalTranslation().set(start);
-        sprite.getShadow().getBatch(0).getDefaultColor().a = 0f;
+        // jME3 cutover: the fork faded the shadow highlight via getShadow().getBatch(0)
+        // .getDefaultColor().a (fork batch API). jME3 has no batches; the shadow highlight colour
+        // is set through its (cluster-3) setDefaultColor(ColorRGBA) seam.
+        // TODO(board-renderer reconcile): depends on TerrainNode.Highlight keeping a
+        // setDefaultColor(ColorRGBA) accessor after its render-state->Material port (cluster 3),
+        // which CrossStatus/EditorBoardView also rely on.
+        sprite.getShadow().setDefaultColor(new ColorRGBA(1f, 1f, 1f, 0f));
         sprite.move(new BallisticPath(sprite, start, new Vector3f(),
             BallisticShotHandler.GRAVITY_VECTOR, duration) {
             public void update (float time) {
                 super.update(time);
-                sprite.getShadow().getBatch(0).getDefaultColor().a =
-                    Math.min(_accum / _duration, 1f);
+                sprite.getShadow().setDefaultColor(new ColorRGBA(1f, 1f, 1f,
+                    Math.min(_accum / _duration, 1f)));
             }
             public void wasRemoved () {
                 super.wasRemoved();
-                sprite.getShadow().getBatch(0).getDefaultColor().a = 1f;
+                sprite.getShadow().setDefaultColor(new ColorRGBA(1f, 1f, 1f, 1f));
                 sprite.setLocation(piece.x, piece.y, piece.computeElevation(
                     _bangobj.board, piece.x, piece.y));
-                sprite.updateWorldVectors();
+                // jME3 cutover: fork updateWorldVectors() -> jME3 updateGeometricState()
+                // (recomputes the world transform now).
+                sprite.updateGeometricState();
                 if (BangPrefs.isHighDetail()) {
                     sprite.displayDustRing();
                 }
