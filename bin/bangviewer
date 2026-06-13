@@ -1,7 +1,0 @@
-#!/bin/sh
-#
-# $Id$
-#
-# Command line launcher for the Bang! editor
-
-`dirname $0`/bangtest com.threerings.jme.tools.ModelViewer "$@"
