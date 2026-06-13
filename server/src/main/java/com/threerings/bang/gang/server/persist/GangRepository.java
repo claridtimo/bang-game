@@ -466,7 +466,7 @@ public class GangRepository extends JORARepository
     public void updateRank (int playerId, byte rank, int commandOrder)
         throws PersistenceException
     {
-        checkedUpdate("update GANG_MEMBERS set RANK = " + rank + ", COMMAND_ORDER = " +
+        checkedUpdate("update GANG_MEMBERS set GANG_RANK = " + rank + ", COMMAND_ORDER = " +
                       commandOrder + ", LEADER_LEVEL = 0, LAST_LEADER_COMMAND = NOW() " +
                       "where PLAYER_ID = " + playerId, 1);
     }
@@ -776,7 +776,7 @@ public class GangRepository extends JORARepository
     {
         final ArrayList<GangMemberEntry> list = new ArrayList<GangMemberEntry>();
         final String query =
-            "select HANDLE, GANG_MEMBERS.PLAYER_ID, RANK, COMMAND_ORDER, LEADER_LEVEL, " +
+            "select HANDLE, GANG_MEMBERS.PLAYER_ID, GANG_RANK, COMMAND_ORDER, LEADER_LEVEL, " +
             "LAST_LEADER_COMMAND, JOINED, NOTORIETY, SCRIP_DONATED, COINS_DONATED, TITLE, " +
             "LAST_SESSION from GANG_MEMBERS, PLAYERS " +
             "where GANG_MEMBERS.PLAYER_ID = PLAYERS.PLAYER_ID and GANG_ID = " + gangId;
@@ -827,7 +827,7 @@ public class GangRepository extends JORARepository
         JDBCUtil.createTableIfMissing(conn, "GANG_MEMBERS", new String[] {
             "PLAYER_ID INTEGER NOT NULL",
             "GANG_ID INTEGER NOT NULL",
-            "RANK TINYINT NOT NULL",
+            "GANG_RANK TINYINT NOT NULL",
             "COMMAND_ORDER INTEGER NOT NULL",
             "LEADER_LEVEL INTEGER NOT NULL",
             "LAST_LEADER_COMMAND DATETIME NOT NULL DEFAULT \"2005-01-01\"",
@@ -841,7 +841,7 @@ public class GangRepository extends JORARepository
         }, "");
 
         // TEMP: add command order, scrip donated, coins donated columns
-        JDBCUtil.addColumn(conn, "GANG_MEMBERS", "COMMAND_ORDER", "INTEGER NOT NULL", "RANK");
+        JDBCUtil.addColumn(conn, "GANG_MEMBERS", "COMMAND_ORDER", "INTEGER NOT NULL", "GANG_RANK");
         JDBCUtil.addColumn(conn, "GANG_MEMBERS", "SCRIP_DONATED", "INTEGER NOT NULL", "NOTORIETY");
         JDBCUtil.addColumn(conn, "GANG_MEMBERS", "COINS_DONATED", "INTEGER NOT NULL",
             "SCRIP_DONATED");
@@ -857,7 +857,7 @@ public class GangRepository extends JORARepository
                     conn, "GANG_MEMBERS", "LEADER_LEVEL", "INTEGER NOT NULL", "COMMAND_ORDER");
             JDBCUtil.addColumn(conn, "GANG_MEMBERS", "LAST_LEADER_COMMAND",
                     "DATETIME NOT NULL DEFAULT \"2005-01-01\"", "LEADER_LEVEL");
-            update("update GANG_MEMBERS set LEADER_LEVEL = 10 where RANK = " +
+            update("update GANG_MEMBERS set LEADER_LEVEL = 10 where GANG_RANK = " +
                     GangCodes.LEADER_RANK);
         }
         // END TEMP

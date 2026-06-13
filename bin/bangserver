@@ -5,6 +5,7 @@
 # Command line launcher for the Bang! development server
 
 BANG_HOME=`dirname $0`/..
+BANG_HOME=`cd $BANG_HOME ; pwd`
 HOSTNAME=`hostname`
 JARGS=""
 NODE="frontier_town"
@@ -31,6 +32,22 @@ while [ ! -z "$1" ]; do
     shift
 done
 
+# build our classpath from the output of './gradlew deploy'
+if [ ! -d $BANG_HOME/build/server ]; then
+    echo "Missing $BANG_HOME/build/server; run './gradlew deploy' first."
+    exit 255
+fi
+CLASSPATH=$BANG_HOME/assets/build/staging
+for JAR in $BANG_HOME/build/server/*.jar; do
+    CLASSPATH=$CLASSPATH:$JAR
+done
+export CLASSPATH
+
 CLASS=com.threerings.bang.server.BangServer
-exec $BANG_HOME/bin/bangjava -server -Djava.awt.headless=true -mx$SERVER_MEMORY \
+exec java -server -Xmx$SERVER_MEMORY \
+  -Djava.awt.headless=true \
+  -Dbang.home=$BANG_HOME \
+  -Dresource_dir=$BANG_HOME/assets/build/staging/rsrc \
+  -Drsrc_cache_dir=/tmp \
+  -Dno_unpack_resources=true \
   -Dhostname=$HOSTNAME -Dnode=$NODE -Dis_node=true $JARGS $CLASS
