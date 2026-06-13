@@ -176,8 +176,12 @@ public class WaterNode extends Node
         }
         pbuf.rewind();
 
+        // The sphere map holds the fork's interpolated water<->sky colors verbatim; the fork
+        // displayed them with no gamma management (fixed-function EM_SPHERE replace). Tag the image
+        // Linear so a gamma-correct pipeline samples it as-is rather than sRGB-decoding (which
+        // darkened the surface to a near-black sheet). The water then reads at full color.
         Image img = new Image(Image.Format.RGBA8, SPHERE_MAP_SIZE, SPHERE_MAP_SIZE, pbuf,
-            com.jme3.texture.image.ColorSpace.sRGB);
+            com.jme3.texture.image.ColorSpace.Linear);
         Texture2D sphereMap = new Texture2D(img);
         sphereMap.setMagFilter(MagFilter.Bilinear);
         sphereMap.setWrap(WrapMode.EdgeClamp);
