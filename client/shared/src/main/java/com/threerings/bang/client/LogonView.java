@@ -327,6 +327,18 @@ public class LogonView extends BWindow
             // if we already have credentials (set on the command line during testing), auto-logon
             if (_ctx.getClient().getCredentials() != null) {
                 _ctx.getClient().logon();
+            } else {
+                // support -Dusername/-Dpassword auto-logon for dev testing (this used to live in
+                // BangApp.main(), which the gdx port retired)
+                String username = System.getProperty("username");
+                String password = System.getProperty("password");
+                if (!StringUtil.isBlank(username) && !StringUtil.isBlank(password)) {
+                    String townId = BangPrefs.getLastTownId(username);
+                    if (!BangClient.isTownActive(townId)) {
+                        townId = BangCodes.FRONTIER_TOWN;
+                    }
+                    logon(townId, username, password);
+                }
             }
         }
     }
