@@ -16,8 +16,9 @@ public class GangMemberRecord
     /** The id of the gang to which the player belongs. */
     public int gangId;
 
-    /** The player's rank in the gang. */
-    public byte rank;
+    /** The player's rank in the gang. (Named gangRank because RANK is a reserved
+     * word in MySQL 8 and JORA does not quote column names.) */
+    public byte gangRank;
 
     /** The command order, for leaders (0 for the founder, 1 for the first member promoted to
      * leader, etc.) */
@@ -50,7 +51,7 @@ public class GangMemberRecord
     {
         this.playerId = playerId;
         this.gangId = gangId;
-        this.rank = rank;
+        this.gangRank = rank;
     }
 
     /** Used when rolling back deletions. */
@@ -61,7 +62,7 @@ public class GangMemberRecord
     {
         this.playerId = playerId;
         this.gangId = gangId;
-        this.rank = rank;
+        this.gangRank = rank;
         this.commandOrder = commandOrder;
         this.leaderLevel = leaderLevel;
         this.lastLeaderCommand = new Timestamp(lastLeaderCommand);

@@ -5,6 +5,9 @@ package com.threerings.bang.server;
 
 import java.io.File;
 import java.util.Iterator;
+import java.util.Set;
+
+import com.google.common.collect.ImmutableSet;
 
 import com.google.inject.Guice;
 import com.google.inject.Inject;
@@ -229,6 +232,13 @@ public class BangServer extends CrowdServer
         // if (ServerConfig.config.getValue("auto_restart", false)) {
         //     Invoker.setDefaultLongThreshold(3000L);
         // }
+
+        // harden the wire protocol before we accept any client connections: only allow
+        // whitelisted class name prefixes to be instantiated when unstreaming client-supplied
+        // data (primitive arrays are always allowed; object arrays are checked against their
+        // element type; java.util covers the collection interfaces narya writes for all
+        // concrete collection types)
+        com.threerings.io.ObjectInputStream.setAllowedClassPrefixes(ALLOWED_STREAMED_PREFIXES);
 
         Injector injector = Guice.createInjector(new Module());
         BangServer server = injector.getInstance(BangServer.class);
@@ -471,4 +481,11 @@ public class BangServer extends CrowdServer
 
     /** Check for modified code every 30 seconds. */
     protected static final long AUTO_RESTART_CHECK_INTERVAL = 30 * 1000L;
+
+    /** The class name prefixes that may be instantiated from network streams. Everything Bang
+     * streams is a {@link com.threerings.io.Streamable} (or enum) under com.threerings, a
+     * java.lang wrapper/String, or a collection streamed under its java.util interface type;
+     * com.samskivert is included for samskivert utility types used by the Three Rings stack. */
+    protected static final Set<String> ALLOWED_STREAMED_PREFIXES = ImmutableSet.of(
+        "com.threerings.", "com.samskivert.", "java.lang.", "java.util.");
 }

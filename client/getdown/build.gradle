@@ -9,7 +9,8 @@ dependencies {
 // TODO: copy assets/*.jar, stripping version/snapshot
 // TODO: subst assets/*.jar as resource/uresource resources
 
-tasks.register("copyAssets", Copy) {
+// Sync (not Copy) so renamed/removed asset jars don't linger in build/getdown
+tasks.register("copyAssets", Sync) {
   dependsOn ":assets:deploy"
   from("../../build/assets") {
     rename "(.*)-$version\\.jar", '$1.jar'

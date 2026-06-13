@@ -293,9 +293,9 @@ public class RatingRepository extends SimpleRepository
                 throws SQLException, PersistenceException
             {
                 ResultSet rs = conn.prepareStatement(
-                    "   select RATING_TYPE, RANK, LEVEL " +
+                    "   select RATING_TYPE, `RANK`, LEVEL " +
                     "     from RANKS where " + whereWeek(week) +
-                    " order by RATING_TYPE, RANK ").executeQuery();
+                    " order by RATING_TYPE, `RANK` ").executeQuery();
                 RankLevels currentLevels = null;
                 while (rs.next()) {
                     String type = rs.getString(1);
@@ -418,7 +418,7 @@ public class RatingRepository extends SimpleRepository
                     insert = conn.prepareStatement(
                         "insert into RANKS " +
                         "        set RATING_TYPE = ?, " +
-                        "            RANK = ?, " +
+                        "            `RANK` = ?, " +
                         "            WEEK = ?, " +
                         "            LEVEL = ? ");
                     int[] levels = met.levels;
@@ -554,10 +554,10 @@ public class RatingRepository extends SimpleRepository
         }, "");
         JDBCUtil.createTableIfMissing(conn, "RANKS", new String[] {
             "RATING_TYPE VARCHAR(2) NOT NULL",
-            "RANK SMALLINT NOT NULL",
+            "`RANK` SMALLINT NOT NULL",
             "WEEK DATE NULL DEFAULT NULL",
             "LEVEL INTEGER NOT NULL",
-            "UNIQUE INDEX (RATING_TYPE, RANK, WEEK)",
+            "UNIQUE INDEX (RATING_TYPE, `RANK`, WEEK)",
         }, "");
         JDBCUtil.createTableIfMissing(conn, "SCORE_TRACKERS", new String[] {
             "SCENARIO VARCHAR(2) NOT NULL",
@@ -588,10 +588,10 @@ public class RatingRepository extends SimpleRepository
             stmt.close();
         }
         if (!JDBCUtil.tableContainsColumn(conn, "RANKS", "WEEK")) {
-            JDBCUtil.addColumn(conn, "RANKS", "WEEK", "DATE NULL DEFAULT NULL", "RANK");
+            JDBCUtil.addColumn(conn, "RANKS", "WEEK", "DATE NULL DEFAULT NULL", "`RANK`");
             JDBCUtil.dropPrimaryKey(conn, "RANKS");
             Statement stmt = conn.createStatement();
-            stmt.execute("alter table RANKS add UNIQUE INDEX (RATING_TYPE, RANK, WEEK)");
+            stmt.execute("alter table RANKS add UNIQUE INDEX (RATING_TYPE, `RANK`, WEEK)");
             stmt.close();
         }
         // END TEMP

@@ -65,6 +65,9 @@ The critical path. One agent, one branch, no parallelism (every module's build f
    `com.mysql.jdbc.Driver` alias in configs or update to `com.mysql.cj.jdbc.Driver`),
    commons-* minor bumps only if compilation forces them. ehcache 1.6, getdown 1.4,
    lwjgl 2.9.2, gdx 1.5.4 **unchanged**.
+   *Phase 2 amendment:* ooo-user 1.4.5 → **1.5.1** (1.4.5 is binary-incompatible with
+   depot 1.8 — `NoSuchMethodError: ColumnExp.in(Iterable)`; 1.5.1 is the first release
+   built against depot 1.8). Flagged by Stream B, accepted by coordinator.
 4. Get `./gradlew compileJava` green across all modules on JDK 21. Expected work:
    - Regenerate generated RPC classes: `./gradlew client:shared:genService` with
      narya-tools 1.19 (large mechanical diff — keep as its own commit).
