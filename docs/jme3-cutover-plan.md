@@ -423,6 +423,27 @@ the bottleneck is coverage of a hard-to-assert app, not the runner). The two har
    runs windowless on a `FrameBuffer`, so agents diff deterministic snapshots against
    `baseline/fork-before/` instead of flaky X-grabs. Feeds CI visual regression and per-change checks
    (incl. the Phase-6 sprite defects + the Phase-7 editor regression).
+   _**DONE.** Factored the two seeds onto a shared `OffscreenRenderApp` base (AppSettings +
+   `OffscreenSurface` launch, color-texture `FrameBuffer` + one-shot `CaptureProcessor` PNG capture
+   with the correct RGBA/Y-flip readback, `BoardView`-style lighting, **Z-up** bounding-box framing —
+   fixing the seed's Y-up framing that laid Z-up character models on their side). New render modes,
+   all on the isolated jME3 + LWJGL3 + `project(":app")` `renderToPngRuntime` classpath (no fork, no
+   LWJGL2 sealing clash): (1) `RenderModelToPng` — a unit/big-shot model with skin + a posed
+   `AnimComposer`/`SkinningControl` animation frame (`Models.loadModel`/`poseAnimation` select a named
+   clip and `setTime` it, then `updateLogicalState` so the skinned mesh deforms before capture);
+   (2) `RenderSceneToPng` — N `modelType[@anim[:time]]` specs posed on a ground-grid scene; (3)
+   `SnapshotDiff` — GL-free mean-per-channel PNG diff that writes a red heat-map and exits non-zero
+   past `-Ptolerance` (default 0.015), the regression gate. Gradle tasks `renderToPng`,
+   `renderWaterToPng`, `renderModelToPng`, `renderSceneToPng`, `snapshotDiff`; run sheet in
+   `docs/running-the-game.md`. Files: `tools/j3o-converter/.../tools/j3o/{OffscreenRenderApp,Models,
+   RenderModelToPng,RenderSceneToPng,SnapshotDiff}.java` (new) + refactored `RenderToPng`/
+   `RenderWaterToPng` + `build.gradle`. Verified rendering: `props/frontier_town/buildings/saloon`
+   (static, upright + fully textured), `units/frontier_town/shotgunner` & `units/frontier_town/cavalry`
+   & `units/indian_post/buffalo_rider` (skin + textures resolve, anims list, hardware skinning engages
+   — and they **reproduce the Phase-6 defect deterministically**: textures are correct but the posed
+   skinned armature is contorted, pointing the diagnosis at the skin/joint bind, not texture resolve),
+   `units/wreckage/wheel_big` (0-anim, falls through to bind pose cleanly), water surface, and the
+   diff gate (PASS on identical, FAIL on differing)._
 2. **Headless Narya bot client + server-side dobj assertions.** A rendering-free client that logs in,
    drives gameplay through the service API, and asserts on distributed-object state — the closest
    thing to "Playwright for this game." Leans on the existing AI/`-autoplay`/bot + the Narya wire.

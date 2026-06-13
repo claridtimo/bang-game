@@ -4,15 +4,10 @@
 package com.threerings.bang.tools.j3o;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-
-import com.jme3.app.SimpleApplication;
 import com.jme3.asset.plugins.FileLocator;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState.BlendMode;
@@ -20,19 +15,13 @@ import com.jme3.material.RenderState.FaceCullMode;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
-import com.jme3.post.SceneProcessor;
-import com.jme3.profile.AppProfiler;
 import com.jme3.renderer.Camera;
-import com.jme3.renderer.RenderManager;
-import com.jme3.renderer.ViewPort;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
+import com.jme3.scene.Spatial;
 import com.jme3.scene.VertexBuffer;
-import com.jme3.system.AppSettings;
-import com.jme3.system.JmeContext;
-import com.jme3.texture.FrameBuffer;
 import com.jme3.texture.Image;
 import com.jme3.texture.Texture.MagFilter;
 import com.jme3.texture.Texture.WrapMode;
@@ -48,12 +37,13 @@ import com.jme3.util.BufferUtils;
  * Fresnel sphere map (water-color &lt;-&gt; sky-color by reflectivity) the same way
  * {@code WaterNode.refreshColors} does, builds a wave-displaced surface grid with per-vertex
  * normals (a plausible stand-in for the CPU FFT sim — the shader only cares about the perturbed
- * normal), and renders one frame to an offscreen FrameBuffer. Passing a frame index displaces the
- * waves so two captures can be compared to confirm the surface animates.
+ * normal), and renders one frame to an offscreen FrameBuffer through {@link OffscreenRenderApp}.
+ * Passing a frame index displaces the waves so two captures can be compared to confirm the surface
+ * animates.
  *
  * <p>Usage: {@code RenderWaterToPng <rsrc root> <output png> [frame]}
  */
-public class RenderWaterToPng extends SimpleApplication
+public class RenderWaterToPng extends OffscreenRenderApp
 {
     public static void main (String[] args)
     {
@@ -62,25 +52,17 @@ public class RenderWaterToPng extends SimpleApplication
             System.exit(1);
         }
         float frame = args.length > 2 ? Float.parseFloat(args[2]) : 0f;
-        RenderWaterToPng app = new RenderWaterToPng(args[0], args[1], frame);
-        app.setShowSettings(false);
-        AppSettings settings = new AppSettings(true);
-        settings.setWidth(WIDTH);
-        settings.setHeight(HEIGHT);
-        settings.setSamples(4);
-        app.setSettings(settings);
-        app.setPauseOnLostFocus(false);
-        app.start(JmeContext.Type.OffscreenSurface);
+        launch(new RenderWaterToPng(args[0], args[1], frame));
     }
 
     public RenderWaterToPng (String rsrcRoot, String outPng, float frame)
     {
+        super(new File(outPng));
         _rsrcRoot = new File(rsrcRoot).getAbsoluteFile();
-        _outPng = new File(outPng).getAbsoluteFile();
         _frame = frame;
     }
 
-    @Override public void simpleInitApp ()
+    @Override protected Node buildScene ()
     {
         assetManager.registerLocator(_rsrcRoot.getPath(), FileLocator.class);
 
@@ -101,8 +83,11 @@ public class RenderWaterToPng extends SimpleApplication
 
         Node scene = new Node("scene");
         scene.attachChild(water);
-        scene.updateGeometricState();
+        return scene;
+    }
 
+    @Override protected Camera createCamera (Spatial scene)
+    {
         // frame the surface the way the player sees the board: a 3/4 elevated view looking down at
         // an oblique angle, far enough back that the whole water patch and the land behind it are
         // visible. A sphere-map reflection reads as water when the surface curvature (wave normals)
@@ -113,24 +98,13 @@ public class RenderWaterToPng extends SimpleApplication
         offCam.setFrustumPerspective(45f, (float)WIDTH / HEIGHT, 0.5f, span * 12f);
         offCam.setLocation(center.add(new Vector3f(-span * 0.9f, -span * 0.9f, span * 1.1f)));
         offCam.lookAt(center, Vector3f.UNIT_Z);
+        return offCam;
+    }
 
-        _fb = new FrameBuffer(WIDTH, HEIGHT, 1);
-        // jME3 defaults GammaCorrection=true: shaders work in linear space and the framebuffer
-        // re-encodes to sRGB on write. Use an sRGB color target so the readback is correctly
-        // encoded (a plain linear RGBA8 target skips the encode and the image comes out dark/
-        // mis-tinted — the harness calibration issue noted in Phase 4b).
-        _colorTex = new Texture2D(WIDTH, HEIGHT, Image.Format.RGBA8);
-        _colorTex.getImage().setColorSpace(ColorSpace.sRGB);
-        _fb.setDepthBuffer(Image.Format.Depth);
-        _fb.setColorTexture(_colorTex);
-
-        ViewPort off = renderManager.createMainView("offscreen", offCam);
-        off.setClearFlags(true, true, true);
+    @Override protected ColorRGBA backgroundColor ()
+    {
         // a neutral land/dirt backdrop so we judge the water against terrain, not blue-on-blue
-        off.setBackgroundColor(new ColorRGBA(0.42f, 0.36f, 0.28f, 1f));
-        off.setOutputFrameBuffer(_fb);
-        off.attachScene(scene);
-        off.addProcessor(new CaptureProcessor());
+        return new ColorRGBA(0.42f, 0.36f, 0.28f, 1f);
     }
 
     /** Bakes the Fresnel sphere map identically to {@code WaterNode.refreshColors}. */
@@ -229,59 +203,8 @@ public class RenderWaterToPng extends SimpleApplication
              + 0.6f * FastMath.sin(0.18f * x - 0.26f * y + 1.1f * t);
     }
 
-    protected class CaptureProcessor implements SceneProcessor
-    {
-        @Override public void initialize (RenderManager rm, ViewPort vp) { _rm = rm; }
-        @Override public void reshape (ViewPort vp, int w, int h) { }
-        @Override public boolean isInitialized () { return _rm != null; }
-        @Override public void preFrame (float tpf) { }
-        @Override public void postQueue (RenderQueue rq) { }
-        @Override public void setProfiler (AppProfiler profiler) { }
-        @Override public void cleanup () { }
-
-        @Override public void postFrame (FrameBuffer out)
-        {
-            if (_captured) {
-                return;
-            }
-            _captured = true;
-            ByteBuffer buf = BufferUtils.createByteBuffer(WIDTH * HEIGHT * 4);
-            renderer.readFrameBuffer(_fb, buf);
-            // readFrameBuffer returns RGBA byte order on this driver; build the image directly
-            // (flipping Y) so the channels are correct — Screenshots.convertScreenShot assumes BGRA
-            // and would swap R<->B (the "blue tint" the Phase 4b harness note describes).
-            BufferedImage img = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB);
-            buf.rewind();
-            for (int y = 0; y < HEIGHT; y++) {
-                for (int x = 0; x < WIDTH; x++) {
-                    int i = ((HEIGHT - 1 - y) * WIDTH + x) * 4;
-                    int r = buf.get(i) & 0xFF, g = buf.get(i+1) & 0xFF;
-                    int b = buf.get(i+2) & 0xFF, a = buf.get(i+3) & 0xFF;
-                    img.setRGB(x, y, (a << 24) | (r << 16) | (g << 8) | b);
-                }
-            }
-            try {
-                ImageIO.write(img, "png", _outPng);
-                System.out.println("Wrote " + _outPng);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            enqueue(() -> { stop(); return null; });
-        }
-
-        private RenderManager _rm;
-        private boolean _captured;
-    }
-
     protected final File _rsrcRoot;
-    protected final File _outPng;
     protected final float _frame;
-
-    protected FrameBuffer _fb;
-    protected Texture2D _colorTex;
-
-    protected static final int WIDTH = 800;
-    protected static final int HEIGHT = 600;
 
     protected static final float TILE_SIZE = 10f;
     protected static final int GRID_TILES = 8;     // 8x8 tiles of water

@@ -50,13 +50,34 @@ bin/devtest --no-client                                            # server only
 ## Deterministic alternatives (no live client needed)
 
 For per-change *visual* verification without the flaky live path, prefer the offscreen
-render-to-PNG harnesses (Phase-7 #1 — they render through the real load/resolve path with no
-window, on an isolated LWJGL3 classpath):
+render-to-PNG harnesses (Phase-5 harness #1 — they render through the real load/resolve path with
+no window, on an isolated LWJGL3 classpath, framed/lit like the board in its Z-up convention).
+Run `./gradlew deploy` once first to bake the staged `model.j3o` (under `assets/build/staging/rsrc`).
 
 ```sh
+# one isolated model (static prop/building), through the real Model facade + texture resolve + clone:
 ./gradlew :tools:j3o-converter:renderToPng  -PmodelType=props/frontier_town/buildings/saloon -Pout=/tmp/saloon.png
+
+# a unit / big-shot CHARACTER model with its skin and a posed animation frame (the mode that
+# reproduces the Phase-6 shotgun-dude / mounted-big-shot defects deterministically):
+./gradlew :tools:j3o-converter:renderModelToPng -PmodelType=units/frontier_town/shotgunner -Panim=standing -Ptime=0 -Pout=/tmp/shotgunner.png
+./gradlew :tools:j3o-converter:renderModelToPng -PmodelType=units/frontier_town/shotgunner -Panim=list   # print anim names; renders the bind pose
+
+# a multi-model scene on a ground grid (units + a building), each spec is modelType[@anim[:time]]:
+./gradlew :tools:j3o-converter:renderSceneToPng -Pout=/tmp/scene.png \
+    -Pspecs=units/frontier_town/shotgunner@standing,units/frontier_town/cavalry@standing,props/frontier_town/buildings/saloon
+
+# the water surface (BangWater.j3md) reproduced headlessly (-Pframe advances the waves):
 ./gradlew :tools:j3o-converter:renderWaterToPng -Pout=/tmp/water.png
+
+# the regression gate: diff a render vs a baseline PNG, write a heat-map diff, exit non-zero past tolerance:
+./gradlew :tools:j3o-converter:snapshotDiff \
+    -Prendered=/tmp/shotgunner.png -Pbaseline=baseline/fork-before/shotgunner.png \
+    -Pdiff=/tmp/shotgunner-diff.png -Ptolerance=0.015
 ```
+
+`baseline/fork-before/` (pre-cutover reference shots) is gitignored and lives only in the canonical
+checkout; `snapshotDiff` takes the baseline as a `-Pbaseline=` path, it is not hardcoded.
 
 ## Known live-render defects (see docs/jme3-cutover-plan.md "Known live-render defects")
 
