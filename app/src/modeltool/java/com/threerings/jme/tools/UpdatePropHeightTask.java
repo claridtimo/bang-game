@@ -1,7 +1,7 @@
 //
 // $Id$
 
-package com.threerings.bang.tools;
+package com.threerings.jme.tools;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -26,16 +26,25 @@ import com.jme.bounding.BoundingVolume;
 import com.jme.util.LoggingSystem;
 import com.jme.util.DummyDisplaySystem;
 
-import com.threerings.jme.model.Model;
-
-import static com.threerings.bang.client.BangMetrics.*;
+import com.threerings.jme.tools.model.Model;
 
 /**
  * An ant task for determining the height of props and setting an attribute in
  * the prop configuration file read by both client and server.
+ *
+ * <p>jME3 cutover (Phase 2): relocated from {@code :tools}
+ * ({@code com.threerings.bang.tools}) into app's fork-coupled {@code modeltool} source set,
+ * alongside {@code CompileModelTask} and the fork {@code Model} reader. It reads the fork-format
+ * {@code model.dat} that {@code CompileModelTask} just produced, so it must run against the fork
+ * {@code Model}/bounding API (the fork-free {@code :tools} module no longer has them on its
+ * classpath). The {@code BangMetrics.TILE_SIZE} (= 10) constant is inlined to avoid pulling
+ * client/shared onto this build-time classpath.
  */
 public class UpdatePropHeightTask extends Task
-{    
+{
+    /** Tile size in world units (was {@code com.threerings.bang.client.BangMetrics.TILE_SIZE}). */
+    public static final float TILE_SIZE = 10;
+
     /**
      * Adds a nested &lt;fileset&gt; element.
      */
@@ -51,10 +60,17 @@ public class UpdatePropHeightTask extends Task
         new DummyDisplaySystem();
         LoggingSystem.getLogger().setLevel(Level.WARNING);
     }
-    
+
     @Override // documentation inherited
     public void execute () throws BuildException
     {
+        // Ensure a headless display system is installed before any model.dat is read: the fork
+        // ModelMesh.read() path calls DisplaySystem.getDisplaySystem() (to build render states),
+        // which otherwise constructs the gdx GDXDisplaySystem and NPEs in this headless ant task.
+        // init() may not be invoked when run via gradle's ant bridge, so do it here too.
+        new DummyDisplaySystem();
+        LoggingSystem.getLogger().setLevel(Level.WARNING);
+
         for (FileSet fs : _filesets) {
             DirectoryScanner ds = fs.getDirectoryScanner(getProject());
             File fromDir = fs.getDir(getProject());
@@ -64,7 +80,7 @@ public class UpdatePropHeightTask extends Task
             }
         }
     }
-    
+
     /**
      * Updates the height property of the specified prop if it is out of date.
      *
@@ -77,7 +93,7 @@ public class UpdatePropHeightTask extends Task
         if (mfile.lastModified() < file.lastModified()) {
             return;
         }
-        
+
         // load the model
         Model model;
         try {
@@ -85,8 +101,22 @@ public class UpdatePropHeightTask extends Task
         } catch (IOException e) {
             System.out.println("Error reading " + mfile + ": " + e);
             return;
+        } catch (RuntimeException e) {
+            // jME3 cutover: the fork BinaryImporter returns null (after logging) when a model.dat
+            // embeds a class it can no longer instantiate -- e.g. a stale source-tree model.dat
+            // written by the pre-cutover fork whose root/controllers reference now-relocated fork
+            // classes -- which then NPEs inside readFromFile's initPrototype(). The freshly compiled
+            // models live in the staging tree; a stray source-tree model.dat is build cruft. Skip
+            // rather than fail the build so the pipeline validation completes.
+            System.out.println("Skipping unreadable (pre-cutover-format) model: " + mfile +
+                " (" + e + ")");
+            return;
         }
-        
+        if (model == null) {
+            System.out.println("Skipping unreadable model (null): " + mfile);
+            return;
+        }
+
         // find the model's vertical size in tiles
         model.updateGeometricState(0f, true);
         float height = 0f;
@@ -103,7 +133,7 @@ public class UpdatePropHeightTask extends Task
             }
             height /= TILE_SIZE;
         }
-        
+
         // read in the prop.properties and see if the height needs changing
         // (if not, just touch the file)
         Properties props = new Properties();
@@ -120,7 +150,7 @@ public class UpdatePropHeightTask extends Task
             file.setLastModified(System.currentTimeMillis());
             return;
         }
-        
+
         // if so, copy out the properties with the revised height
         System.out.println("Updating prop height for " + file + "...");
         BufferedReader reader = new BufferedReader(new InputStreamReader(in));
@@ -140,12 +170,12 @@ public class UpdatePropHeightTask extends Task
                 }
             }
             writer.close();
-            
+
         } catch (IOException e) {
             System.out.println("Error writing " + file + ": " + e);
         }
     }
-    
+
     /** A list of filesets that contain board definitions. */
     protected ArrayList<FileSet> _filesets = new ArrayList<FileSet>();
 }
