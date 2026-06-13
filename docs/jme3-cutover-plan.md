@@ -355,10 +355,37 @@ approaching the fork baselines in `baseline/fork-before/`):
   surface). Also fixed the Phase-4b harness blue-tint caveat: it was an RGBA-vs-BGRA channel swap in
   the framebuffer readback (`Screenshots.convertScreenShot` assumes BGRA) plus a missing sRGB encode
   on the offscreen color target — `RenderWaterToPng` reads RGBA directly into the image and uses an
-  sRGB color target, so its colors are now neutral/correct. Still wanting a human eyeball: the water
-  on a *live in-game board* (the harness uses representative water/sky colors and a sinusoidal
-  stand-in for the FFT sim, not a shipped `.board`) — high confidence given it drives the identical
-  material + sphere map + shader through a real GL context.
+  sRGB color target, so its colors are now neutral/correct.
+
+  **LIVE-BOARD VERIFICATION (2026-06-13, this pass):** the water was rendered on a real shipped
+  `.board` through the full live client+server (not the harness) and visually confirmed to match
+  the fork reference (`baseline/fork-before/water.png`): saturated, reflective, reads-as-water teal.
+  Board used: **Thunderbird Rock** (`data/boards/indian_post/4/thunderbird_rock.board`, water
+  `#003232`, sky-overhead `#00FF99`, ~65% of tiles below the water plane — a coastal board like the
+  fork shot). Reached via `bangserver indian_post` + autoplay client `-Dboard="Thunderbird Rock"
+  -Dtest=true -Dautoplay=true`. Live render shows teal coastal water around a sandy island with
+  rope bridges; sampled live water avg `#347F7E` vs the fork shot's `#255245` — same saturated
+  green-teal hue family (different specific board, so not pixel-identical, but the fidelity bar —
+  saturated/reflective/animated, not pale-flat or dark-muddy — is met). Deliverables:
+  `baseline/jme3-phase4/water-live-{before,after}.png` (+ `water-live-after-frame2.png`). **No code
+  tuning was needed** — the prior sRGB->Linear sphere-map fix produces correct color on a real board;
+  this pass only verified it. `refreshColors` water/sky colors are board-driven (`getWaterColor()`/
+  `getSkyOverheadColor()`), identical to the fork, so any board's stored teal reproduces verbatim.
+
+  **Two non-water findings from this pass:**
+  - *Phase-3 board read is HEALTHY.* The live client+server read shipped `.board` files (now pure
+    Narya streaming) with zero errors — server "Loading boards..." clean, client "Downloading board"
+    + full board render. A standalone scan of all 165 boards via `BoardFile.loadFrom` also read every
+    `BangBoard` (incl. water fields) fine. (A bare scan hits a `Prop.init` NPE only when the
+    `PropConfig` registry isn't initialized — a harness-classpath artifact, not a format bug; it
+    vanishes with the staging `rsrc/` on the classpath, as the live client/server have.)
+  - *`bangserver indian_post` registered NO indian_post boards* until fixed: `etc/test/
+    server.properties` left `indian_post.town_id` commented out, so `ServerConfig.townId` fell back
+    to `frontier_town` (townIndex 0) and `BoardManager.mapBoard` skipped every board with
+    `getMinimumTownIndex() > 0` (i.e. all indian_post boards) → `getBoard()` returns null →
+    `BangManager.startRound` NPE at `_rounds[roundId].board.name`. Set `indian_post.town_id =
+    indian_post` (local `etc/test/`, gitignored) to serve indian_post boards on that node. Frontier
+    boards were unaffected throughout.
 - **4d — TODO (test tooling):** a standard live-run "run sheet" so agents stop re-deriving (and
   mis-handling) the setup dance — the recurring tax behind most agent run failures (stale server on
   port 47624 → `BindException`/"connection refused"; MySQL not started/verified; launching the
