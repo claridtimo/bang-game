@@ -58,8 +58,8 @@ public class DimensionsPanel extends JPanel
      */
     public void setValues (int width, int height)
     {
-        _width.setValue(new Integer(width));
-        _height.setValue(new Integer(height));
+        _width.setValue(Integer.valueOf(width));
+        _height.setValue(Integer.valueOf(height));
     }
     
     /** The width and height fields. */

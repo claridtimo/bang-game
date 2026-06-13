@@ -707,7 +707,7 @@ public abstract class Piece
     public Comparable<?> getKey ()
     {
         if (_key == null) {
-            _key = new Integer(pieceId);
+            _key = Integer.valueOf(pieceId);
         }
         return _key;
     }

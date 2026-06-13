@@ -182,9 +182,9 @@ public class BangController extends GameController
         mapCommand(Keys.Q, "SwingCameraLeft");
         mapCommand(Keys.E, "SwingCameraRight");
         //mapCommand(Keys.G, "ToggleGrid");
-        mapCommand(Keys.NUM_1, PLACE_CARD, new Integer(0));
-        mapCommand(Keys.NUM_2, PLACE_CARD, new Integer(1));
-        mapCommand(Keys.NUM_3, PLACE_CARD, new Integer(2));
+        mapCommand(Keys.NUM_1, PLACE_CARD, Integer.valueOf(0));
+        mapCommand(Keys.NUM_2, PLACE_CARD, Integer.valueOf(1));
+        mapCommand(Keys.NUM_3, PLACE_CARD, Integer.valueOf(2));
     }
 
     @Override // documentation inherited
@@ -446,7 +446,7 @@ public class BangController extends GameController
 
         } else if (activeCard != null && activeCard.getPlacementMode() ==
                 Card.PlacementMode.VS_CARD && card.owner != _pidx) {
-            activateCard(activeCard.cardId, new Integer(card.cardId));
+            activateCard(activeCard.cardId, Integer.valueOf(card.cardId));
 
         } else if (card.getPlacementMode() == Card.PlacementMode.VS_BOARD) {
             activateCard(card.cardId, null);

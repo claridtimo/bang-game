@@ -99,7 +99,7 @@ public class LightDialog extends JDialog
             
             setBorder(BorderFactory.createTitledBorder(null,
                 _ctx.xlate("editor", MessageBundle.tcompose("m.light_name",
-                    new Integer(idx)))));
+                    Integer.valueOf(idx)))));
             
             add(azimuth = new ValuePanel(
                 _ctx.xlate("editor", "m.light_azimuth"), -180, +180, 0));

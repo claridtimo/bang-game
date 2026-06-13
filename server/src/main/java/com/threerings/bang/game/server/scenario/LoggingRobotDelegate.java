@@ -193,7 +193,7 @@ public class LoggingRobotDelegate extends ScenarioDelegate
             Unit unit = Unit.getUnit(LoggingRobot.UNIT_TYPES[type]);
             unit.assignPieceId(bangobj);
             unit.position(bspot.x, bspot.y);
-            unit.lastActed += (bangobj.tick - 1);
+            unit.lastActed = (short)(unit.lastActed + (bangobj.tick - 1));
             _bangmgr.addPiece(unit, AddPieceEffect.DROPPED);
             _living[type]++;
         }

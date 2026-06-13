@@ -294,7 +294,7 @@ public abstract class Card extends SimpleStreamableObject
     public Comparable<?> getKey ()
     {
         if (_key == null) {
-            _key = new Integer(cardId);
+            _key = Integer.valueOf(cardId);
         }
         return _key;
     }

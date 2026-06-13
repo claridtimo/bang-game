@@ -718,7 +718,7 @@ public class StatsView extends SteelWindow
             for (int ii = 0; ii < size; ii++) {
                 max = Math.max(max, getIntStat(ii, statSet, type));
             }
-            map.put(type, new Integer(max));
+            map.put(type, Integer.valueOf(max));
         }
 
         // Add the stat details

@@ -115,7 +115,7 @@ public class VETMesh {
 
  public void insertTriangle(int ivert0, int ivert1, int ivert2) {
   boolean hadTri = false, hadV0 = false, hadV1 = false, hadV2 = false, hadE0 = false, hadE1 = false, hadE2 = false;
-  Integer vert0 = new Integer(ivert0), vert1 = new Integer(ivert1), vert2 = new Integer(
+  Integer vert0 = Integer.valueOf(ivert0), vert1 = Integer.valueOf(ivert1), vert2 = Integer.valueOf(
     ivert2);
   Triangle tri = new Triangle(ivert0, ivert1, ivert2);
   Edge edge0 = new Edge(ivert0, ivert1), edge1 = new Edge(ivert1, ivert2), edge2 = new Edge(
@@ -207,7 +207,7 @@ public class VETMesh {
    return;
   }
 
-  Integer vert0 = new Integer(ivert0), vert1 = new Integer(ivert1), vert2 = new Integer(
+  Integer vert0 = Integer.valueOf(ivert0), vert1 = Integer.valueOf(ivert1), vert2 = Integer.valueOf(
     ivert2);
 
   // update edges
@@ -544,7 +544,7 @@ public class VETMesh {
    pkComponent.getTriangles(kTSet);
    pkComponent = null;
 
-   rkIndex.add(new Integer(iIndex));
+   rkIndex.add(Integer.valueOf(iIndex));
    Iterator<Triangle> tsetIter = kTSet.iterator();
    while (tsetIter.hasNext()) {
     Triangle rkT = tsetIter.next();
@@ -554,7 +554,7 @@ public class VETMesh {
    }
   }
 
-  rkIndex.add(new Integer(iIQuantity));
+  rkIndex.add(Integer.valueOf(iIQuantity));
  }
 
  // Extract a connected component from the mesh and remove all the
@@ -750,19 +750,19 @@ public class VETMesh {
 
  public Object getData(int vert) {
   VertexAttribute pkV = vertexMap
-    .get(new Integer(vert));
+    .get(Integer.valueOf(vert));
   return (pkV != null ? pkV.data : null);
  }
 
  public ExVector getEdges(int vert) {
   VertexAttribute pkV = vertexMap
-    .get(new Integer(vert));
+    .get(Integer.valueOf(vert));
   return (pkV != null ? pkV.edgeSet : null);
  }
 
  public ExVector getTriangles(int vert) {
   VertexAttribute pkV = vertexMap
-    .get(new Integer(vert));
+    .get(Integer.valueOf(vert));
   return (pkV != null ? pkV.triangleSet : null);
  }
 

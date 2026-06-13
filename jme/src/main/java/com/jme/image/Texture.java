@@ -903,21 +903,21 @@ public class Texture implements Serializable, Savable {
                 case Image.DXT1_NATIVE:  // DXT1 = 1/8 * blocksize of 8
                 case Image.DXT1A_NATIVE:
                 case Image.RGB888_DXT1:
-                    memReq *= (.125 * 8);
+                    memReq = (int)(memReq * (.125 * 8));
                     break;
                 case Image.DXT3_NATIVE:  // DXT3,5 = 1/8 * blocksize of 16
                 case Image.DXT5_NATIVE:
                 case Image.RGBA8888_DXT1A:
                 case Image.RGBA8888_DXT3:
                 case Image.RGBA8888_DXT5:
-                    memReq *= (.125 * 16);
+                    memReq = (int)(memReq * (.125 * 16));
                     break;
             }
             if (this.getMipmap() >= Texture.MM_NEAREST_NEAREST || image.hasMipmaps()) {
                 if (FastMath.isPowerOfTwo(image.getWidth()) && FastMath.isPowerOfTwo(image.getHeight()))
-                    memReq *= 1.33333f;
+                    memReq = (int)(memReq * 1.33333f);
                 else
-                    memReq *= 2.0f;
+                    memReq = (int)(memReq * 2.0f);
             }
         }
     }
