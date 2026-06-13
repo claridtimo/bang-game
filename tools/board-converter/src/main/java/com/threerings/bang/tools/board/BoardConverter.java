@@ -183,6 +183,7 @@ public class BoardConverter
             tally.gamesFail++;
             tally.problems.add("game " + rel + ": " + t);
             System.out.println("FAIL game  " + rel + ": " + t);
+            if (System.getProperty("convdebug") != null) t.printStackTrace();
         }
     }
 

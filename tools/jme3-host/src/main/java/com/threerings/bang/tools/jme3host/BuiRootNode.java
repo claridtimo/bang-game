@@ -33,6 +33,11 @@ public class BuiRootNode extends BRootNode
         for (int ii = 0, ll = _windows.size(); ii < ll; ii++) {
             BWindow win = _windows.get(ii);
             try {
+                // null is intentional: the jME3 backend ignores BUI's Renderer argument
+                // (it renders through its own RenderManager). This harness therefore only
+                // supports renderer-independent widgets -- a BGeomView, which dereferences
+                // the Renderer (getCamera()/draw()), would NPE here. The real client UI gets
+                // a proper jME3-backed BGeomView at the cutover (see docs/jme3-bui-host.md).
                 win.render(null);
             } catch (Throwable t) {
                 System.err.println("Window failed in render(): " + win);

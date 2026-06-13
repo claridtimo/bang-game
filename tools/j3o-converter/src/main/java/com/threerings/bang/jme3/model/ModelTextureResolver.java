@@ -68,7 +68,8 @@ public class ModelTextureResolver
         String resolved = null;
         if (textures != null && textures.length > 0) {
             // multi-valued => per-instance pick; single-valued => the only entry
-            String pick = textures[textures.length == 1 ? 0 : (_variantIndex % textures.length)];
+            String pick = textures[textures.length == 1 ? 0 :
+                Math.floorMod(_variantIndex, textures.length)];
             resolved = textureAssetPath(typePath, pick);
             try {
                 TextureKey tkey = new TextureKey(resolved, false);

@@ -290,19 +290,22 @@ public class ModelConverter
         int vert = 0;
         for (SkinMesh.WeightGroup group : groups) {
             int gbones = group.bones.length;
+            // a group's bone set (and thus its global bone indices) is constant for every
+            // vertex in the group, so resolve it once instead of per vertex
+            int[] gi = new int[gbones];
+            for (int bb = 0; bb < gbones; bb++) {
+                ModelNode node = group.bones[bb].node;
+                Integer idx = boneIndex.get(node);
+                if (idx == null) {
+                    idx = boneOrder.size();
+                    boneIndex.put(node, idx);
+                    boneOrder.add(node);
+                }
+                gi[bb] = idx;
+            }
+            float[] gw = new float[gbones]; // scratch, refilled per vertex in this group
             for (int vv = 0; vv < group.vertexCount; vv++, vert++) {
-                // gather (boneLocalIndex, weight) pairs for this vertex
-                int[] gi = new int[gbones];
-                float[] gw = new float[gbones];
                 for (int bb = 0; bb < gbones; bb++) {
-                    ModelNode node = group.bones[bb].node;
-                    Integer idx = boneIndex.get(node);
-                    if (idx == null) {
-                        idx = boneOrder.size();
-                        boneIndex.put(node, idx);
-                        boneOrder.add(node);
-                    }
-                    gi[bb] = idx;
                     gw[bb] = group.weights[vv * gbones + bb];
                 }
                 writeVertexInfluences(gi, gw, indices, weights, result);
