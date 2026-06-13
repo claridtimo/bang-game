@@ -1,7 +1,7 @@
 //
 // $Id$
 
-package com.threerings.bang.jme3.model;
+package com.threerings.jme.model;
 
 import com.jme3.asset.AssetManager;
 import com.jme3.asset.AssetNotFoundException;

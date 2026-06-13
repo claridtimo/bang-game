@@ -35,6 +35,7 @@ import com.jme3.scene.VertexBuffer;
 import com.jme3.util.BufferUtils;
 
 import com.threerings.jme.model.Model;
+import com.threerings.jme.model.ModelTextureResolver;
 import com.threerings.jme.model.ModelAnimAccess;
 import com.threerings.jme.model.ModelMesh;
 import com.threerings.jme.model.ModelMeshAccess;
@@ -512,6 +513,7 @@ public class ModelConverter
         String[] names = model.getAnimationNames();
         AnimComposer composer = null;
         StringBuilder loopModes = new StringBuilder();
+        StringBuilder frameRates = new StringBuilder();
         for (String name : names) {
             Model.Animation anim = model.getAnimation(name);
             if (anim == null || anim.transforms == null || anim.transformTargets == null) {
@@ -535,6 +537,13 @@ public class ModelConverter
                 loopModes.append(',');
             }
             loopModes.append(name).append('=').append(loopMode(anim.repeatType));
+            // the runtime app-side Model facade re-exposes the fork Animation.frameRate (sprite
+            // code computes per-frame durations as 1f/frameRate); jME3 clips only carry absolute
+            // times, so preserve the source frame rate per animation as user data.
+            if (frameRates.length() > 0) {
+                frameRates.append(',');
+            }
+            frameRates.append(name).append('=').append(anim.frameRate > 0 ? anim.frameRate : 30);
         }
         if (_skinningControl != null) {
             result.root.addControl(_skinningControl);
@@ -542,6 +551,7 @@ public class ModelConverter
         if (composer != null) {
             result.root.addControl(composer);
             result.root.setUserData("bang.loopModes", loopModes.toString());
+            result.root.setUserData("bang.frameRates", frameRates.toString());
         }
     }
 
