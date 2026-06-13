@@ -151,18 +151,38 @@ windowing, moves with step 6).
 
 ## jME3 backend status & remaining work
 
-See `Jme3RenderBackend` (compileOnly dep on `org.jmonkeyengine:jme3-core:3.9.0-stable`,
-kept off the game's runtime classpath — LWJGL2/LWJGL3 natives must not meet).
+See `Jme3RenderBackend` / `Jme3ImageBacking` (compileOnly dep on
+`org.jmonkeyengine:jme3-core:3.9.0-stable`, kept off the game's runtime classpath —
+LWJGL2/LWJGL3 natives must not meet; verified the client deploy still ships only the fork
+jme jar + LWJGL 2.9.2).
 
-Implemented: textured quads (image pipeline incl. AWT text), solid rects, outlines/lines,
-translate stack, scissor via `setClipRect`, display size, `Jme3RootNode` with
-`RawInputListener`-driven event dispatch.
+**Implemented and compiling** against jme3-core 3.9.0-stable: textured quads (the full image
+pipeline, including the AWT-rendered styled text from `AWTTextFactory` — the fork
+`com.jme.image.Image`'s AWT-raster BGR/ABGR bytes map onto jME3 `BGR8`/`ABGR8` with no
+channel reshuffle), solid rects, rect outlines (four edge rects), lines (thin rects),
+the translate stack (accumulated into geometry world translation), scissor via
+`Renderer.setClipRect`/`clearClipRect`, and display size. Each primitive is a transient
+`Geometry` (Quad + Unshaded material, alpha blend, depth-test off) drawn through
+`RenderManager.renderGeometry`. The host installs the backend with an `AssetManager` and
+brackets each frame with `beginFrame(RenderManager,w,h)` / `endFrame()`.
+
+**Not yet implemented** (honest stopping point for step 3 — these need the rest of Phase 5
+to be exercisable at all):
+1. **Input** — no `Jme3RootNode` yet. `PolledRootNode` is fork/LWJGL2 input glue; the jME3
+   sibling (a `RawInputListener` mapping jME3 keycodes the way the gdx layer maps them today)
+   lands with the core-client port when there is a jME3 application loop to attach it to.
+2. **A runnable demo** — a test-scoped jME3 `SimpleApplication` showing a `BWindow` needs the
+   jME3 + LWJGL3 runtime and a display, which conflict with the shipped LWJGL2 stack; it only
+   becomes meaningful once core-client (step 4) provides the jME3 host.
 
 Remaining for a complete jME3 BUI (estimate):
 1. Type-token swap (`Renderer`→`RenderManager`, `ColorRGBA`, etc.) across bui + app +
    client/shared — mechanical, big diff (~2–3 agent-days incl. fixing the 42 overrides).
-2. `BGeomView` on jME3 ViewPorts (~1 day).
-3. Hardware cursors + window glue once LWJGL3 lands (~1 day).
-4. Texture-pool rework + client `TexturePool` retype (~0.5 day).
-5. Visual regression pass over every screen (the long pole — needs the rest of Phase 5,
+   The seam means BUI's *internals* are already off the fork; this swap is about the
+   pass-through token types in signatures.
+2. `Jme3RootNode` + input listener; wire `beginFrame`/`endFrame` into the jME3 app loop.
+3. `BGeomView` on jME3 ViewPorts (~1 day).
+4. Hardware cursors + window glue once LWJGL3 lands (~1 day).
+5. Texture-pool rework + client `TexturePool` retype (~0.5 day).
+6. Visual regression pass over every screen (the long pole — needs the rest of Phase 5,
    since real screens embed avatars/models).
