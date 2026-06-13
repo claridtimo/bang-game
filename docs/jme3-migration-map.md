@@ -12,7 +12,7 @@ Date: 2026-06-13. All counts measured on branch `jme5/inventory` with grep over
 
 | Metric | Value |
 |---|---|
-| Distinct fork classes imported by Bang code | **94** |
+| Distinct fork classes imported by Bang code | **93** |
 | Files importing the fork (app / bui / client/shared / client/desktop) | **239** (43 / 32 / 164 / 0) |
 | Classes in the fork itself (`jme/` module) | 358 (≈190 of them in subsystems Bang never touches) |
 | Mapping verdicts | **DIRECT 18 · ADAPT 41 · REBUILD 25 · DROP 10** |
@@ -384,3 +384,194 @@ A line-by-line diff against upstream jME 1.0 CVS was not attempted (no upstream
 checkout vendored); the fork-wide `$Id$` headers are unexpanded, so provenance
 beyond the markers above is unknowable cheaply. Mitigation: behavior-level visual
 regression rather than source archaeology.
+
+## 3. The REBUILD workload (project-owned code, not class mapping)
+
+The per-class table (§2) covers the engine fork. The bulk of the actual labour,
+though, is in the two project-owned modules whose public surface survives but whose
+internals are fixed-function and must be rebuilt on jME3 idioms.
+
+### 3.1 `app/` — the OOO framework (56 classes, 43 fork-importing)
+`com.threerings.jme.*` is Three Rings' own layer on the fork; it has no jME3
+counterpart and is reimplemented, not mapped:
+
+- **`JmeApp` main loop** → a `com.jme3.app.SimpleApplication` (or a custom
+  `Application` subclass when the gdx host is retired). `update`/render driving,
+  `Timer`, resize handling (engine-notes §threading: the 1×1-init reinit dance
+  goes away — jME3 owns the context and sizes it correctly).
+- **Camera handlers / `CameraHandler` + `Path`** → `com.jme3.renderer.Camera`
+  (concrete) + app-side controllers; smooth-motion `Path`/`PathController` becomes
+  jME3 `MotionPath`/`CinematicEvent` or a small custom `Control`.
+- **Sprite + model framework** (`Sprite`, `Model`, `ModelMesh`, `SkinMesh`,
+  `ModelNode`, controllers) → the single largest rebuild; see §3.2.
+- **`ShaderCache`/`ShaderConfig`, `ImageCache`** → subsumed by jME3's
+  `AssetManager`, MatDef define-system, and `Texture` caching.
+- **`BatchVisitor`, `SpatialVisitor`** → walk `Geometry`/`Mesh` instead of batches.
+
+### 3.2 The model format + compiler (highest single risk)
+`CompileModelTask` (app/.../jme/tools/CompileModelTask.java — **project code**, not
+nenya-tools) parses `model.properties` + sibling XML/MD/texture sources and writes a
+fork-`BinaryExporter` `model.dat`. 310 models. `SkinMesh` does GLSL hardware skinning
+via `GLSLShaderObjectsState` + `ShaderAttribute`. Rebuild path:
+
+1. Keep the XML/`model.properties` parse (source of truth is unchanged).
+2. Emit jME3 geometry (`Mesh` + `VertexBuffer`s) instead of fork `TriMesh`/batches;
+   serialize to `.j3o` via jME3 `BinaryExporter` *or* build at load time from XML.
+3. Re-express skinning as jME3 `com.jme3.anim` (`SkinningControl`/`Armature`) or a
+   custom skinning MatDef; `SpriteEmission` Savables embedded in `model.dat`
+   (Gunshot/SmokePlume/DudShot/Misfire/Frame/Particle — game/client/sprite) must be
+   re-emitted in the new format.
+   **Consequence: every `model.dat` is regenerated from source by the build (§5), so
+   there is no binary-migration step — but the compiler itself is a rewrite.**
+
+### 3.3 BUI render layer (88 classes, 32 fork-importing; 12 import `org.lwjgl`, 10 of those call `org.lwjgl.opengl.GL*` directly)
+BUI's public component API (BWindow, BButton, layouts, events) is **kept**. What
+changes is how it reaches the screen:
+
+- `BRootNode extends com.jme.scene.Geometry` and overrides `draw(Renderer)` to walk
+  the component tree doing immediate-mode draws in `QUEUE_ORTHO`. jME3 has **no
+  `draw(Renderer)` hook and no immediate mode**. Rebuild `BRootNode` as a `Node` in
+  the `Bucket.Gui` ortho viewport whose render is driven by a custom `SceneProcessor`
+  or per-component `Geometry`+`Material` (quad + textured material + BMFont text).
+- The 10 files calling `org.lwjgl.opengl.GL11`/`GL12` directly (scissor clipping,
+  texture binds, blend setup, `BImage` upload, `LineBorder`) must move to jME3
+  Material/RenderState + `Texture2D` APIs. Scissor-rect clipping (BUI's
+  `intersectScissorBox`) maps to jME3 `GuiViewPort` clip or a stencil/`ClipState`-style
+  custom processor — **no direct jME3 equivalent; this is the fiddliest BUI work.**
+- Input: `PolledRootNode` consumes fork `KeyInput`/`MouseInput` singletons; becomes a
+  single `com.jme3.input.RawInputListener` feeding BUI's event model (§2.10).
+- Alternative (flagged in UPGRADE_PLAN Phase 5 step 3): replace BUI with Lemur —
+  bigger diff, better long-term support, but discards a working, game-tuned toolkit.
+
+## 4. Risk register (ranked REBUILD areas)
+
+Effort in agent-days, ordered by risk = effort × fidelity-uncertainty.
+
+| # | Area | Effort | Why it is risky |
+|---|---|---|---|
+| 1 | **Model pipeline + compiler + hardware skinning** (§3.2) | 15–25 d | Custom binary format, GLSL skinning, embedded emission Savables; blocks everything visual; no reference port exists. jME3 anim system is structurally different from the fork's `BoneTransform` controllers. |
+| 2 | **BUI render layer + scissor clipping** (§3.3) | 10–18 d | Immediate-mode `draw(Renderer)` has no jME3 hook; scissor clipping has no clean equivalent; 10 raw-GL files; whole UI must keep pixel fidelity or every screen regresses. |
+| 3 | **Board renderer: terrain splat + water + sky** (TerrainNode 2,182 ln, WaterNode 526 ln, SkyNode) | 12–20 d | Multi-texture splat combine modes (`Texture.setApply`) have **no jME3 equivalent** → custom MatDef per splat layer; WaterNode pokes renderer internals + needs GL-thread init + reflection FBO; highest fidelity-risk per UPGRADE_PLAN itself. |
+| 4 | **Render-state → Material conversion across all call sites** (§2.4, RenderUtil 587 ln central) | 8–14 d | Every `setRenderState` site changes shape; `RenderUtil`'s shared-state factory becomes a shared-Material library; touches ~45 board-renderer + all sprite/effect files. Mechanical but vast and easy to regress blend/depth ordering. |
+| 5 | **Particle systems** (§2.11; 60 `.jme` + hand-built emission geometry) | 8–12 d | fork `ParticleGeometry`/influence model ≠ jME3 `ParticleEmitter`/`ParticleInfluencer`; 60 binary defs need an offline converter; Gunshot/SmokePlume build geometry by hand. Custom influencers (wind/drag) have no built-in jME3 analogue. |
+| 6 | DisplaySystem service-locator removal (§2.5) | 4–7 d | 27 files call `getDisplaySystem()...`; architectural — thread `AssetManager`/`RenderManager`/`Camera` through call sites. Mechanical, wide, low fidelity risk. |
+| 7 | Input model (§2.10) | 3–5 d | Polled → listener; small consumer count but couples to BUI rebuild and the gdx-retirement seam. |
+| 8 | Camera handlers / paths / `JmeApp` loop (§3.1) | 4–6 d | Concrete jME3 Camera + app model; modest, mostly straightforward. |
+| 9 | Editor (heightmaps, wireframe, light dialog) | 3–5 d | jme3-terrain heightmaps exist (§2.12); Swing-embedded GL canvas (`LwjglCanvas`) → jME3 `AWTPanels`/`JmeCanvasContext`; editor-only, deferrable. |
+
+**Aggregate REBUILD effort ≈ 70–110 agent-days (3.5–5.5 agent-months)**, before
+integration, per-town visual regression, and bug-fix tail. UPGRADE_PLAN's "2–3
+months" is optimistic for the rebuild bottom-up but plausible *with heavy parallelism
+and human visual review*; items 1–3 are the schedule-defining critical path and are
+mutually fairly independent, so they parallelize well.
+
+## 5. Asset inventory: regenerate vs. convert
+
+The decisive fact: **the fork `BinaryImporter`/`BinaryExporter` on-disk format and
+its embedded class names are incompatible with jME3's** — no existing binary asset is
+readable by jME3. Disposition splits by whether a source-of-truth exists.
+
+### 5.1 Regenerate from source (no conversion needed)
+| Asset | Count | Source of truth | Action |
+|---|---|---|---|
+| `model.dat` | 310 (`model.properties`) | XML / `model.properties` | rebuilt by the (rewritten) compiler each `assets:deploy` — §3.2 |
+| Avatar bundles, compiled configs | many | XML under `rsrc/` | regenerated by `assets:processResources` (already so; nenya-side, format-stable) |
+
+These are **not migrated** — the pipeline already rebuilds them from XML every build
+(UPGRADE_PLAN risk row "Compiled binary configs… regen, don't reuse" applies here).
+
+### 5.2 Convert offline (binary is the source of truth — no XML to regenerate from)
+| Asset | Count | Format | Action |
+|---|---|---|---|
+| `.board` (game boards) | 168 (`assets/rsrc/boards/<n>/`, + town backdrops) | fork `BinaryExporter` Savable graph (`BoardFile`→`BangBoard`+`Piece[]`) | one-time converter: load with the **legacy fork reader retained as a tool**, re-save via jME3 (or via Narya streaming — see §6). The server reads these at startup; the board *editor* writes them. |
+| bounty `.game` | 196 (`assets/rsrc/bounties/…`) | fork `BinaryExporter` (`BangConfig`+`Criterion` Savables) | same one-time converter. |
+| `particles.jme` | 60 (`assets/rsrc/effects/…`) | fork `BinaryExporter` `ParticleGeometry` | converter must **re-author** as jME3 `ParticleEmitter` params (structural mismatch §2.11) — not a mechanical re-save; likely a parameter-extraction script + hand tuning. |
+
+**Retention plan:** keep a *read-only* slice of the fork's export subsystem
+(`util.export` + `util.export.binary` + `binary.modules`, ~25 classes) compiled into
+a **one-shot conversion tool**, not the runtime. Run it once to migrate the 424
+binary assets, then delete it. This is the only fork code that survives past the port,
+and only transiently.
+
+### 5.3 Total binary-asset migration: 424 files
+168 `.board` + 196 `.game` + 60 `particles.jme`. Boards/bounties are
+mechanical re-saves; particles are re-authoring (folded into risk #5).
+
+## 6. Corrections, migration order, and the LWJGL2→LWJGL3 cutover seam
+
+### 6.1 Corrections to prior docs (verified this inventory)
+- **`.board`/`.game` are fork `BinaryExporter` Savables, NOT Narya streaming.**
+  `docs/engine-notes.md` §Boards calls a board "a serialized `BoardData` written with
+  Narya's streaming system." Verified false for the on-disk file:
+  `BoardFile.loadFrom` calls `com.jme.util.export.binary.BinaryImporter.getInstance().load(...)`
+  and `BoardFile implements com.jme.util.export.Savable`
+  (client/shared/.../game/util/BoardFile.java:13-19,71,80,89,98). `BoardData` *is*
+  Narya-`Streamable` for the **wire** (server→client), but the **file** is jME binary.
+  This makes the 168+196 files a jME-format migration concern, exactly the kind
+  UPGRADE_PLAN Phase 5 must own — they do **not** "rebuild from XML."
+- **Boards live in `assets/rsrc/boards/`** (168 verified), consistent with
+  engine-notes; the earlier draft's "`data/boards/`" note is corrected to `rsrc/`.
+- **`CompileModelTask` is project code** (app/.../jme/tools/CompileModelTask.java),
+  not nenya-tools as UPGRADE_PLAN Phase 5 step 2 implies ("the XML→`.jme` binary
+  compiler (`CompileModelTask`)" — it *is* the fork-binary compiler, and **we own its
+  source**, which de-risks the rewrite).
+- jME3 `BinaryImporter`/`BinaryExporter` live under **`jme3-core/src/plugins/`** (not
+  `main`); `FogFilter` is in **`jme3-effects`**; heightmaps in **`jme3-terrain`**.
+  Dependency implication: the port pulls `jme3-core`, `jme3-effects`, `jme3-terrain`,
+  `jme3-lwjgl3`, and `jme3-plugins`/`jme3-blender` (for asset IO) — not core alone.
+- jME3 `OrientedBoundingBox` exists but is a **dead stub** (1,520 lines, 1,483 of them
+  commented out) — REBUILD verdict stands.
+
+### 6.2 Recommended migration order
+Bottom-up, so each layer compiles against a working layer below it:
+
+1. **Math/bounding bulk-rename** (DIRECT/ADAPT, §2.1) — pure import swaps; makes the
+   tree compile against `com.jme3.math.*`. Do first, mechanically, one commit.
+2. **Savable/export rename** (§2.7) for the in-memory classes (Model, Piece, Config);
+   plus stand up the §5.2 conversion tool.
+3. **Model compiler + format + skinning** (risk #1) — unblocks all geometry.
+4. **Render-state → Material** layer (`RenderUtil`, risk #4) — the shared-Material
+   library everything else draws from.
+5. **app framework** (JmeApp loop, camera, sprites — §3.1) on a `SimpleApplication`.
+6. **Board renderer** (terrain/water/sky, risk #3) + **particles** (risk #5).
+7. **BUI render layer** (risk #2) + input (risk #7).
+8. **Editor** (risk #9), then per-town visual regression.
+
+### 6.3 The LWJGL2 → LWJGL3 cutover seam (single hard switch)
+**The two engines cannot share a window or GL context.** Today (engine-notes §rendering
+stack): libGDX 1.5.4 (`LwjglApplication`) owns the LWJGL **2.9** window + GL context +
+main loop + input + the OpenAL device; the fork renders into that context; BUI renders
+inside the fork; the vendored `com.threerings.openal` shares gdx's AL device. jME3
+ships its own context on **LWJGL 3** (`jme3-lwjgl3`, `LwjglWindow`/GLFW).
+
+Therefore the cutover is **one atomic switch**, and the seam must sit at the
+**application-host boundary — `BangDesktop`/`BangApp` (gdx `ApplicationListener`) and
+`EditorDesktop`**, replacing them with a jME3 `Application`/`JmeContext` that creates
+the LWJGL3 window directly. There is **no incremental dual-context phase**: you cannot
+run jME3 geometry inside the LWJGL2/gdx context, nor the fork inside LWJGL3. Practical
+sequencing:
+
+- Steps 1–4 above are **engine-agnostic** (code/format changes) and can land while the
+  app still boots on the old fork+gdx+LWJGL2 host — they keep the legacy build alive.
+- The host switch happens **with step 5** (app framework on `SimpleApplication`): at
+  that commit the window/context/loop/input flip from gdx+LWJGL2 to jME3+LWJGL3 in one
+  move. UPGRADE_PLAN Phase 5 step 6 ("switch windowing to LWJGL3… comes free with jME3")
+  is right that it is free, but **wrong that it is a late, optional step** — it is the
+  unavoidable hinge of step 5 and everything after it runs on LWJGL3.
+- **Sound moves with the window.** Retiring gdx removes the AL device owner; the
+  vendored `com.threerings.openal` must bind to a device the new host opens (jME3's
+  audio context, also LWJGL3-`al`), or be replaced by jME3 `AudioRenderer`. This is a
+  Phase-5 dependency UPGRADE_PLAN's outline does not mention.
+- **libGDX can then be removed entirely** (it only does window/input/AL, all covered by
+  jME3) — the 25 gdx-using files collapse to the host shim. The 29 client/app files
+  using `org.lwjgl` directly (LWJGL2 API) must move to LWJGL3 signatures
+  (`ByteBuffer`/`MemoryStack` style) at the same seam.
+
+### 6.4 What this invalidates in UPGRADE_PLAN Phase 5
+- Step 2 mis-attributes `CompileModelTask` to nenya-tools and calls the output `.jme`;
+  it is project-owned and emits `model.dat` (good news: we own the rewrite).
+- Step 6 frames LWJGL3 as a free, late, optional step. It is unavoidable and is the
+  hinge of step 4/5 (app host), not a tail item; and it drags **OpenAL/sound** with it.
+- The "regen, don't reuse" risk-register line does **not** cover `.board`/`.game`:
+  those have no XML source and need a one-time fork→jME3/Narya **conversion tool**
+  (§5.2), an asset-migration task absent from the current plan.
