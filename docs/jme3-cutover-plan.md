@@ -324,8 +324,22 @@ cluster still needs).** All paths under `client/shared/.../com/threerings/bang/`
 - **Checkpoint:** client launches a jME3 window and reaches the login/town view.
 
 ### Phase 4 — Board renderer + effects
-- Terrain splatting, water reflection, skybox; re-author the 60 `particles.jme` as jME3
-  `ParticleEmitter` params. **Checkpoint:** a board renders in-game.
+Split into sub-phases as the work fell out (checkpoint: a board renders in-game with fidelity
+approaching the fork baselines in `baseline/fork-before/`):
+- **4a — DONE:** multi-texture terrain splat (custom `TerrainSplat.j3md`), board background/fog
+  color to the host ViewPort, + two real bugs fixed along the way: BUI textured-image channel
+  scramble (the pink UI cast — ABGR8 endianness) and instant idle-out (`Jme3RootNode` tick stamp
+  uninitialized → passive clients logged out in ~10s). Units, fences/small props, combat-effect
+  icons, shadows, and the HUD render correctly.
+- **4b — IN PROGRESS:** building/large-prop materials render untextured white (placeholder
+  `Lighting.j3md` bake path doesn't bind their per-submesh textures / or normals/lighting blow out).
+  The last big visible fidelity gap. Fix in the `tools/j3o-converter` bake layer (general, not
+  per-model).
+- **4c — TODO (implemented, unverified):** water Fresnel sphere-map reflection (`BangWater.j3md`)
+  is written but was never reached in an autoplay session — needs verification on a water board.
+- **4d — TODO:** particles — the 60 `particles.jme` are still a degraded single-blob; re-author as
+  jME3 `ParticleEmitter` params (combat-effect icons already render). The `*Emission` controllers
+  exist as jME3 `AbstractControl`s from Phase 2, awaiting real emitters.
 
 ### Phase 5 — Editor + visual regression
 - `bangeditor` on a jME3 AWT canvas; per-town visual regression against pre-cutover screenshots.
