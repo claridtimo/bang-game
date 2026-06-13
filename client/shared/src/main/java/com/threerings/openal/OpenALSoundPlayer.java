@@ -19,6 +19,7 @@
 
 package com.threerings.openal;
 
+import java.util.ArrayList;
 import java.util.Map;
 
 import java.io.ByteArrayInputStream;
@@ -324,7 +325,9 @@ public class OpenALSoundPlayer extends SoundPlayer
             public void run () {
                 _group.dispose();
                 _locked.clear();
-                for (Stream stream : _alSoundManager.getStreams()) {
+                // deviation from vendored nenya: getStreams() returns the live list and
+                // dispose() removes from it, so iterate a snapshot to avoid a CME
+                for (Stream stream : new ArrayList<Stream>(_alSoundManager.getStreams())) {
                     stream.dispose();
                 }
             }

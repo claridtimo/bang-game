@@ -591,7 +591,7 @@ public class RatingRepository extends SimpleRepository
             JDBCUtil.addColumn(conn, "RANKS", "WEEK", "DATE NULL DEFAULT NULL", "`RANK`");
             JDBCUtil.dropPrimaryKey(conn, "RANKS");
             Statement stmt = conn.createStatement();
-            stmt.execute("alter table RANKS add UNIQUE INDEX (RATING_TYPE, RANK, WEEK)");
+            stmt.execute("alter table RANKS add UNIQUE INDEX (RATING_TYPE, `RANK`, WEEK)");
             stmt.close();
         }
         // END TEMP

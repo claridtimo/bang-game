@@ -145,13 +145,16 @@ tasks.register("compileModels") {
     }
 
     // CompileModelTask swallows per-file errors (and one observed build produced zero
-    // outputs while still reporting success), so verify the staged output count matches
-    // the source count and fail loudly on any shortfall.
-    def expected = fileTree("rsrc").matching { include "**/model.properties" }.files.size()
-    def actual = fileTree(stagingDir).matching { include "**/model.dat" }.files.size()
-    if (actual < expected) {
-      throw new GradleException("Model compilation incomplete: ${actual} model.dat " +
-        "file(s) in ${stagingDir} for ${expected} model.properties source(s). " +
+    // outputs while still reporting success), so verify each source has a staged
+    // model.dat; aggregate counts could be satisfied by stale outputs from prior builds.
+    def srcRoot = file("rsrc").toPath()
+    def stagedRoot = file(stagingDir)
+    def missing = fileTree("rsrc").matching { include "**/model.properties" }.files.collect {
+      srcRoot.relativize(it.toPath().parent).toString()
+    }.findAll { !new File(stagedRoot, "${it}/model.dat").exists() }
+    if (!missing.empty) {
+      throw new GradleException("Model compilation incomplete: no model.dat staged for " +
+        "${missing.size()} model(s), starting with: ${missing.take(5).join(', ')}. " +
         "Check the compileModels output for errors.")
     }
   }

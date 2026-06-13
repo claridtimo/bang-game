@@ -840,6 +840,12 @@ public class GangRepository extends JORARepository
             "INDEX (GANG_ID)",
         }, "");
 
+        // TEMP: rename the legacy RANK column (a reserved word as of MySQL 8)
+        if (JDBCUtil.tableContainsColumn(conn, "GANG_MEMBERS", "RANK")) {
+            JDBCUtil.changeColumn(conn, "GANG_MEMBERS", "`RANK`", "GANG_RANK TINYINT NOT NULL");
+        }
+        // END TEMP
+
         // TEMP: add command order, scrip donated, coins donated columns
         JDBCUtil.addColumn(conn, "GANG_MEMBERS", "COMMAND_ORDER", "INTEGER NOT NULL", "GANG_RANK");
         JDBCUtil.addColumn(conn, "GANG_MEMBERS", "SCRIP_DONATED", "INTEGER NOT NULL", "NOTORIETY");
