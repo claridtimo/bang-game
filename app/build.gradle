@@ -31,6 +31,9 @@ dependencies {
   // threaded through app's public surface. (bui also exports it; declared here explicitly so
   // app does not rely on a transitive provider.)
   api "org.jmonkeyengine:jme3-core:${jme3Version}"
+  // terrain heightmap generators (editor) + post-process effects (fog, etc.)
+  api "org.jmonkeyengine:jme3-terrain:${jme3Version}"
+  api "org.jmonkeyengine:jme3-effects:${jme3Version}"
 
   // build-time model compiler source set: the fork engine + nenya-tools + ant + digester.
   modeltoolImplementation project(":jme")
