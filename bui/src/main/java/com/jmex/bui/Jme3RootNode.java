@@ -39,6 +39,12 @@ public class Jme3RootNode extends BRootNode
 {
     public Jme3RootNode ()
     {
+        // Seed the tick stamp immediately. getTickStamp() must return a valid wall-clock value
+        // before the first updateRootState frame: BangClient.IdleTracker.start() samples it as its
+        // baseline _lastEventStamp, and if it read the field's default 0 the idle delta would be
+        // ~System.currentTimeMillis() (decades) on the very first expire() tick, logging a passive
+        // (no-input) client out instantly.
+        _tickStamp = System.currentTimeMillis();
     }
 
     /**
