@@ -243,7 +243,7 @@ public class SkyNode extends Node
         for (int i = 0; i < size; i++) {
             float s = i / (size-1f),
                 a = FastMath.exp(-falloff * s);
-            tcolor.interpolate(ocolor, hcolor, a);
+            tcolor.interpolateLocal(ocolor, hcolor, a);
 
             pbuf.put((byte)(tcolor.r * 255));
             pbuf.put((byte)(tcolor.g * 255));

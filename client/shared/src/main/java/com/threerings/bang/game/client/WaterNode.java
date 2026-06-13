@@ -170,7 +170,7 @@ public class WaterNode extends Node
                             FastMath.tan(thetat + thetai);
                         reflectivity = 0.5f * (fs*fs + ts*ts);
                     }
-                    color.interpolate(wcolor, scolor, reflectivity);
+                    color.interpolateLocal(wcolor, scolor, reflectivity);
                 } else {
                     color.set(ColorRGBA.Black);
                 }

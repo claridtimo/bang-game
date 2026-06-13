@@ -916,9 +916,9 @@ public class TerrainNode extends Node
         getHeightfieldNormal(cx, cy, cc);
         float ax = x - fx, ay = y - fy;
 
-        fffc.interpolate(ff, fc, ay);
-        cfcc.interpolate(cf, cc, ay);
-        result.interpolate(fffc, cfcc, ax);
+        fffc.interpolateLocal(ff, fc, ay);
+        cfcc.interpolateLocal(cf, cc, ay);
+        result.interpolateLocal(fffc, cfcc, ax);
         result.normalizeLocal();
         return result;
     }
@@ -1418,7 +1418,7 @@ public class TerrainNode extends Node
             for (int y = ebounds.y, ymax = y+ebounds.height; y < ymax; y++) {
                 for (int x = ebounds.x, xmax = x+ebounds.width; x < xmax;
                         x++) {
-                    color.interpolate(ColorRGBA.White, ColorRGBA.Black,
+                    color.interpolateLocal(ColorRGBA.White, ColorRGBA.Black,
                         getShadowValue(x, y));
                     BufferUtils.setInBuffer(color, cbuf, idx++);
                 }
