@@ -24,10 +24,10 @@ import com.jmex.bui.BImage;
  * The {@link BImageBacking} implementation on jMonkeyEngine 3.
  *
  * <p> The jME3 {@link com.jme3.texture.Image} handed to {@link #setImage} is a plain pixel
- * container produced by {@link BImage} from an AWT raster: byte order is BGR
- * ({@code TYPE_3BYTE_BGR}) or ABGR ({@code TYPE_4BYTE_ABGR}), which map directly onto jME3's
- * {@link com.jme3.texture.Image.Format#BGR8 BGR8} / {@link com.jme3.texture.Image.Format#ABGR8
- * ABGR8} with no channel reshuffle. The pixels become a {@link Texture2D} on an
+ * container produced by {@link BImage} with straight R,G,B[,A] byte order, i.e.
+ * {@link com.jme3.texture.Image.Format#RGB8 RGB8} / {@link com.jme3.texture.Image.Format#RGBA8
+ * RGBA8} (which map to GL_RGB/GL_RGBA + GL_UNSIGNED_BYTE, byte-order independent). The pixels
+ * become a {@link Texture2D} on an
  * {@code Unshaded} material; rendering issues a textured {@link Quad} geometry through the
  * backend's render manager, honoring the translate and scissor stacks set up by
  * {@link Jme3RenderBackend}.

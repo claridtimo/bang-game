@@ -91,10 +91,9 @@ public class BImage
             theight = nextPOT(theight);
         }
 
-        // render the image into a raster of the proper format
+        // render the image into a standard ARGB raster we can read pixel-exactly
         boolean hasAlpha = hasAlpha(image);
-        int type = hasAlpha ? BufferedImage.TYPE_4BYTE_ABGR : BufferedImage.TYPE_3BYTE_BGR;
-        BufferedImage tex = new BufferedImage(twidth, theight, type);
+        BufferedImage tex = new BufferedImage(twidth, theight, BufferedImage.TYPE_INT_ARGB);
         AffineTransform tx = null;
         if (flip) {
             tx = AffineTransform.getScaleInstance(1, -1);
@@ -104,17 +103,27 @@ public class BImage
         gfx.drawImage(image, tx, null);
         gfx.dispose();
 
-        // grab the image memory and stuff it into a direct byte buffer
-        ByteBuffer scratch = ByteBuffer.allocateDirect(
-            (hasAlpha ? 4 : 3) * twidth * theight).order(ByteOrder.nativeOrder());
-        byte data[] = (byte[])tex.getRaster().getDataElements(0, 0, twidth, theight, null);
-        scratch.clear();
-        scratch.put(data);
+        // Build the pixel buffer with explicit R,G,B[,A] byte order and hand it to jME3 as
+        // RGBA8/RGB8. We must NOT use jME3's ABGR8 over an AWT TYPE_4BYTE_ABGR raster: jME3 maps
+        // ABGR8 to GL_RGBA + GL_UNSIGNED_INT_8_8_8_8, whose packing is endianness-sensitive and on
+        // little-endian hardware scrambles the channels (UI rendered with a pink/red cast). RGBA8
+        // and RGB8 map to GL_RGBA/GL_RGB + GL_UNSIGNED_BYTE, which is byte-order independent.
+        int bpp = hasAlpha ? 4 : 3;
+        ByteBuffer scratch = ByteBuffer.allocateDirect(bpp * twidth * theight)
+            .order(ByteOrder.nativeOrder());
+        int[] argb = tex.getRGB(0, 0, twidth, theight, null, 0, twidth);
+        for (int i = 0; i < argb.length; i++) {
+            int p = argb[i];
+            scratch.put((byte)((p >> 16) & 0xFF)); // R
+            scratch.put((byte)((p >> 8) & 0xFF));  // G
+            scratch.put((byte)(p & 0xFF));         // B
+            if (hasAlpha) {
+                scratch.put((byte)((p >> 24) & 0xFF)); // A
+            }
+        }
         scratch.flip();
 
-        // TYPE_3BYTE_BGR maps to jME3 BGR8, TYPE_4BYTE_ABGR maps to ABGR8 -- no channel
-        // reshuffle (see Jme3ImageBacking).
-        Image.Format format = hasAlpha ? Image.Format.ABGR8 : Image.Format.BGR8;
+        Image.Format format = hasAlpha ? Image.Format.RGBA8 : Image.Format.RGB8;
         Image textureImage = new Image(format, twidth, theight, scratch, ColorSpace.sRGB);
 
         setImage(textureImage);
