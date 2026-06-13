@@ -144,7 +144,14 @@ public class Jme3RootNode extends BRootNode
                 this, _tickStamp, _modifiers, KeyEvent.KEY_RELEASED, (char)0, code));
             _pressed = -1;
         }
-        kie.setConsumed();
+        // jME3 cutover: only swallow the key event when a BUI component actually has focus (text
+        // entry, chat, etc.). When nothing is focused the event must fall through to the
+        // InputManager mappings so the camera AnalogListener (GodViewHandler: WASD pan / zoom /
+        // orbit) still receives it. Consuming unconditionally here was why WASD panning was dead
+        // (the raw listener ran before the mapping triggers and ate every key).
+        if (_focus != null) {
+            kie.setConsumed();
+        }
     }
 
     // from interface RawInputListener

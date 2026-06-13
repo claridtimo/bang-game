@@ -500,20 +500,28 @@ jME3 `AbstractControl`s from Phase 2, awaiting real emitters.
 **6b — remaining live-render & input defects** (observed on live boards 2026-06-13; cluster-1/3
 fidelity + Phase-3 input):
 
-- **Claim/counter numbers render sideways (rotated ~90°).** The floating gold-claim nugget count is a
-  camera-facing billboard. `GenericCounterNode.createGeometry` (and `CounterSprite`) now do
-  `bbn.addControl(new BillboardControl())` with the **default alignment** (jME3
-  `BillboardControl.Alignment.Screen`). The fork used `BillboardNode` (SCREEN_ALIGNED) on a **Z-up**
-  board scene graph (the counter is translated along +Z = up). jME3's `Screen`/`Camera` billboard
-  alignment assumes **Y-up** for the billboard's up vector, so the text quad's up-axis ends up
-  perpendicular to screen-up → sideways glyphs. Fix: set the alignment / billboard up-vector to match
-  the board's Z-up convention (try `Alignment.Camera`, and/or pre-rotate the count `Quad` so its
-  texture-up maps to the board's up), then re-check against the fork screenshots. Files:
-  `game/client/sprite/GenericCounterNode.java:54`, `game/client/sprite/CounterSprite.java:107`. Same
-  default-`BillboardControl` pattern also appears in `PieceTarget`, `OneArmedBanditSprite`, and the
-  effect viz (`IconViz`/`IconInfluenceViz`/`HeroInfluenceViz`) — audit all of them for the same
-  up-axis issue while here. (This is the visual side of migration-map risk row "BillboardNode→
-  BillboardControl: alignment enums map".)
+- **Claim/counter numbers render sideways (rotated ~90°). [FIXED 2026-06-14]** The original
+  hypothesis (billboard `Alignment.Screen` Y-up vs. board Z-up) was **wrong**: `Screen` mode aligns
+  the quad's local +Y to `camera.getUp()` directly (screen-up), which is correct regardless of the
+  board's up-axis, and the icon billboards (`PieceTarget`, `OneArmedBanditSprite`, `IconViz`,
+  `IconInfluenceViz`) were never rotated. The real root cause was a **transposed UV assignment** in
+  `RenderUtil.createTextTexture`: the ported `tcoords` were `(0,0),(0,h),(w,h),(w,0)` assigned to the
+  jME3 `com.jme3.scene.shape.Quad` vertex order (BL, BR, TR, TL). That maps the texture's U axis (the
+  text's reading direction) onto the quad's **+Y** and V onto **+X** → every glyph rotated 90°. jME3's
+  `Quad` winds BL/BR/TR/TL with canonical UVs `(0,0),(1,0),(1,1),(0,1)` (verified against engine
+  source `Quad.updateGeometry`); the working `IconConfig.createIcon`/`FrameControl` paths already use
+  that winding. **Fix:** reorder the `tcoords` in `RenderUtil.createTextTexture` to
+  `(0,0),(w,0),(w,h),(0,h)` so U→local X and V→local Y. This is a single central fix that corrects
+  **every** text billboard at once: `CounterSprite`, `GenericCounterNode`, `HeroInfluenceViz` (level
+  count), and `DamageIconViz` — all route through `createTextTexture`/`createTextQuad`. The
+  `BillboardControl` `Alignment.Screen` on those sites was left as-is (it is correct). Audited the
+  icon billboards too (`PieceTarget`, `OneArmedBanditSprite`, `IconViz`, `IconInfluenceViz`): they use
+  plain `Quad` default UVs / `FrameControl`'s canonical-winding UVs and are not affected. File changed:
+  `client/shared/.../util/RenderUtil.java` (`createTextTexture` tcoords). Verified: jME3 `Quad` UV
+  winding confirmed from engine source and matched against the corrected ordering; live `bin/devtest`
+  gold-rush (`-Dscenario=gr`) board rendered with the fix in place (the dev `-mx128M` autoplay heap
+  OOMs before a claim counter could be deterministically framed, so the conclusive proof is the
+  source-level winding match plus the identical-convention icon path rendering upright live).
 - **Mounted/horse big-shot character model renders incorrectly.** The horse (mounted unit big-shot)
   model is wrong on the live board — needs a closer look to classify: skinning/anim (SkinningControl
   / AnimComposer mis-bind from the `.j3o` bake), a wrong variant/clone via the Phase-2 `Model` facade
@@ -571,11 +579,22 @@ fidelity + Phase-3 input):
   mounted cowboy / buffalo + rider) instead of the previous contortion. Repro:
   `./gradlew :assets:compileModels --rerun-tasks` then
   `./gradlew :tools:j3o-converter:renderModelToPng -PmodelType=units/frontier_town/shotgunner -Panim=standing -Ptime=0 -Pout=/tmp/rest.png`.
-- **WASD camera panning doesn't work at all** (functional, not cosmetic). `GodViewHandler` is a jME3
-  `AnalogListener`, but its `registerWith(InputManager)` was deferred at the Phase-3 host flip and is
-  never called, so keyboard pan/zoom never reaches the camera. Wire it in the jME3 host
-  (`BangApp`/`GameInputHandler`). Until fixed, agents can't pan to compose shots — pick boards whose
-  default camera frames the subject.
+- **WASD camera panning doesn't work at all** (functional, not cosmetic). **[FIXED 2026-06-14]** The
+  original diagnosis (`GodViewHandler.registerWith(InputManager)` never called) was **stale**: the
+  Phase-3 host flip commit (`8fdb90453`) already calls `_inputHandler.registerWith(inputManager)` in
+  `JmeApp.simpleInitApp`, and `GameInputHandler.registerWith` maps W/A/S/D → FORWARD/BACKWARD/LEFT/
+  RIGHT and adds the listener. The actual bug was in the **BUI raw-input bridge**: `Jme3RootNode.
+  onKeyEvent` called `kie.setConsumed()` on **every** key event unconditionally. jME3 runs raw-input
+  listeners before mapping/trigger dispatch, so a consumed event never reaches the `InputManager`
+  mappings — BUI was swallowing every keystroke before the camera `AnalogListener` could see it.
+  **Fix:** only consume the key event when a BUI component actually has focus (`_focus != null`, i.e.
+  text entry / chat); otherwise let it fall through to the camera mappings. File changed:
+  `bui/.../Jme3RootNode.java` (`onKeyEvent`). Added a one-shot verification log in `GodViewHandler`
+  (`registerWith` + first `onAnalog`). **Verified live** (`bin/devtest`, no `--shot`, held open): drove
+  a W keypress burst via python-xlib XTest into the focused client window — the client log emitted
+  `GodViewHandler received camera input. [action=forward, ...]`, and before/after screenshots show the
+  board pan (camera location moved). A-key likewise pans. Without focus, WASD now reaches the camera;
+  with a focused text field, BUI still consumes keys (correct).
 
 ### Phase 7 — Editor + visual regression
 - `bangeditor` on a jME3 AWT canvas; per-town visual regression against pre-cutover screenshots,
