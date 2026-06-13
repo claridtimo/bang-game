@@ -71,6 +71,7 @@ public class VerifyCorpus
         int staticCount = 0, animated = 0, skinned = 0, withControllers = 0, withSkipped = 0;
         int clampedModels = 0;
         long totalGeoms = 0, totalAnims = 0, totalSkinnedMeshes = 0;
+        long totalJoints = 0, totalTracks = 0;
         List<String> failures = new ArrayList<>();
 
         for (File dat : dats) {
@@ -83,6 +84,8 @@ public class VerifyCorpus
                 totalGeoms += r.geometries;
                 totalAnims += r.animations.size();
                 totalSkinnedMeshes += r.skinnedMeshes;
+                totalJoints += r.armatureJoints;
+                totalTracks += r.animTracks;
                 if (r.isSkinned()) skinned++;
                 if (r.isAnimated()) animated++;
                 if (!r.isSkinned() && !r.isAnimated()) staticCount++;
@@ -133,7 +136,9 @@ public class VerifyCorpus
         System.out.println("--- totals ---");
         System.out.println("Geometries:        " + totalGeoms);
         System.out.println("AnimClips:         " + totalAnims);
+        System.out.println("TransformTracks:   " + totalTracks);
         System.out.println("Skinned meshes:    " + totalSkinnedMeshes);
+        System.out.println("Armature joints:   " + totalJoints);
         if (!failures.isEmpty()) {
             System.out.println("--- failures ---");
             for (String f : failures) {

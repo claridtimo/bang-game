@@ -99,12 +99,21 @@ public class BangModelLoader
         return model;
     }
 
-    /** The fork model reader touches render-state setup; ensure a headless display exists. */
+    /**
+     * The fork model reader touches render-state setup; ensure a headless display exists.
+     *
+     * <p>Constructs a {@link com.jme.util.DummyDisplaySystem} exactly once, which swaps the
+     * fork's static {@code SystemProvider} for a headless one. This MUST happen before any
+     * call to {@code DisplaySystem.getDisplaySystem()}, because the default provider is the
+     * gdx one, whose {@code GDXDisplaySystem} constructor dereferences {@code Gdx.input} (null
+     * outside a real gdx app) and NPEs. So we never call {@code getDisplaySystem()} here.
+     */
     protected static synchronized void ensureDisplaySystem ()
     {
-        if (com.jme.system.DisplaySystem.getDisplaySystem() == null) {
+        if (!_displayReady) {
             new com.jme.util.DummyDisplaySystem();
             com.jme.util.LoggingSystem.getLogger().setLevel(Level.WARNING);
+            _displayReady = true;
         }
     }
 
@@ -127,4 +136,7 @@ public class BangModelLoader
     }
 
     protected ModelConverter.Result _lastResult;
+
+    /** Whether the headless fork display system has been installed (process-wide). */
+    protected static boolean _displayReady;
 }

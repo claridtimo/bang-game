@@ -100,6 +100,12 @@ public class ModelConverter
         /** True if any SkinMesh vertex needed >4 influences (clamped + renormalised). */
         public boolean clampedInfluences;
 
+        /** Number of joints in the converted armature (0 if not skinned). */
+        public int armatureJoints;
+
+        /** Total TransformTracks across all converted AnimClips. */
+        public int animTracks;
+
         public boolean isAnimated () { return !animations.isEmpty(); }
         public boolean isSkinned () { return skinnedMeshes > 0; }
     }
@@ -135,6 +141,9 @@ public class ModelConverter
         if (!_boneNodes.isEmpty()) {
             buildArmature();
             applySkinning(result);
+            if (_armature != null) {
+                result.armatureJoints = _armature.getJointCount();
+            }
         }
 
         // 4. convert animations to AnimClips on an AnimComposer.
@@ -469,6 +478,7 @@ public class ModelConverter
             }
             composer.addAnimClip(clip);
             result.animations.add(name);
+            result.animTracks += clip.getTracks().length;
         }
         if (_skinningControl != null) {
             result.root.addControl(_skinningControl);
