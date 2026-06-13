@@ -3,26 +3,17 @@
 
 package com.threerings.bang.client.util;
 
-import java.lang.ref.Reference;
-import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 
 import java.awt.image.BufferedImage;
 
-import java.nio.IntBuffer;
-
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map;
 
-import com.jme.image.Image;
-import com.jme.image.Texture;
-import com.jme.scene.state.TextureState;
-import com.jme3.util.BufferUtils;
+import com.jme3.texture.Image;
+import com.jme3.texture.Texture2D;
 
 import com.jmex.bui.util.Rectangle;
-
-import com.samskivert.util.Interval;
 
 import com.threerings.jme.util.ImageCache;
 import com.threerings.media.image.Colorization;
@@ -34,29 +25,27 @@ import static com.threerings.bang.Log.log;
 
 /**
  * Implements a simple weak reference based texture cache.
+ *
+ * <p>jME3 cutover (Phase 2, cluster 6): the fork cached {@code com.jme.image.Texture} state objects
+ * and hand-managed their GL texture ids (the {@code CachedTexture}/{@code TextureReference}
+ * id-sharing machinery, plus a dummy {@code TextureState} to delete ids). jME3 owns texture upload
+ * and GL-name lifecycle, so all of that is gone: the cache now holds weak references to
+ * {@link Texture2D} objects built from the jME3 {@link Image}s the {@link ImageCache} produces, and
+ * the {@link Texture2D} is reclaimed by the GC / jME3 when no longer referenced. The public
+ * {@code getTexture(...)}/{@code createTexture()} surface is preserved (return type fork
+ * {@code Texture} → {@link Texture2D}).
  */
 public class TextureCache
 {
     public TextureCache (BasicContext ctx)
     {
         _ctx = ctx;
-        _dtstate = ctx.getRenderManager().createTextureState();
-
-        // create the interval to flush cleared textures
-        new Interval(ctx.getApp()) {
-            public void expired () {
-                Reference<? extends CachedTexture> ref;
-                while ((ref = _cleared.poll()) != null) {
-                    TextureReference.class.cast(ref).flush();
-                }
-            }
-        }.schedule(FLUSH_INTERVAL, true);
     }
 
     /**
      * Creates a texture from the image with the specified path.
      */
-    public Texture getTexture (String path)
+    public Texture2D getTexture (String path)
     {
         return getTexture(path, (Colorization[])null, 1f);
     }
@@ -64,29 +53,27 @@ public class TextureCache
     /**
      * Creates a texture from the image with the specified path and scale.
      */
-    public Texture getTexture (String path, float scale)
+    public Texture2D getTexture (String path, float scale)
     {
         return getTexture(path, (Colorization[])null, scale);
     }
 
     /**
-     * Creates a texture from the image with the specified path and
-     * colorizations.
+     * Creates a texture from the image with the specified path and colorizations.
      */
-    public Texture getTexture (String path, Colorization[] zations)
+    public Texture2D getTexture (String path, Colorization[] zations)
     {
         return getTexture(path, zations, 1f);
     }
 
     /**
-     * Creates a texture from the image with the specified path,
-     * colorizations, and scale.
+     * Creates a texture from the image with the specified path, colorizations, and scale.
      */
-    public Texture getTexture (String path, Colorization[] zations, float scale)
+    public Texture2D getTexture (String path, Colorization[] zations, float scale)
     {
         TextureKey tkey = new TextureKey(path, zations, null);
-        TextureReference ref = _textures.get(tkey);
-        CachedTexture texture = (ref == null) ? null : ref.get();
+        WeakReference<Texture2D> ref = _textures.get(tkey);
+        Texture2D texture = (ref == null) ? null : ref.get();
         if (texture != null) {
             return texture;
         }
@@ -102,32 +89,30 @@ public class TextureCache
         } else {
             img = _ctx.getImageCache().getImage(path, scale);
         }
-        texture = new CachedTexture();
+        texture = new Texture2D();
         RenderUtil.configureTexture(texture, img);
-        texture.setImageLocation(path);
-        _textures.put(tkey, new TextureReference(texture));
+        texture.setName(path);
+        _textures.put(tkey, new WeakReference<Texture2D>(texture));
         return texture;
     }
 
     /**
-     * Creates a texture using the specified region from the image with the
-     * specified path.
+     * Creates a texture using the specified region from the image with the specified path.
      */
-    public Texture getTexture (String path, Rectangle region)
+    public Texture2D getTexture (String path, Rectangle region)
     {
         return getTexture(path, null, region);
     }
 
     /**
-     * Creates a texture using the specified region from the image with the
-     * specified path.
+     * Creates a texture using the specified region from the image with the specified path.
      */
-    public Texture getTexture (
+    public Texture2D getTexture (
         String path, Colorization[] zations, Rectangle region)
     {
         TextureKey tkey = new TextureKey(path, zations, region);
-        TextureReference ref = _textures.get(tkey);
-        CachedTexture texture = (ref == null) ? null : ref.get();
+        WeakReference<Texture2D> ref = _textures.get(tkey);
+        Texture2D texture = (ref == null) ? null : ref.get();
         if (texture != null) {
             return texture;
         }
@@ -143,18 +128,17 @@ public class TextureCache
         Image img = (zations == null) ?
             ImageCache.createImage(subimg, true) :
             ImageCache.createImage(subimg, zations, true);
-        texture = new CachedTexture();
+        texture = new Texture2D();
         RenderUtil.configureTexture(texture, img);
-        texture.setImageLocation(path);
-        _textures.put(tkey, new TextureReference(texture));
+        texture.setName(path);
+        _textures.put(tkey, new WeakReference<Texture2D>(texture));
         return texture;
     }
 
     /**
-     * Creates a texture using the specified "tile" from the image with the
-     * specified path.
+     * Creates a texture using the specified "tile" from the image with the specified path.
      */
-    public Texture getTexture (String path, int tileWidth, int tileHeight,
+    public Texture2D getTexture (String path, int tileWidth, int tileHeight,
                                int tilesPerRow, int tileIndex)
     {
         int tx = tileIndex % tilesPerRow, ty = tileIndex / tilesPerRow;
@@ -164,123 +148,29 @@ public class TextureCache
     }
 
     /**
-     * Creates a texture that will be deleted when it is no longer accessible.
+     * Creates a new, empty texture. The caller configures it (typically via
+     * {@link RenderUtil#configureTexture}). jME3 reclaims the GL texture when this object is no
+     * longer referenced.
      */
-    public Texture createTexture ()
+    public Texture2D createTexture ()
     {
-        return new TextureReference(new CachedTexture()).get();
+        return new Texture2D();
     }
 
     /**
-     * Computes the count and size of our resident and non-resident cached
-     * textures.
+     * Computes the count of resident and non-resident cached textures (debug aid).
      */
     public void dumpResidence ()
     {
-        int[] counts = new int[4], bytes = new int[4];
-        for (Map.Entry<TextureKey, TextureReference> entry : _textures.entrySet()) {
-            TextureKey key = entry.getKey();
-            Texture texture = entry.getValue().get();
-            if (texture == null) {
-//                 log.info("Flushed " + key.path + ":" + key.region);
-                counts[0]++;
-                continue;
-            }
-
-            Image image = texture.getImage();
-            int size = (image == null) ? 0 : image.getData().capacity();
-            int texid = texture.getTextureId();
-            if (texid <= 0) {
-//                 log.info("Not loaded " + key.path + ":" + key.region);
-                int idx = (size == 0) ? 1 : 2;
-                counts[idx]++;
-                bytes[idx] += size;
-                continue;
-            }
-
-//             GL11.glGetTexParameter(texid, GL11.GL_TEXTURE_RESIDENT, _qbuf);
-            if (size == 0) {
-                log.warning("Loadaed texture has no image?", "key", key);
+        int live = 0, flushed = 0;
+        for (WeakReference<Texture2D> ref : _textures.values()) {
+            if (ref.get() == null) {
+                flushed++;
             } else {
-                counts[3]++;
-                bytes[3] += size;
-            }
-
-//             log.info("Resident? " + key.path + ":" + key.region + ":" + texid +
-//                      " " + _qbuf.get(0));
-        }
-
-        log.info("FL:" + counts[0] + " NL0:" + counts[1] +
-                 " NL1:" + counts[2] + "/" + bytes[2] +
-                 " LD:" + counts[3] + "/" + bytes[3]);
-    }
-
-    /** Retains a reference to the cached texture's texture id in order to delete the OpenGL
-     * texture when the reference is cleared. */
-    protected class TextureReference extends WeakReference<CachedTexture>
-    {
-        public TextureReference (CachedTexture texture)
-        {
-            super(texture, _cleared);
-            _textureId = texture.textureId;
-        }
-
-        /**
-         * Unloads the texture.
-         */
-        public void flush ()
-        {
-            if (_textureId[0] > 0) {
-                _dtstate.deleteTextureId(_textureId[0]);
-                _textureId[0] = 0;
+                live++;
             }
         }
-
-        protected int[] _textureId;
-    }
-
-    /** Ensures that clones of the texture share the same texture id reference used by the
-     * {@link TextureReference} as well as a reference to the prototype (to prevent its being
-     * garbage collected). */
-    protected static class CachedTexture extends Texture
-    {
-        /** The texture id reference shared by the prototype and its clones. */
-        public int[] textureId;
-
-        /** Constructor for prototype textures. */
-        public CachedTexture ()
-        {
-            textureId = new int[1];
-        }
-
-        /** Constructor for cloned textures. */
-        public CachedTexture (float aniso, CachedTexture prototype)
-        {
-            super(aniso);
-            textureId = prototype.textureId;
-            _prototype = prototype;
-        }
-
-        @Override // documentation inherited
-        public int getTextureId ()
-        {
-            return textureId[0];
-        }
-
-        @Override // documentation inherited
-        public void setTextureId (int textureId)
-        {
-            this.textureId[0] = textureId;
-        }
-
-        @Override // documentation inherited
-        public Texture createSimpleClone ()
-        {
-            return createSimpleClone(new CachedTexture(
-                getAnisoLevel(), _prototype == null ? this : _prototype));
-        }
-
-        protected CachedTexture _prototype;
+        log.info("TextureCache live:" + live + " flushed:" + flushed);
     }
 
     protected static class TextureKey
@@ -318,17 +208,6 @@ public class TextureCache
     protected BasicContext _ctx;
 
     /** The cached textures. */
-    protected HashMap<TextureKey, TextureReference> _textures =
-        new HashMap<TextureKey, TextureReference>();
-
-    /** The queue of textures to destroy. */
-    protected ReferenceQueue<CachedTexture> _cleared = new ReferenceQueue<CachedTexture>();
-
-    /** A dummy texture state used to delete textures. */
-    protected TextureState _dtstate;
-
-    protected IntBuffer _qbuf = BufferUtils.createIntBuffer(4);
-
-    /** The rate at which to check for cleared textures to destroy. */
-    protected static final long FLUSH_INTERVAL = 5000L;
+    protected HashMap<TextureKey, WeakReference<Texture2D>> _textures =
+        new HashMap<TextureKey, WeakReference<Texture2D>>();
 }
