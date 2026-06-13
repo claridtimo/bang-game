@@ -53,14 +53,14 @@ public class TourneyConfigView extends BDecoratedWindow
         cont.add(new BLabel(_msgs.get("m.min_players"), "right_label"));
         cont.add(_minPlayers = new BComboBox());
         for (int ii : MIN_PLAYERS) {
-            _minPlayers.addItem(new Integer(ii));
+            _minPlayers.addItem(Integer.valueOf(ii));
         }
         _minPlayers.selectItem(0);
 
         cont.add(new BLabel(_msgs.get("m.starts_in"), "right_label"));
         cont.add(_startsIn = new BComboBox());
         for (int ii : STARTS_IN) {
-            _startsIn.addItem(new Integer(ii));
+            _startsIn.addItem(Integer.valueOf(ii));
         }
         _startsIn.selectItem(0);
 

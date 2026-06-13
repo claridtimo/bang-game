@@ -136,8 +136,14 @@ public class ItemRepository extends SimpleRepository
                         if (rs.next() && rs.getInt(1) > 0) {
                             return false;
                         }
+                        // close the dup-check statement before reusing the variable; our
+                        // connection lives for the server's lifetime, so an orphaned
+                        // statement is never reclaimed
+                        JDBCUtil.close(stmt);
                     }
-                    stmt = conn.prepareStatement(insert);
+                    // Connector/J 8 requires generated keys to be requested explicitly for
+                    // the liaison.lastInsertedId(conn, stmt, ...) call below to work
+                    stmt = conn.prepareStatement(insert, Statement.RETURN_GENERATED_KEYS);
                     stmt.setBoolean(1, item.isGangOwned());
                     stmt.setInt(2, item.getOwnerId());
                     stmt.setInt(3, itemType);
@@ -188,7 +194,7 @@ public class ItemRepository extends SimpleRepository
                     "(GANG_OWNED, OWNER_ID, ITEM_TYPE, ITEM_DATA, GANG_ID, EXPIRES) " +
                     "values (FALSE, ?, ?, ?, ?, ?)";
                 try {
-                    stmt = conn.prepareStatement(query);
+                    stmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
                     stmt.setInt(2, itemType);
                     stmt.setBytes(3, itemData);
                     stmt.setInt(4, gangId);
@@ -234,7 +240,8 @@ public class ItemRepository extends SimpleRepository
                 try {
                     stmt.setInt(1, playerId);
                     stmt.setInt(2, ItemFactory.getType(GoldPass.class));
-                    return stmt.executeQuery().next();
+                    ResultSet rs = stmt.executeQuery();
+                    return rs.next() && rs.getInt(1) > 0;
 
                 } finally {
                     JDBCUtil.close(stmt);

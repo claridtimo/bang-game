@@ -879,7 +879,7 @@ public class BangBoard extends SimpleStreamableObject
             int elevation = (int)Math.ceil(bpiece.getHeight() * _elevationUnitsPerTile);
             if (bpiece instanceof Prop) {
                 Prop prop = (Prop)bpiece;
-                elevation *= prop.getScale().z;
+                elevation = (int)(elevation * prop.getScale().z);
                 elevation += prop.felev;
             }
 
@@ -1718,7 +1718,7 @@ public class BangBoard extends SimpleStreamableObject
     protected boolean canMoveTo (Piece piece, int x, int y, byte weight)
     {
         int idx = y * _width + x;
-        weight -= Math.abs(weight - _pgrid[idx]);
+        weight = (byte)(weight - Math.abs(weight - _pgrid[idx]));
         if (weight <= 0 || (piece.x == x && piece.y == y)) {
             return false;
         }

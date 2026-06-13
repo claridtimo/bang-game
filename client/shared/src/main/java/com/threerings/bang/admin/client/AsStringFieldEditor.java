@@ -33,7 +33,7 @@ public class AsStringFieldEditor extends FieldEditor
         String text = _value.getText();
         if (_field.getType().equals(Integer.class) ||
             _field.getType().equals(Integer.TYPE)) {
-            return new Integer(text);
+            return Integer.valueOf(text);
 
         } else if (_field.getType().equals(Long.class) ||
                    _field.getType().equals(Long.TYPE)) {
@@ -41,11 +41,11 @@ public class AsStringFieldEditor extends FieldEditor
 
         } else if (_field.getType().equals(Float.class) ||
                    _field.getType().equals(Float.TYPE)) {
-            return new Float(text);
+            return Float.valueOf(text);
 
         } else if (_field.getType().equals(Double.class) ||
                    _field.getType().equals(Double.TYPE)) {
-            return new Double(text);
+            return Double.valueOf(text);
 
         } else if (_field.getType().equals(String.class)) {
             return text;

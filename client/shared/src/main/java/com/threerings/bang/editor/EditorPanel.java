@@ -20,7 +20,6 @@ import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 
-import com.jme.system.DisplaySystem;
 import com.jmex.bui.BWindow;
 import com.jmex.bui.layout.BorderLayout;
 
@@ -191,19 +190,25 @@ public class EditorPanel extends JPanel
         _vwin = new BWindow(_ctx.getStyleSheet(), new BorderLayout());
         _vwin.add(view, BorderLayout.CENTER);
         _ctx.getRootNode().addWindow(_vwin);
-        DisplaySystem ds = DisplaySystem.getDisplaySystem();
 
-        // resize the window with the canvas
-        ((EditorApp)_ctx.getApp()).getCanvas().addComponentListener(
+        // size the window to the canvas now and on every canvas resize
+        Component canvas = ((EditorApp)_ctx.getApp()).getCanvas();
+        canvas.addComponentListener(
             new ComponentAdapter() {
                 public void componentResized (ComponentEvent e) {
-                    Component c = e.getComponent();
-                    _vwin.setBounds(0, 0, c.getWidth(), c.getHeight());
+                    sizeToCanvas(e.getComponent());
                 }
             }
         );
+        sizeToCanvas(canvas);
+    }
 
-        _vwin.setBounds(0, 0, ds.getWidth(), ds.getHeight());
+    /**
+     * Sizes our view window to fill the supplied AWT canvas.
+     */
+    protected void sizeToCanvas (Component canvas)
+    {
+        _vwin.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
     }
 
     // documentation inherited from interface

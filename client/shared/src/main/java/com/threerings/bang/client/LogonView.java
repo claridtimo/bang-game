@@ -245,18 +245,7 @@ public class LogonView extends BWindow
                 return;
             }
 
-            String username = _username.getText();
-            String password = _password.getText();
-
-            // try to connect to the town lobby server that this player last accessed
-            String townId = BangPrefs.getLastTownId(username);
-            // but make sure this town has been activated on this client
-            if (!BangClient.isTownActive(townId)) {
-                // fall back to frontier town if it has not
-                townId = BangCodes.FRONTIER_TOWN;
-            }
-
-            logon(townId, username, password);
+            logon(_username.getText(), _password.getText());
 
         } else if ("options".equals(event.getAction())) {
             _ctx.getBangClient().displayPopup(new OptionsView(_ctx, this), true);
@@ -293,8 +282,28 @@ public class LogonView extends BWindow
         }
     }
 
+    /**
+     * Logs on to the town this player last accessed, falling back to frontier town if that
+     * town is not activated on this client.
+     */
+    public void logon (String username, String password)
+    {
+        // try to connect to the town lobby server that this player last accessed
+        String townId = BangPrefs.getLastTownId(username);
+        // but make sure this town has been activated on this client
+        if (!BangClient.isTownActive(townId)) {
+            // fall back to frontier town if it has not
+            townId = BangCodes.FRONTIER_TOWN;
+        }
+        logon(townId, username, password);
+    }
+
     public void logon (String townId, String username, String password)
     {
+        // remember the account we're attempting; the failure handler can't rely on the
+        // username text field, which is absent in the new-user view and may not reflect
+        // the credentials used by the -Dusername auto-logon path
+        _lastLogonUsername = username;
         _status.setStatus(_msgs.get("m.logging_on"), false);
 
         _ctx.getClient().setServer(DeploymentConfig.getServerHost(townId),
@@ -327,6 +336,14 @@ public class LogonView extends BWindow
             // if we already have credentials (set on the command line during testing), auto-logon
             if (_ctx.getClient().getCredentials() != null) {
                 _ctx.getClient().logon();
+            } else {
+                // support -Dusername/-Dpassword auto-logon for dev testing (this used to live in
+                // BangApp.main(), which the gdx port retired)
+                String username = System.getProperty("username");
+                String password = System.getProperty("password");
+                if (!StringUtil.isBlank(username) && !StringUtil.isBlank(password)) {
+                    logon(username, password);
+                }
             }
         }
     }
@@ -430,7 +447,12 @@ public class LogonView extends BWindow
             }
 
             if (cmsg.indexOf(BangAuthCodes.NO_TICKET) != -1) {
-                BangPrefs.setLastTownId(_username.getText(), BangCodes.FRONTIER_TOWN);
+                // reset the pref for the account we actually attempted, not whatever is in
+                // the username field (which is null in the new-user view and may differ from
+                // the auto-logon credentials)
+                if (_lastLogonUsername != null) {
+                    BangPrefs.setLastTownId(_lastLogonUsername, BangCodes.FRONTIER_TOWN);
+                }
 
             // if we got a no such user message and we're anonymous, clear it out
             } else if (cmsg.indexOf(BangAuthCodes.NO_SUCH_USER) != -1 &&
@@ -466,6 +488,9 @@ public class LogonView extends BWindow
     };
 
     protected BangContext _ctx;
+
+    /** The username of our most recent logon attempt (may not match the username field). */
+    protected String _lastLogonUsername;
     protected MessageBundle _msgs;
 
     protected BTextField _username;

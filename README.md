@@ -3,26 +3,22 @@
 Herein lies the source code to the game Bang! Howdy. This is a game that was created by Three Rings
 Design in 2004 and which is still limping along at http://www.banghowdy.com/
 
-A while ago, I started a crazy project to port the game to the [libGDX] game library so that I
-could run it on an iPad and in a web browser, but I never really had much time, so that project is
-very very far from completion.
+This fork modernizes the game to run on current tooling: it builds with **Gradle 8.14** on a
+**JDK 21** toolchain and runs against **MySQL 8** (Connector/J 8, with the legacy schema migrations
+fixed up for MySQL 8's reserved words). An earlier effort started porting the rendering to
+[libGDX]; that direction has been dropped — the plan instead is to upgrade the forked
+jMonkeyEngine renderer to [jMonkeyEngine 3.8] (see `UPGRADE_PLAN.md`). The in-game board/map
+editor has also been fixed up and runs again.
 
-The current source code mostly builds, so if you're a super savvy Java programmer, you could
-probably get the client and server running locally if you feel like doing some spelunknig into code
-and configuration files. If you're just a tourist, you're not going to get very far, so just enjoy
-looking at the code and media and please don't pester me with n00b requests about not being able to
-get this or that to compile. If you can't get things to compile, there's no way you're going to be
-able to do anything meaningful with the code. You ain't gonna get from your house to the top of
-Mount Everest if you don't even know how to read a map.
-
-With that nay saying nelly warning out of the way, here are some basic build instructions.
+The client, server, and editor all build and run locally. Here's how.
 
 ## Building and running
 
-The game is (now) built with [Gradle], so you'll need that installed, and then you can run:
+The game builds with the included [Gradle] wrapper (Gradle 8.14) on a JDK 21 toolchain — the
+wrapper and toolchain provisioning mean no other JDK or Gradle install is needed:
 
 ```
-gradle deploy
+./gradlew deploy
 ```
 
 which will build everything, process all the resources and prepare things to be run locally.
@@ -58,20 +54,32 @@ There will be a section that looks like this:
 # this and need only be specified in cases where they differ from the
 # defaults
 
-db.default.driver = com.mysql.jdbc.Driver
-db.default.url = jdbc:mysql://DBHOST:3306/bang
+db.default.driver = com.mysql.cj.jdbc.Driver
+db.default.url = jdbc:mysql://DBHOST:3306/bang?serverTimezone=UTC
 db.default.username = USERNAME
 db.default.password = PASSWORD
 
 # These overrides are needed for the OOO user database
-db.userdb.url = jdbc:mysql://USERDBHOST:3306/ooouser
-db.sitedb.url = jdbc:mysql://USERDBHOST:3306/ooouser
+db.userdb.url = jdbc:mysql://USERDBHOST:3306/ooouser?serverTimezone=UTC
+db.sitedb.url = jdbc:mysql://USERDBHOST:3306/ooouser?serverTimezone=UTC
 ```
 
 You need to change `DBHOST`, `USERNAME`, `PASSWORD` to the appropriate values for your MySQL server
 (and you can set `USERDBHOST` to the same value as `DBHOST` and keep that on the same server). Then
 you need to create a `bang` and `ooouser` database on your MySQL server (or change those names to
-database names that you prefer and which you have created).
+database names that you prefer and which you have created). MySQL 8.0, 8.4, and 9.x all work —
+the bundled Connector/J 8 driver speaks MySQL's default `caching_sha2_password` auth, so a plain
+user creation is all you need:
+
+```
+CREATE DATABASE bang; CREATE DATABASE ooouser;
+CREATE USER 'bang'@'localhost' IDENTIFIED BY 'yourpass';
+GRANT ALL PRIVILEGES ON bang.* TO 'bang'@'localhost';
+GRANT ALL PRIVILEGES ON ooouser.* TO 'bang'@'localhost';
+```
+
+Also set `server_root` in `etc/test/server.properties` to your checkout directory (audit logs and
+board data resolve relative to it).
 
 Then you can run the server like so:
 
@@ -96,10 +104,32 @@ Not to worry, there's a gradle target that will create a test user in your prist
 database. Just run:
 
 ```
-gradle server:createTestUser
+./gradlew server:createTestUser
 ```
 
 And now you can log into your local server with username `test` and password `yeehaw`.
+
+For development you can skip the login screen and jump straight into the action:
+
+```
+./bin/bangclient -Dusername=test -Dpassword=yeehaw            # auto-logon
+./bin/bangclient -test -autoplay -Dusername=test -Dpassword=yeehaw   # straight into a game vs AI
+```
+
+The `-autoplay` mode requires the account to hold the admin token (plain `-test` does not), which
+you can grant with:
+
+```
+UPDATE ooouser.users SET tokens = CHAR(1) WHERE username = 'test';
+```
+
+(The server caches session credentials across reconnects, so restart the server after granting.)
+
+The board/map editor runs with:
+
+```
+./bin/bangeditor
+```
 
 That's about it. You can now hack on your own private Bang! Howdy instance and implement all those
 features you always wanted. Good luck!
@@ -110,6 +140,7 @@ The Bang! Howdy source code is released under a BSD license. The Bang! Howdy med
 texture images, UI images, sound files, everything other than the code, is released under the
 Creative Commons [Attribution-NonCommercial 3.0] license.
 
-[libGDX]: https://libgdx.badlogicgames.com/
+[libGDX]: https://libgdx.com/
+[jMonkeyEngine 3.8]: https://jmonkeyengine.org/
 [Gradle]: https://gradle.org/
 [Attribution-NonCommercial 3.0]: https://creativecommons.org/licenses/by-nc/3.0/us/

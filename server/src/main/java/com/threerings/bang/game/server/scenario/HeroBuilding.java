@@ -273,7 +273,7 @@ public class HeroBuilding extends Scenario
     protected class RespawnList extends LinkedList<Unit> {};
     protected class TimedBonus extends Tuple<Integer, Bonus> {
         public TimedBonus (short tick, Bonus bonus) {
-            super(new Integer(tick), bonus);
+            super(Integer.valueOf(tick), bonus);
         }
     };
 

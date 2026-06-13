@@ -3,7 +3,7 @@
 Goal: upgrade Bang! Howdy to **Java 21 LTS + Gradle 8**, modernizing dependencies along the
 way, while keeping the vendored jME engine fork. Acceptance bar: **the full game runs** —
 `./gradlew deploy` succeeds, the server boots against MySQL, the client renders, and the `test`
-user can log in and reach a game. A scoped roadmap for a later jMonkeyEngine 3.8 port is
+user can log in and reach a game. A scoped roadmap for a later jMonkeyEngine port (latest stable; 3.9.0 as of June 2026) is
 included as Phase 5 (not executed in this effort).
 
 Decisions locked (2026-06-13): Java 21 · keep jME fork (Linux/Windows only) · full-game-runs
@@ -121,12 +121,12 @@ Exit = acceptance bar. User runs `/code-review ultra` on the final diff.
   before deleting, propose list first.
 - Address high-value `-Xlint` warnings; leave cosmetic ones.
 
-## Phase 5 — jME 3.8 port roadmap (NOT executed; planning artifact)
+## Phase 5 — jME 3.x port roadmap (target latest stable; 3.9.0 as of June 2026) (NOT executed; planning artifact)
 
 Scoped outline for a future campaign, in dependency order:
 
 1. **Inventory** (1–2 agent-days): catalog the fork API surface actually used by the 240
-   client files + BUI; map each class to its jME 3.8 equivalent (`com.jme.scene.Node` →
+   client files + BUI; map each class to its jME 3.x equivalent (`com.jme.scene.Node` →
    `com.jme3.scene.Node`, controllers → `Control`s, fixed-function material states →
    `Material`/shader params). Output: migration table + risk list.
 2. **Model pipeline**: replace the XML→`.jme` binary compiler (`CompileModelTask`) with a

@@ -1361,9 +1361,9 @@ public class BangBoardView extends BoardView
                         log.info("Activating " + _card);
                         if (_card.getPlacementMode() ==
                                 Card.PlacementMode.VS_PIECE) {
-                            target = new Integer(p.pieceId);
+                            target = Integer.valueOf(p.pieceId);
                         } else {
-                            target = new Integer(p.owner);
+                            target = Integer.valueOf(p.owner);
                         }
                     }
                 }

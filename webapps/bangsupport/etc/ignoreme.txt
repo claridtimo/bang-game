@@ -1,1 +1,0 @@
-This is a hack to work around Ant and OOO old school build system awesomeness.

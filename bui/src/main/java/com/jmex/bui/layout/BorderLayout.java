@@ -28,22 +28,22 @@ import com.jmex.bui.util.Insets;
 public class BorderLayout extends BLayoutManager
 {
     /** A layout constraint. */
-    public static final Integer NORTH = new Integer(0);
+    public static final Integer NORTH = Integer.valueOf(0);
 
     /** A layout constraint. */
-    public static final Integer SOUTH = new Integer(1);
+    public static final Integer SOUTH = Integer.valueOf(1);
 
     /** A layout constraint. */
-    public static final Integer EAST = new Integer(2);
+    public static final Integer EAST = Integer.valueOf(2);
 
     /** A layout constraint. */
-    public static final Integer WEST = new Integer(3);
+    public static final Integer WEST = Integer.valueOf(3);
 
     /** A layout constraint. */
-    public static final Integer CENTER = new Integer(4);
+    public static final Integer CENTER = Integer.valueOf(4);
 
     /** A layout constraint. */
-    public static final Integer IGNORE = new Integer(5);
+    public static final Integer IGNORE = Integer.valueOf(5);
 
     /**
      * Creates a border layout with zero gap between the horizontal

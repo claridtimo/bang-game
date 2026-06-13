@@ -82,7 +82,7 @@ public class DiscreteLodNode extends SwitchNode implements Savable {
                 
 		float worldSqrScale = tmpVs.set(worldScale).multLocal(worldScale).length();
 		model.set(worldCenter.subtractLocal(camera.getLocation()));
-		model.set(new Float(worldSqrScale));
+		model.set(Float.valueOf(worldSqrScale));
 		setActiveChild(model.getSwitchChild());
 
 	}

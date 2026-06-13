@@ -141,7 +141,7 @@ public class BonusConfig
 
         if (lowPowerAffinity != 0) {
             double maxedPower = Math.min(1.0, averagePower);
-            eweight += Math.round(100 * (1.0-maxedPower) * lowPowerAffinity);
+            eweight = (int)(eweight + Math.round(100 * (1.0-maxedPower) * lowPowerAffinity));
             ecount++;
         }
 

@@ -455,7 +455,7 @@ public class BStyleSheet
                 args.add(tok.sval);
                 break;
             case StreamTokenizer.TT_NUMBER:
-                args.add(new Double(tok.nval));
+                args.add(Double.valueOf(tok.nval));
                 break;
             default:
                 System.err.println(
@@ -583,11 +583,11 @@ public class BStyleSheet
             return value;
 
         } else if (name.equals("effect-size")) {
-            Integer value = new Integer(parseInt(args.get(0)));
+            Integer value = Integer.valueOf(parseInt(args.get(0)));
             return value;
 
         } else if (name.equals("line-spacing")) {
-            Integer value = new Integer(parseInt(args.get(0)));
+            Integer value = Integer.valueOf(parseInt(args.get(0)));
             return value;
 
         } else if (name.equals("padding")) {
@@ -797,33 +797,33 @@ public class BStyleSheet
 
     static {
         // alignment constants
-        _taconsts.put("left", new Integer(BConstants.LEFT));
-        _taconsts.put("right", new Integer(BConstants.RIGHT));
-        _taconsts.put("center", new Integer(BConstants.CENTER));
+        _taconsts.put("left", Integer.valueOf(BConstants.LEFT));
+        _taconsts.put("right", Integer.valueOf(BConstants.RIGHT));
+        _taconsts.put("center", Integer.valueOf(BConstants.CENTER));
 
-        _vaconsts.put("center", new Integer(BConstants.CENTER));
-        _vaconsts.put("top", new Integer(BConstants.TOP));
-        _vaconsts.put("bottom", new Integer(BConstants.BOTTOM));
+        _vaconsts.put("center", Integer.valueOf(BConstants.CENTER));
+        _vaconsts.put("top", Integer.valueOf(BConstants.TOP));
+        _vaconsts.put("bottom", Integer.valueOf(BConstants.BOTTOM));
 
         // effect constants
-        _teconsts.put("none", new Integer(BConstants.NORMAL));
-        _teconsts.put("shadow", new Integer(BConstants.SHADOW));
-        _teconsts.put("outline", new Integer(BConstants.OUTLINE));
-        _teconsts.put("plain", new Integer(BConstants.PLAIN));
-        _teconsts.put("glow", new Integer(BConstants.GLOW));
+        _teconsts.put("none", Integer.valueOf(BConstants.NORMAL));
+        _teconsts.put("shadow", Integer.valueOf(BConstants.SHADOW));
+        _teconsts.put("outline", Integer.valueOf(BConstants.OUTLINE));
+        _teconsts.put("plain", Integer.valueOf(BConstants.PLAIN));
+        _teconsts.put("glow", Integer.valueOf(BConstants.GLOW));
 
         // background image constants
-        _ibconsts.put("centerxy", new Integer(ImageBackground.CENTER_XY));
-        _ibconsts.put("centerx", new Integer(ImageBackground.CENTER_X));
-        _ibconsts.put("centery", new Integer(ImageBackground.CENTER_Y));
-        _ibconsts.put("scalexy", new Integer(ImageBackground.SCALE_XY));
-        _ibconsts.put("scalex", new Integer(ImageBackground.SCALE_X));
-        _ibconsts.put("scaley", new Integer(ImageBackground.SCALE_Y));
-        _ibconsts.put("tilexy", new Integer(ImageBackground.TILE_XY));
-        _ibconsts.put("tilex", new Integer(ImageBackground.TILE_X));
-        _ibconsts.put("tiley", new Integer(ImageBackground.TILE_Y));
-        _ibconsts.put("framexy", new Integer(ImageBackground.FRAME_XY));
-        _ibconsts.put("framex", new Integer(ImageBackground.FRAME_X));
-        _ibconsts.put("framey", new Integer(ImageBackground.FRAME_Y));
+        _ibconsts.put("centerxy", Integer.valueOf(ImageBackground.CENTER_XY));
+        _ibconsts.put("centerx", Integer.valueOf(ImageBackground.CENTER_X));
+        _ibconsts.put("centery", Integer.valueOf(ImageBackground.CENTER_Y));
+        _ibconsts.put("scalexy", Integer.valueOf(ImageBackground.SCALE_XY));
+        _ibconsts.put("scalex", Integer.valueOf(ImageBackground.SCALE_X));
+        _ibconsts.put("scaley", Integer.valueOf(ImageBackground.SCALE_Y));
+        _ibconsts.put("tilexy", Integer.valueOf(ImageBackground.TILE_XY));
+        _ibconsts.put("tilex", Integer.valueOf(ImageBackground.TILE_X));
+        _ibconsts.put("tiley", Integer.valueOf(ImageBackground.TILE_Y));
+        _ibconsts.put("framexy", Integer.valueOf(ImageBackground.FRAME_XY));
+        _ibconsts.put("framex", Integer.valueOf(ImageBackground.FRAME_X));
+        _ibconsts.put("framey", Integer.valueOf(ImageBackground.FRAME_Y));
     }
 }

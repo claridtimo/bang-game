@@ -1,7 +1,0 @@
-<module>
-  <inherits name='com.threerings.underwire.User'/>
-  <inherits name='bang_common'/>
-  <source path="client"/>
-  <entry-point class='client.user'/>
-  <public path="public/bang_user"/>
-</module>

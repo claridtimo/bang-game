@@ -148,7 +148,7 @@ public class ClodCreator extends VETMesh {
    Triangle tri = new Triangle(indices.get(3 * i), indices
      .get(3 * i + 1), indices.get(3 * i + 2));
    insertTriangle(tri);
-   setData(tri, new Integer(i));
+   setData(tri, Integer.valueOf(i));
   }
 
   if (triangleMap.size() != numbTriangles) {
@@ -264,7 +264,7 @@ public class ClodCreator extends VETMesh {
  }
 
  public boolean collapseCausesFolding(int iVKeep, int iVThrow) {
-  VertexAttribute pkVT = vertexMap.get(new Integer(
+  VertexAttribute pkVT = vertexMap.get(Integer.valueOf(
     iVThrow));
   //    if (!(pkVT != null)) throw new AssertionError();
 
@@ -372,7 +372,7 @@ public class ClodCreator extends VETMesh {
   // Indices on modified triangles are the same as the indices on the
   // pre-modified triangles.
   insertTriangle(rkT);
-  setData(rkT, new Integer(iTIndex));
+  setData(rkT, Integer.valueOf(iTIndex));
  }
 
  public void collapseEdge(int iVKeep, int iVThrow) {
@@ -399,7 +399,7 @@ public class ClodCreator extends VETMesh {
   // at the 'throw' vertex.  The old triangles are removed and the modified
   // triangles are inserted.
   Triangle kT;
-  VertexAttribute pkVM = vertexMap.get(new Integer(
+  VertexAttribute pkVM = vertexMap.get(Integer.valueOf(
     iVThrow));
   if (pkVM != null) {
    kTSet = (ExVector) pkVM.triangleSet.clone();
@@ -870,7 +870,7 @@ public class ClodCreator extends VETMesh {
  public void onTriangleInsert(Triangle tri, boolean bCreate,
    TriangleAttribute att) {
   if (bCreate)
-   att.data = new Integer(-1);
+   att.data = Integer.valueOf(-1);
  }
 
  @Override

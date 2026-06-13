@@ -297,7 +297,7 @@ public class Particle implements Savable {
             }
             return true;
         }
-        currentAge += secondsPassed * 1000; // add ms time to age
+        currentAge = (int)(currentAge + secondsPassed * 1000); // add ms time to age
         if (currentAge > lifeSpan || (parent.getEmitType() ==
                 ParticleGeometry.ET_FRUSTUM &&
                 parent.getFrustum().pseudoDistance(position) > currentSize)) {

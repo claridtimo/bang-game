@@ -5,6 +5,7 @@ package com.threerings.bang.editor;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.EventQueue;
 import javax.swing.JFrame;
 
 import com.google.inject.Inject;
@@ -12,22 +13,15 @@ import com.google.inject.Injector;
 import com.google.inject.Singleton;
 import com.google.inject.Guice;
 
+import org.lwjgl.openal.AL;
+
 import com.badlogic.gdx.backends.lwjgl.LwjglCanvas;
-import com.badlogic.gdx.backends.lwjgl.LwjglApplication;
-import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
 
 import com.threerings.bang.client.BangApp;
 
 public class EditorDesktop
 {
     public static void main (String[] args) {
-        LwjglApplicationConfiguration cfg = new LwjglApplicationConfiguration();
-        cfg.title = "Bang! Howdy Editor";
-        cfg.width = 1024;
-        cfg.height = 768;
-        // cfg.resizble = false;
-        // TODO: cfg.setFromDisplayMode when in fullscreen mode
-
         // configure our debug log
         BangApp.configureLog("editor.log");
 
@@ -47,22 +41,43 @@ public class EditorDesktop
         // let the BangClientController know we're in editor mode
         System.setProperty("editor", "true");
 
-        // create a frame
-        JFrame frame = new JFrame("Bang Editor");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        // the editor exits via System.exit (EXIT_ON_CLOSE and the editor controller's quit
+        // paths) with the render loop still live, so close the AL device during shutdown to
+        // keep openal-soft's atexit cleanup from segfaulting against its own mixer thread
+        // (same hazard BangDesktop guards against with its ordered-exit signal handlers)
+        Runtime.getRuntime().addShutdownHook(new Thread("EditorDesktop AL cleanup") {
+            @Override public void run () {
+                if (AL.isCreated()) {
+                    AL.destroy();
+                }
+            }
+        });
 
-        // this is the entry point for all the "client-side" stuff
-        EditorApp app = injector.getInstance(EditorApp.class);
-        app.frame = frame;
+        // build the UI on the AWT event dispatch thread: realizing the canvas (in frame.pack)
+        // triggers LwjglCanvas.create -> Display.create, which makes the GL context current on
+        // the calling thread. All subsequent GL work (the libGDX render loop and the editor's
+        // game logic, which runs on RunQueue.AWT) happens on the EDT, so the context must be
+        // created there or every GL call dies with "No OpenGL context found in current thread".
+        EventQueue.invokeLater(new Runnable() {
+            public void run () {
+                // create a frame
+                JFrame frame = new JFrame("Bang Editor");
+                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        System.out.println("Start?");
-        LwjglCanvas canvas = new LwjglCanvas(app);
-        app.canvas = canvas.getCanvas();
+                // this is the entry point for all the "client-side" stuff
+                EditorApp app = injector.getInstance(EditorApp.class);
+                app.frame = frame;
 
-        // display the GL canvas to start so that it initializes everything
-        frame.getContentPane().add(canvas.getCanvas(), BorderLayout.CENTER);
-        frame.pack();
-        frame.setVisible(true);
-        frame.setSize(new Dimension(1224, 768));
+                LwjglCanvas canvas = new LwjglCanvas(app);
+                app.canvas = canvas.getCanvas();
+
+                // display the GL canvas to start so that it initializes everything; size the
+                // frame before showing it so it appears once at its final size
+                frame.getContentPane().add(canvas.getCanvas(), BorderLayout.CENTER);
+                frame.pack();
+                frame.setSize(new Dimension(1224, 768));
+                frame.setVisible(true);
+            }
+        });
     }
 }

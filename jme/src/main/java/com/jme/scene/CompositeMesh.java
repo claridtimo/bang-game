@@ -191,7 +191,7 @@ public class CompositeMesh extends TriMesh implements Serializable {
 		}
 		int quantity = 0;
 		for (int i = 0; i < ranges.length; i++) {
-			quantity += ranges[i].getTriangleQuantityEquivalent();
+			quantity = (int)(quantity + ranges[i].getTriangleQuantityEquivalent());
 		}
 		return quantity;
 	}

@@ -272,7 +272,7 @@ public abstract class Item
         throws IOException, ClassNotFoundException
     {
         if (_nondb) {
-            _itemId = new Integer(in.readInt());
+            _itemId = Integer.valueOf(in.readInt());
             _gangOwned = in.readBoolean();
             _ownerId = in.readInt();
             _gangId = in.readInt();

@@ -3,6 +3,9 @@ dependencies {
   implementation "com.badlogicgames.gdx:gdx-backend-lwjgl:${gdxVersion}"
   implementation group: "com.badlogicgames.gdx", name: "gdx-platform", version: gdxVersion,
           classifier: "natives-desktop"
+  // narya 1.19's Streamer hard-references depot's ByteEnum when streaming any enum;
+  // depot is optional for narya but required on the classpath at runtime
+  runtimeOnly "com.samskivert:depot:${depotVersion}"
 }
 
 // bake the deployment config into our jar alongside our other resources

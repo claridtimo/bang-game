@@ -65,7 +65,9 @@ public class LoggingSystem {
     //handler for the logger
     private Handler handler;
 
-    private static String logToFile = "debug.txt";
+    // file logging is opt-in (-Djme.log.file=debug.txt); the old unconditional default
+    // littered every working directory with debug.txt[.N][.lck] files
+    private static String logToFile = System.getProperty("jme.log.file");
 
     /**
      * @see #setLogToFile(String)

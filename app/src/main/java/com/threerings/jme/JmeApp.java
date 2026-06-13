@@ -103,6 +103,28 @@ public class JmeApp
     }
 
     @Override public void resize (int width, int height) {
+        // when we're embedded in an AWT canvas (the editor), the GL context is created while
+        // the canvas is still 1x1; AWT lays it out to its real size afterwards, so we have to
+        // propagate the new dimensions to the display system, renderer, and camera as they
+        // come in (BUI windows, popups, and tooltips all lay out from the display system's
+        // recorded size, which is otherwise only set at window creation)
+        if (_display == null || _display.getRenderer() == null ||
+            _camera == null || width <= 0 || height <= 0) {
+            return;
+        }
+        _display.setWidth(width);
+        _display.setHeight(height);
+        _display.getRenderer().reinit(width, height);
+        setPerspectiveFrustum(width, height);
+        _camera.update();
+    }
+
+    /**
+     * (Re)applies our standard perspective frustum to the camera for the given viewport size.
+     */
+    protected void setPerspectiveFrustum (int width, int height)
+    {
+        _camera.setFrustumPerspective(45.0f, width/(float)height, 1, 10000);
     }
 
     @Override public void render () {
@@ -192,7 +214,7 @@ public class JmeApp
         Arrays.fill(RenderState.QUICK_COMPARE, true);
 
         // set up the camera
-        _camera.setFrustumPerspective(45.0f, width/(float)height, 1, 10000);
+        setPerspectiveFrustum(width, height);
         Vector3f loc = new Vector3f(0.0f, 0.0f, 25.0f);
         Vector3f left = new Vector3f(-1.0f, 0.0f, 0.0f);
         Vector3f up = new Vector3f(0.0f, 1.0f, 0.0f);

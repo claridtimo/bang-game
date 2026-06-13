@@ -151,7 +151,7 @@ tasks.register("compileModels") {
     def stagedRoot = file(stagingDir)
     def missing = fileTree("rsrc").matching { include "**/model.properties" }.files.collect {
       srcRoot.relativize(it.toPath().parent).toString()
-    }.findAll { !new File(stagedRoot, "${it}/model.dat").exists() }
+    }.findAll { !new File(stagedRoot, "rsrc/${it}/model.dat").exists() }
     if (!missing.empty) {
       throw new GradleException("Model compilation incomplete: no model.dat staged for " +
         "${missing.size()} model(s), starting with: ${missing.take(5).join(', ')}. " +
