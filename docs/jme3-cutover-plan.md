@@ -359,7 +359,19 @@ approaching the fork baselines in `baseline/fork-before/`):
   on a *live in-game board* (the harness uses representative water/sky colors and a sinusoidal
   stand-in for the FFT sim, not a shipped `.board`) — high confidence given it drives the identical
   material + sphere map + shader through a real GL context.
-- **4d — TODO:** particles — the 60 `particles.jme` are still a degraded single-blob; re-author as
+- **4d — TODO (test tooling):** a standard live-run "run sheet" so agents stop re-deriving (and
+  mis-handling) the setup dance — the recurring tax behind most agent run failures (stale server on
+  port 47624 → `BindException`/"connection refused"; MySQL not started/verified; launching the
+  client before the server is `listening`; processes left running for the next agent; flaky
+  screenshots). Deliverable: an executable `bin/devtest` that, in order, (1) kills stale
+  Bang processes + frees 47624, (2) ensures MySQL up and `bang`/`yeehaw` connects, (3) `./gradlew
+  deploy` (green), (4) starts the server and **polls the log until "Server listening"**, (5) launches
+  the client with standard flags (muted, `-test=<board>` `-autoplay` `-Dusername/-Dpassword`),
+  (6) screenshot helper, (7) trap-based teardown that always kills everything; plus a short
+  `docs/running-the-game.md` runbook that every future "run the app" agent brief points at. Pairs
+  with the Phase-7 offscreen harnesses (`RenderToPng`/`RenderWaterToPng`) — those for deterministic
+  model/water shots, `bin/devtest` for the live-client path.
+- **4e — TODO:** particles — the 60 `particles.jme` are still a degraded single-blob; re-author as
   jME3 `ParticleEmitter` params (combat-effect icons already render). The `*Emission` controllers
   exist as jME3 `AbstractControl`s from Phase 2, awaiting real emitters.
 
