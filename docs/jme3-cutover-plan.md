@@ -527,6 +527,16 @@ fidelity + Phase-3 input):
   as the horse item — diagnose via `RenderToPng` on that unit's model through `ModelCache` and compare
   to the fork; check the unit's `model.dat`→`.j3o` bake (mesh/skin/anim) and its `UnitSprite`/
   `ActiveSprite` material/animation binding. Probably shares a root cause with the horse big-shot.
+
+  **Phase-5 harness finding (2026-06-14, narrows both the shotgun and horse items above):** the
+  shotgun-dude and the mounted big-shots (`units/frontier_town/cavalry`, `units/indian_post/buffalo_rider`)
+  reproduce **deterministically** in `RenderModelToPng` (`-Panim=<clip>`). Textures resolve correctly
+  and the right clips list — but the **posed skinned armature is badly contorted**; static props render
+  fine. So the root cause is in the **skinning / joint-bind path** (`SkinningControl`/`Armature` +
+  `AnimComposer`, or the `model.dat`→`.j3o` skin bake), **not** texture resolution or the `Model`-facade
+  clone. Next step: inspect the baked `.j3o`'s `Armature`/skin weights vs. the fork rig (compare a
+  rest-pose `-Ptime=0` render to a posed frame; check bone bind matrices / weight assignment in
+  `ModelConverter`/`ModelToJ3o`).
 - **WASD camera panning doesn't work at all** (functional, not cosmetic). `GodViewHandler` is a jME3
   `AnalogListener`, but its `registerWith(InputManager)` was deferred at the Phase-3 host flip and is
   never called, so keyboard pan/zoom never reaches the camera. Wire it in the jME3 host
