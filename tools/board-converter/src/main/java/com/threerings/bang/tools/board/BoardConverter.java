@@ -142,7 +142,7 @@ public class BoardConverter
             if (diff == null) {
                 tally.boardsOk++;
                 System.out.println("OK   board " + rel + " -> " + out.getName() + "  " +
-                    before);
+                    before.terse());
             } else {
                 tally.boardsFail++;
                 tally.problems.add("board " + rel + ": " + diff);
@@ -152,6 +152,7 @@ public class BoardConverter
             tally.boardsFail++;
             tally.problems.add("board " + rel + ": " + t);
             System.out.println("FAIL board " + rel + ": " + t);
+            if (System.getProperty("convdebug") != null) t.printStackTrace();
         }
     }
 
@@ -269,9 +270,11 @@ public class BoardConverter
                 return "pieces " + pieceCensus + " != " + o.pieceCensus;
             return null;
         }
-        @Override public String toString () {
-            return "[" + width + "x" + height + " hf=" + hfLen + "b pieces{" + pieceCensus +
-                "} players=" + players + "]";
+        String terse () {
+            int n = pieceCensus.indexOf(':');
+            String count = (n < 0) ? pieceCensus : pieceCensus.substring(0, n);
+            return "[" + width + "x" + height + " hf=" + hfLen + "b pieces=" + count +
+                " players=" + players + "]";
         }
     }
 

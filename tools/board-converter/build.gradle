@@ -18,8 +18,24 @@ dependencies {
   // the retained fork reader/writer (jme/app via client:shared), AND Narya (api dep) which
   // supplies ObjectOutputStream/ObjectInputStream for the fork-independent target format.
   implementation project(":client:shared")
+
+  // Narya's default enum streamer policy hard-references com.samskivert.depot.util.ByteEnum
+  // (see docs/engine-notes.md "Streaming any enum touches depot") — BangConfig's Type/Duration/
+  // Speed enums stream through it, so depot must be on the tool runtime classpath. This is a
+  // tool-time dependency only; it does not affect any shipped module.
+  runtimeOnly "com.samskivert:depot:${depotVersion}"
 }
 
 application {
   mainClass = "com.threerings.bang.tools.board.BoardConverter"
+}
+
+// Reading a .board reconstitutes its Prop/Unit/Bonus pieces, whose ctors look up
+// PropConfig/UnitConfig/BonusConfig by name from the staged resource tree (props.txt,
+// prop.properties, ...). Point -Dappdir at the assets staging dir so BangUtil can resolve
+// them; pass it (and the optional convdebug flag) through to the tool JVM.
+tasks.named("run") {
+  ["appdir", "convdebug"].each { p ->
+    if (System.getProperty(p) != null) systemProperty(p, System.getProperty(p))
+  }
 }
