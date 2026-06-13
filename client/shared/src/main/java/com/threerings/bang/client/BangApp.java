@@ -113,11 +113,9 @@ public class BangApp extends JmeApp
         //     app.run(server, ports, username, password);
         // }
 
-    // jME3 cutover: this was the gdx ApplicationListener create() lifecycle hook; JmeApp is now a
-    // jME3-typed skeleton with no create()/update()/cleanup() loop (those are the Phase-3 host
-    // flip). The host will call this after installing the engine services via JmeApp.init(...).
-    // TODO(phase3-host): re-anchor this to the jME3 SimpleApplication lifecycle
-    // (simpleInitApp/simpleUpdate/destroy).
+    // jME3 cutover (Phase 3): the SimpleApplication host (JmeApp) calls this from simpleInitApp,
+    // on the render thread, after installing the engine services via JmeApp.init(...).
+    @Override
     public void create ()
     {
         // configure our debug log
@@ -133,27 +131,12 @@ public class BangApp extends JmeApp
             return;
         }
 
-        // TODO(phase3-host): the fork chained super.create() to run the fork JmeApp display/loop
-        // init; the jME3 host installs services via JmeApp.init(AssetManager,RenderManager,Camera)
-        // instead. Left unchained until the host flip.
-
-        // TODO(phase3-host): the fork disabled its transparent-queue two-pass rendering here
-        // (renderer.getQueue().setTwoPassTransparency(false)). jME3 has no such switch; transparent
-        // sorting is the RenderQueue TransparentComparator (verify billboard/particle layering at
-        // Phase 4). No-op until the host/render flip.
-
-        // // turn on the FPS display if we're profiling
-        // if (_profiling) {
-        //     displayStatistics(true);
-        // }
+        // jME3 owns transparent sorting (RenderQueue TransparentComparator); the fork's
+        // two-pass-transparency switch is gone (verify billboard/particle layering at Phase 4).
 
         // initialize our client instance
         _client = new BangClient();
         _client.init(this, false);
-
-        // TODO(phase3-host): the fork sped up polled key input via _input.setActionSpeed(150f).
-        // The polled fork InputHandler is gone; key-repeat / input tuning is configured on the
-        // jME3 InputManager at the Phase-3 host flip.
     }
 
     public void run (String server, int[] ports, String username, String password)
@@ -212,16 +195,9 @@ public class BangApp extends JmeApp
         return new GameInputHandler(camhand);
     }
 
-    @Override // documentation inherited
-    protected BRootNode createRootNode ()
-    {
-        // TODO(phase3-host): the fork returned a PolledRootNode(_timer, _input) (LWJGL2/gdx input
-        // glue, deleted in the bui migration) that also routed BUI button/text events to feedback
-        // sounds. The jME3 Jme3RootNode (RawInputListener-fed) is installed at the Phase-3 host
-        // flip; the feedback-sound dispatch hook (BangUI.play on ActionEvent/TextEvent for buttons)
-        // moves there. Until then there is no BUI root node.
-        return null;
-    }
+    // createRootNode() inherits the JmeApp default (a jME3 Jme3RootNode). The feedback-sound
+    // dispatch hook the fork PolledRootNode carried (BangUI.play on button ActionEvent/TextEvent)
+    // is a global event listener concern; deferred to Phase 4 polish.
 
     // jME3 cutover: the fork JmeApp called initLighting() during display init to set up the global
     // LightState; jME3 has no such hook (lights attach per-Spatial via the board renderer). Kept as
@@ -267,15 +243,15 @@ public class BangApp extends JmeApp
         reportInitFailure(_client, t);
     }
 
-    // jME3 cutover: the fork JmeApp drove a per-frame update(long)/cleanup() loop; the jME3 host
-    // owns the loop at Phase 3. These keep the Bang-side per-frame and teardown work; the host
-    // calls them from simpleUpdate()/destroy() once the flip lands.
-    // TODO(phase3-host): re-anchor to the jME3 Application update/teardown.
+    // jME3 cutover (Phase 3): the SimpleApplication host calls these from simpleUpdate()/destroy()
+    // on the render thread.
+    @Override
     protected void update (long frameTick)
     {
         _client._soundmgr.updateStreams(_frameTime);
     }
 
+    @Override
     protected void cleanup ()
     {
         // let the client clean things up before we shutdown

@@ -27,12 +27,25 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import com.samskivert.util.RunQueue;
 import com.samskivert.util.StringUtil;
 
+import com.jme3.app.SimpleApplication;
 import com.jme3.asset.AssetManager;
+import com.jme3.light.AmbientLight;
+import com.jme3.light.DirectionalLight;
+import com.jme3.math.ColorRGBA;
+import com.jme3.math.Vector3f;
+import com.jme3.post.SceneProcessor;
+import com.jme3.profile.AppProfiler;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.RenderManager;
+import com.jme3.renderer.ViewPort;
+import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Node;
+import com.jme3.texture.FrameBuffer;
 
 import com.jmex.bui.BRootNode;
+import com.jmex.bui.Jme3RootNode;
+import com.jmex.bui.backend.BackendProvider;
+import com.jmex.bui.backend.Jme3RenderBackend;
 
 import com.threerings.jme.camera.CameraHandler;
 import com.threerings.jme.camera.GodViewHandler;
@@ -41,47 +54,163 @@ import com.threerings.jme.camera.GodViewHandler;
  * Defines a basic application framework providing integration with the Presents networking system
  * and a jME3 scene-graph host.
  *
- * <p>jME3 cutover (Phase 1): this is the host loop, the primary {@code app} rebuild target
- * (§3.1 / risk #8 of the migration map). It was the gdx {@code ApplicationListener} driving the
- * fork {@code DisplaySystem}/{@code Renderer}: gdx owned the LWJGL2 window+GL context+main loop,
- * and the fork rendered into it (engine-notes "three layers sharing one GL context"). Under jME3
- * the engine owns its own LWJGL3 context and main loop, so the gdx host and the fork render
- * driving go away entirely. The full host — a {@code com.jme3.app.SimpleApplication} (or custom
- * {@code Application}) on the LWJGL3 context, the {@code RawInputListener} → BUI input path, and
- * the {@code Jme3RenderBackend} install — is the <b>Phase-3 atomic flip</b>; that flip cannot
- * land until {@code client/shared} compiles (Phase 2). So Phase 1 retypes this class onto jME3
- * types and preserves its {@link JmeContext} + {@link RunQueue} seam, leaving the live context
- * creation / per-frame render loop to the Phase-3 {@code SimpleApplication} subclass.
- *
- * <p>The fork's 1×1-init reinit dance (engine-notes §threading: the editor's {@code LwjglCanvas}
- * created the GL display before AWT layout, forcing {@code JmeApp.resize()} to {@code reinit} the
- * renderer + refresh the frustum) goes away — jME3 owns the context and sizes it correctly.
+ * <p>jME3 cutover (Phase 3 — the atomic host flip): this is now a
+ * {@link com.jme3.app.SimpleApplication} on the jME3/LWJGL3 context. It owns the window, the GL
+ * context, the main loop and input. The fork+gdx host (gdx {@code LwjglApplication} +
+ * {@code ApplicationListener}) and the fork {@code DisplaySystem}/{@code Renderer} are gone. The
+ * loop:
+ * <ul>
+ *   <li>{@link #simpleInitApp} installs the engine services ({@link #init}), the BUI render
+ *       backend ({@link Jme3RenderBackend} via {@link BackendProvider#set}) and a
+ *       {@link SceneProcessor} on the GUI viewport that brackets BUI's window traversal with
+ *       {@code beginFrame}/{@code endFrame} (the proven {@code tools/jme3-host} pattern), wires
+ *       the {@link Jme3RootNode} input path to the {@code InputManager}, and calls the
+ *       subclass {@link #create} hook;</li>
+ *   <li>{@link #simpleUpdate} drains posted runnables (Presents run queue) on the render thread,
+ *       drives the BUI root state, and calls the subclass {@link #update} hook;</li>
+ *   <li>{@link #destroy} calls the subclass {@link #cleanup} hook.</li>
+ * </ul>
  */
-public class JmeApp
-    implements RunQueue, JmeContext
+public class JmeApp extends SimpleApplication
+    implements RunQueue
 {
-    /**
-     * Returns a context implementation that provides access to all the necessary bits.
-     */
-    public JmeContext getContext ()
+    public JmeApp ()
     {
-        return this;
+        // we manage our own scene; SimpleApplication's default state set (fly-cam, stats, debug
+        // keys) is suppressed in simpleInitApp.
     }
 
     /**
-     * Installs the jME3 services this host exposes. Phase 3's {@code SimpleApplication} host
-     * calls this from {@code simpleInitApp()} with the engine-owned services; until then it lets
-     * tools/tests build a context without a live GL context.
+     * Returns the Bang-side context (our {@link JmeContext}, distinct from the jME3 system
+     * {@code com.jme3.system.JmeContext} that {@code Application.getContext()} returns).
+     */
+    public JmeContext getJmeContext ()
+    {
+        return _context;
+    }
+
+    /**
+     * Installs the jME3 services this host exposes. Called from {@link #simpleInitApp} with the
+     * engine-owned services.
      */
     public void init (AssetManager assetManager, RenderManager renderManager, Camera camera)
     {
         _assetManager = assetManager;
         _renderManager = renderManager;
         _camera = camera;
+        _dispatchThread = Thread.currentThread();
 
         initRoot();
         initInput();
         initInterface();
+    }
+
+    @Override // from SimpleApplication
+    public void simpleInitApp ()
+    {
+        // suppress SimpleApplication's defaults: we drive our own camera + UI.
+        if (flyCam != null) {
+            flyCam.setEnabled(false);
+        }
+        if (stateManager.getState(com.jme3.app.StatsAppState.class) != null) {
+            stateManager.detach(stateManager.getState(com.jme3.app.StatsAppState.class));
+        }
+        if (stateManager.getState(com.jme3.app.DebugKeysAppState.class) != null) {
+            stateManager.detach(stateManager.getState(com.jme3.app.DebugKeysAppState.class));
+        }
+        inputManager.setCursorVisible(true);
+
+        // make the main viewport clear to black (host owns the viewport background).
+        viewPort.setBackgroundColor(ColorRGBA.Black);
+
+        // install the BUI render backend BEFORE building any widget (BImage chooses its backing
+        // from BackendProvider.get() at construction time).
+        _backend = new Jme3RenderBackend(assetManager);
+        BackendProvider.set(_backend);
+
+        // install our services + build the scene graph + UI root.
+        init(assetManager, renderManager, cam);
+
+        // attach our scene-graph root to the main viewport's scene.
+        rootNode.attachChild(_root);
+
+        // some basic lighting so 3D content is not black (board view adds its own per-board
+        // lights; this is a fallback for menu/town scenes).
+        DirectionalLight sun = new DirectionalLight();
+        sun.setDirection(new Vector3f(-0.5f, -1f, -0.5f).normalizeLocal());
+        sun.setColor(ColorRGBA.White);
+        rootNode.addLight(sun);
+        AmbientLight amb = new AmbientLight();
+        amb.setColor(ColorRGBA.White.mult(0.4f));
+        rootNode.addLight(amb);
+
+        // wire the camera-control input mappings now that we own the InputManager.
+        if (_inputHandler != null) {
+            _inputHandler.registerWith(inputManager);
+        }
+
+        // wire BUI input: attach the Jme3RootNode's RawInputListener to the InputManager.
+        if (_rnode instanceof Jme3RootNode) {
+            ((Jme3RootNode)_rnode).registerWith(inputManager);
+        }
+
+        // render BUI through a SceneProcessor on the GUI viewport (the tools/jme3-host pattern):
+        // postQueue runs with the GUI viewport active; we switch into the 2D ortho overlay and
+        // bracket the window traversal with beginFrame/endFrame.
+        guiViewPort.addProcessor(new BuiProcessor());
+
+        // let the subclass finish initializing (creates the BangClient, etc.).
+        create();
+    }
+
+    @Override // from SimpleApplication
+    public void simpleUpdate (float tpf)
+    {
+        _frameTime = tpf;
+        _frameRate = (tpf > 0) ? 1f / tpf : 0f;
+
+        // drain runnables posted from other threads (Presents run queue) on the render thread.
+        executeRunnables();
+
+        // drive per-frame BUI logic (tooltips, geom views, key repeat).
+        if (_rnode != null) {
+            _rnode.updateRootState(tpf);
+        }
+
+        // subclass per-frame work (sound stream updates, etc.).
+        update((long)(tpf * 1000));
+    }
+
+    @Override // from SimpleApplication
+    public void destroy ()
+    {
+        try {
+            cleanup();
+        } finally {
+            super.destroy();
+        }
+    }
+
+    /**
+     * Subclass hook: called once at the end of {@link #simpleInitApp}, on the render thread, with
+     * all services installed. Builds the client.
+     */
+    public void create ()
+    {
+    }
+
+    /**
+     * Subclass hook: called once per frame from {@link #simpleUpdate} on the render thread.
+     */
+    protected void update (long frameTick)
+    {
+    }
+
+    /**
+     * Subclass hook: called from {@link #destroy} as the app tears down.
+     */
+    protected void cleanup ()
+    {
     }
 
     /**
@@ -95,39 +224,34 @@ public class JmeApp
     }
 
     /**
-     * Returns the frames per second averaged over recent frames. Populated by the Phase-3 host.
+     * Returns the frames per second averaged over recent frames.
      */
     public float getRecentFrameRate ()
     {
         return _frameRate;
     }
 
-    /**
-     * Instructs the application to stop the main loop, cleanup and exit. The live teardown is
-     * wired by the Phase-3 host; here we just flip the running flag.
-     */
-    public void stop ()
-    {
-        _finished = true;
-    }
-
     // from interface RunQueue
     public void postRunnable (Runnable r)
     {
-        // queued here in Phase 1; the Phase-3 host drains this on the jME3 render thread (jME3's
-        // Application.enqueue), replacing gdx's postRunnable.
+        // queued here; drained on the jME3 render thread in simpleUpdate (replacing gdx's
+        // postRunnable). If we are already on the render thread we could run immediately, but
+        // deferring to the next frame matches the old semantics.
         _runnables.add(r);
     }
 
     /**
-     * Drains and runs any queued runnables. Called by the Phase-3 host once per frame on the
-     * render thread.
+     * Drains and runs any queued runnables. Called once per frame on the render thread.
      */
     public void executeRunnables ()
     {
         Runnable r;
         while ((r = _runnables.poll()) != null) {
-            r.run();
+            try {
+                r.run();
+            } catch (Throwable t) {
+                t.printStackTrace();
+            }
         }
     }
 
@@ -143,6 +267,13 @@ public class JmeApp
         return !_finished;
     }
 
+    @Override // from SimpleApplication / Application
+    public void stop ()
+    {
+        _finished = true;
+        super.stop();
+    }
+
     /**
      * Sets up a main input controller to handle the camera and deal with global user input.
      */
@@ -150,9 +281,6 @@ public class JmeApp
     {
         _camhand = createCameraHandler(_camera);
         _inputHandler = createInputHandler(_camhand);
-        // the jME3 InputManager mappings (GodViewHandler.registerWith) are installed by the
-        // Phase-3 host once it owns the input manager. The handler object exists now so
-        // camera-control logic (enable/disable, round setup) works pre-host.
     }
 
     /**
@@ -178,10 +306,6 @@ public class JmeApp
     protected void initRoot ()
     {
         _root = new Node("Root");
-
-        // set up a node for our geometry. depth/light/render-state setup that the fork did with
-        // ZBufferState/LightState render-state objects is now per-Geometry Material state +
-        // Spatial.addLight, applied by the board renderer in Phase 2/4.
         _geom = new Node("Geometry");
         _root.attachChild(_geom);
     }
@@ -191,23 +315,18 @@ public class JmeApp
      */
     protected void initInterface ()
     {
-        // set up a node for our interface
         _iface = new Node("Interface");
         _root.attachChild(_iface);
-
-        // create our root node
         _rnode = createRootNode();
     }
 
     /**
-     * Allows a customized BUI root node to be created. The fork {@code PolledRootNode} (LWJGL2/
-     * gdx input glue) was deleted in the bui migration; the jME3 {@code Jme3RootNode}
-     * (RawInputListener-fed) is installed at the Phase-3 host flip, so this returns null until
-     * a subclass overrides it.
+     * Allows a customized BUI root node to be created. The default is the jME3 input-fed
+     * {@link Jme3RootNode}.
      */
     protected BRootNode createRootNode ()
     {
-        return null;
+        return new Jme3RootNode();
     }
 
     /**
@@ -221,7 +340,6 @@ public class JmeApp
         if (!StringUtil.isBlank(home)) {
             cfgdir = home + File.separator + cfgdir;
         }
-        // create the configuration directory if it does not already exist
         File dir = new File(cfgdir);
         if (!dir.exists()) {
             dir.mkdir();
@@ -229,44 +347,75 @@ public class JmeApp
         return cfgdir + File.separator + file;
     }
 
-    // from interface JmeContext
-    public AssetManager getAssetManager () {
-        return _assetManager;
+    /** Our {@link JmeContext} implementation, reading the host's services. */
+    protected class ContextImpl implements JmeContext
+    {
+        public AssetManager getAssetManager () {
+            return _assetManager;
+        }
+        public RenderManager getRenderManager () {
+            return _renderManager;
+        }
+        public Camera getCamera () {
+            return _camera;
+        }
+        public CameraHandler getCameraHandler () {
+            return _camhand;
+        }
+        public GodViewHandler getInputHandler () {
+            return _inputHandler;
+        }
+        public Node getGeometry () {
+            return _geom;
+        }
+        public Node getInterface () {
+            return _iface;
+        }
+        public BRootNode getRootNode () {
+            return _rnode;
+        }
     }
 
-    // from interface JmeContext
-    public RenderManager getRenderManager () {
-        return _renderManager;
-    }
+    /**
+     * Renders BUI during the GUI viewport's queue flush, using the proven tools/jme3-host
+     * approach: switch into jME3's 2D ortho overlay (1 unit == 1 pixel, origin bottom-left =
+     * BUI's coordinate space) and bracket the window traversal with the backend's
+     * beginFrame/endFrame.
+     */
+    protected class BuiProcessor implements SceneProcessor
+    {
+        public void initialize (RenderManager rm, ViewPort vp) {
+            _rm = rm;
+            _initialized = true;
+        }
+        public boolean isInitialized () {
+            return _initialized;
+        }
+        public void postQueue (RenderQueue rq) {
+            if (_rnode == null || _rm == null) {
+                return;
+            }
+            Camera gcam = guiViewPort.getCamera();
+            int w = gcam.getWidth(), h = gcam.getHeight();
+            _rm.setCamera(gcam, true);
+            _backend.beginFrame(_rm, w, h);
+            try {
+                _rnode.renderWindows(null);
+            } catch (Throwable t) {
+                t.printStackTrace();
+            } finally {
+                _backend.endFrame();
+                _rm.setCamera(gcam, false);
+            }
+        }
+        public void preFrame (float tpf) {}
+        public void postFrame (FrameBuffer out) {}
+        public void reshape (ViewPort vp, int w, int h) {}
+        public void cleanup () { _initialized = false; }
+        public void setProfiler (AppProfiler profiler) {}
 
-    // from interface JmeContext
-    public Camera getCamera () {
-        return _camera;
-    }
-
-    // from interface JmeContext
-    public CameraHandler getCameraHandler () {
-        return _camhand;
-    }
-
-    // from interface JmeContext
-    public GodViewHandler getInputHandler () {
-        return _inputHandler;
-    }
-
-    // from interface JmeContext
-    public Node getGeometry () {
-        return _geom;
-    }
-
-    // from interface JmeContext
-    public Node getInterface () {
-        return _iface;
-    }
-
-    // from interface JmeContext
-    public BRootNode getRootNode () {
-        return _rnode;
+        protected RenderManager _rm;
+        protected boolean _initialized;
     }
 
     protected Thread _dispatchThread;
@@ -280,12 +429,14 @@ public class JmeApp
     protected GodViewHandler _inputHandler;
 
     protected BRootNode _rnode;
+    protected Jme3RenderBackend _backend;
+    protected final JmeContext _context = new ContextImpl();
 
     protected boolean _updateEnabled = true, _renderEnabled = true;
     protected boolean _finished;
 
     protected Node _root, _geom, _iface;
 
-    /** Runnables posted from other threads, drained on the render thread by the Phase-3 host. */
+    /** Runnables posted from other threads, drained on the render thread. */
     protected final ConcurrentLinkedQueue<Runnable> _runnables = new ConcurrentLinkedQueue<>();
 }

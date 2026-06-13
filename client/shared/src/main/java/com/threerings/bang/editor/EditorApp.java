@@ -33,23 +33,12 @@ public class EditorApp extends JmeApp // TODO: use GDX's canvas stuffs
         return canvas;
     }
 
-    // jME3 cutover: JmeApp is now a jME3-typed skeleton with no create()/loop (Phase-3 host flip);
-    // this is no longer an @Override. The host calls it after installing services via JmeApp.init.
-    // TODO(phase3-host): re-anchor to the jME3 SimpleApplication lifecycle.
+    // jME3 cutover (Phase 3): called by the SimpleApplication host from simpleInitApp. The
+    // AWT-canvas embedding of the editor (Swing JFrame + GL canvas) is a Phase-5 concern; for now
+    // the editor app boots on the same LWJGL3 window as the client.
+    @Override
     public void create ()
     {
-        // TODO(phase3-host): the fork disabled two-pass transparency here
-        // (getRenderManager().getQueue().setTwoPassTransparency(false)); jME3 has no such switch
-        // (transparent sorting is the RenderQueue TransparentComparator). No-op until the host flip.
-
-        // // queue an update to make sure that the context is current before the client's event
-        // // handlers start firing.  somehow calling repaint() doesn't have the same effect.
-        // postRunnable(new Runnable() {
-        //     public void run () {
-        //         _canvas.update(_canvas.getGraphics());
-        //     }
-        // });
-
         // initialize and start our client instance
         _client.init(this, frame);
         _client.start();

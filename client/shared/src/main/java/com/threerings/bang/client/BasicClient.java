@@ -303,35 +303,35 @@ public class BasicClient
         // AssetManager / RenderManager / Camera the app owns; input is wired at the Phase-3 host
         // (registerWith(InputManager)).
         public AssetManager getAssetManager () {
-            return _app.getContext().getAssetManager();
+            return _app.getJmeContext().getAssetManager();
         }
 
         public RenderManager getRenderManager () {
-            return _app.getContext().getRenderManager();
+            return _app.getJmeContext().getRenderManager();
         }
 
         public Camera getCamera () {
-            return _app.getContext().getCamera();
+            return _app.getJmeContext().getCamera();
         }
 
         public CameraHandler getCameraHandler () {
-            return _app.getContext().getCameraHandler();
+            return _app.getJmeContext().getCameraHandler();
         }
 
         public GodViewHandler getInputHandler () {
-            return _app.getContext().getInputHandler();
+            return _app.getJmeContext().getInputHandler();
         }
 
         public Node getGeometry () {
-            return _app.getContext().getGeometry();
+            return _app.getJmeContext().getGeometry();
         }
 
         public Node getInterface () {
-            return _app.getContext().getInterface();
+            return _app.getJmeContext().getInterface();
         }
 
         public BRootNode getRootNode () {
-            return _app.getContext().getRootNode();
+            return _app.getJmeContext().getRootNode();
         }
 
         public BStyleSheet getStyleSheet () {

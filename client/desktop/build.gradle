@@ -1,8 +1,13 @@
 dependencies {
   api project(":client:shared")
-  implementation "com.badlogicgames.gdx:gdx-backend-lwjgl:${gdxVersion}"
-  implementation group: "com.badlogicgames.gdx", name: "gdx-platform", version: gdxVersion,
-          classifier: "natives-desktop"
+
+  // jME3 cutover (Phase 3 — the atomic host flip): the client now runs on jME3/LWJGL3. The host
+  // (BangApp) is a com.jme3.app.SimpleApplication; jme3-lwjgl3 supplies the LWJGL3 window/context,
+  // jme3-desktop supplies the AWT image loaders + desktop asset support. The old gdx LWJGL2 host
+  // (gdx-backend-lwjgl + gdx-platform natives) is dropped.
+  runtimeOnly "org.jmonkeyengine:jme3-lwjgl3:${jme3Version}"
+  runtimeOnly "org.jmonkeyengine:jme3-desktop:${jme3Version}"
+
   // narya 1.19's Streamer hard-references depot's ByteEnum when streaming any enum;
   // depot is optional for narya but required on the classpath at runtime
   runtimeOnly "com.samskivert:depot:${depotVersion}"
