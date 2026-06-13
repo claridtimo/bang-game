@@ -7,8 +7,7 @@ package com.jmex.bui;
 
 import java.util.ArrayList;
 
-import com.jme.system.DisplaySystem;
-
+import com.jmex.bui.backend.BackendProvider;
 import com.jmex.bui.event.ActionEvent;
 import com.jmex.bui.event.BEvent;
 import com.jmex.bui.event.MouseEvent;
@@ -100,8 +99,8 @@ public class BPopupMenu extends BPopupWindow
     // documentation inherited
     protected void packAndFit (int x, int y, boolean above)
     {
-        int width = DisplaySystem.getDisplaySystem().getWidth();
-        int height = DisplaySystem.getDisplaySystem().getHeight();
+        int width = BackendProvider.get().getDisplayWidth();
+        int height = BackendProvider.get().getDisplayHeight();
 
         // determine whether we can fit in the window
         ArrayList<BComponent> children = null;

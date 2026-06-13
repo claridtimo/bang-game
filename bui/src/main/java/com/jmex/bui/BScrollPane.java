@@ -5,7 +5,7 @@
 
 package com.jmex.bui;
 
-import org.lwjgl.opengl.GL11;
+import com.jmex.bui.backend.BackendProvider;
 
 import com.jme.renderer.Renderer;
 import com.jmex.bui.event.MouseWheelListener;
@@ -319,7 +319,7 @@ public class BScrollPane extends BContainer
             Insets insets = getInsets();
             int yoffset = getYOffset();
             int xoffset = getXOffset();
-            GL11.glTranslatef(xoffset, yoffset, 0);
+            BackendProvider.get().translate(xoffset, yoffset);
             boolean scissored = intersectScissorBox(_srect,
                 (getAbsoluteX() + insets.left) - xoffset,
                 (getAbsoluteY() + insets.bottom) - yoffset,
@@ -330,7 +330,7 @@ public class BScrollPane extends BContainer
                 _target.render(renderer);
             } finally {
                 restoreScissorState(scissored, _srect);
-                GL11.glTranslatef(-xoffset, -yoffset, 0);
+                BackendProvider.get().translate(-xoffset, -yoffset);
             }
         }
 

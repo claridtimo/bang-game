@@ -5,13 +5,11 @@
 
 package com.jmex.bui.background;
 
-import org.lwjgl.opengl.GL11;
-
 import com.jme.renderer.ColorRGBA;
 import com.jme.renderer.Renderer;
 
 import com.jmex.bui.BComponent;
-import com.jmex.bui.BImage;
+import com.jmex.bui.backend.BackendProvider;
 
 /**
  * Displays a partially transparent solid color in the background.
@@ -33,15 +31,10 @@ public class TintedBackground extends BBackground
         super.render(renderer, x, y, width, height, alpha);
 
         BComponent.applyDefaultStates();
-        BImage.blendState.apply();
+        BackendProvider.get().applyBlendState();
 
-        GL11.glColor4f(_color.r, _color.g, _color.b, _color.a * alpha);
-        GL11.glBegin(GL11.GL_QUADS);
-        GL11.glVertex2f(x, y);
-        GL11.glVertex2f(x + width, y);
-        GL11.glVertex2f(x + width, y + height);
-        GL11.glVertex2f(x, y + height);
-        GL11.glEnd();
+        BackendProvider.get().fillRect(x, y, width, height,
+            _color.r, _color.g, _color.b, _color.a * alpha);
     }
 
     protected ColorRGBA _color;

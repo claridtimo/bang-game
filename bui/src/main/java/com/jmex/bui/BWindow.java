@@ -5,7 +5,7 @@
 
 package com.jmex.bui;
 
-import com.jme.system.DisplaySystem;
+import com.jmex.bui.backend.BackendProvider;
 
 import com.jmex.bui.layout.BLayoutManager;
 import com.jmex.bui.util.Dimension;
@@ -58,8 +58,8 @@ public class BWindow extends BContainer
      */
     public void center ()
     {
-        int width = DisplaySystem.getDisplaySystem().getWidth();
-        int height = DisplaySystem.getDisplaySystem().getHeight();
+        int width = BackendProvider.get().getDisplayWidth();
+        int height = BackendProvider.get().getDisplayHeight();
         setLocation((width-getWidth())/2, (height-getHeight())/2);
     }
 

@@ -9,16 +9,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.logging.Level;
 
-import org.lwjgl.opengl.GL11;
-
 import com.jme.intersection.CollisionResults;
 import com.jme.renderer.ColorRGBA;
 import com.jme.renderer.Renderer;
 import com.jme.scene.Geometry;
 import com.jme.scene.Spatial;
-import com.jme.system.DisplaySystem;
 
 import com.jmex.bui.Log;
+import com.jmex.bui.backend.BackendProvider;
 import com.jmex.bui.event.BEvent;
 import com.jmex.bui.event.EventListener;
 import com.jmex.bui.event.FocusEvent;
@@ -345,8 +343,8 @@ public abstract class BRootNode extends Geometry
         }
 
         // if it's still here, lay it out
-        int width = DisplaySystem.getDisplaySystem().getWidth();
-        int height = DisplaySystem.getDisplaySystem().getHeight();
+        int width = BackendProvider.get().getDisplayWidth();
+        int height = BackendProvider.get().getDisplayHeight();
         _tipwin.pack(_tipWidth == -1 ? width-10 : _tipWidth, height-10);
         int tx = 0, ty = 0;
         if (_hcomponent.isTooltipRelativeToMouse()) {
@@ -597,18 +595,13 @@ public abstract class BRootNode extends Geometry
     protected void renderModalShade ()
     {
         BComponent.applyDefaultStates();
-        BImage.blendState.apply();
+        BackendProvider.get().applyBlendState();
 
-        int width = DisplaySystem.getDisplaySystem().getWidth();
-        int height = DisplaySystem.getDisplaySystem().getHeight();
+        int width = BackendProvider.get().getDisplayWidth();
+        int height = BackendProvider.get().getDisplayHeight();
 
-        GL11.glColor4f(_modalShade.r, _modalShade.g, _modalShade.b, _modalShade.a);
-        GL11.glBegin(GL11.GL_QUADS);
-        GL11.glVertex2f(0, 0);
-        GL11.glVertex2f(width, 0);
-        GL11.glVertex2f(width, height);
-        GL11.glVertex2f(0, height);
-        GL11.glEnd();
+        BackendProvider.get().fillRect(0, 0, width, height,
+            _modalShade.r, _modalShade.g, _modalShade.b, _modalShade.a);
     }
 
     protected int _modifiers;
