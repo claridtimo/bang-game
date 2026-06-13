@@ -1,0 +1,25 @@
+// Phase 5 prototype: converts compiled Bang model.dat files (vendored jME fork binary
+// format) into jMonkeyEngine 3 .j3o files. Deliberately isolated: this is the only
+// module with jME3 dependencies, and nothing else depends on it.
+
+plugins {
+  id "application"
+}
+
+ext {
+  jme3Version = "3.9.0-stable"
+}
+
+dependencies {
+  // the fork loader (app) plus the game-sprite emission controller classes that 61
+  // model.dat files reference by class name during deserialization
+  implementation project(":client:shared")
+
+  implementation "org.jmonkeyengine:jme3-core:${jme3Version}"
+  // AWTLoader, for loading the .png textures referenced by converted materials
+  implementation "org.jmonkeyengine:jme3-desktop:${jme3Version}"
+}
+
+application {
+  mainClass = "com.threerings.bang.tools.j3o.ModelToJ3o"
+}
