@@ -657,18 +657,34 @@ Two small fixes that came out of the Phase-6a server-bootstrap NPE (see the 6a n
 was a worktree-setup artifact (gitignored `etc/test/` missing → blank `server_auth`), made worse by
 a silent-null misconfig path. Harden both so a fresh checkout/worktree "just runs".
 
-- **#1 — fail-fast on a misconfigured authenticator.** `ServerConfig.getAuthenticator()`
-  (`server/.../ServerConfig.java`) returns `null` when `server_auth` is blank (or the class fails to
-  load), and `BangServer$Module.configure` (`BangServer:116`) does `bind(Authenticator.class).to(
-  null)` → an opaque Guice NPE far from the cause. Make it fail fast with a clear, actionable message
-  (e.g. "server_auth is not configured / class X not found — copy etc/*.dist to etc/test/") thrown at
-  the config read, rather than letting a null reach Guice. Don't silently swallow the
-  `Class.forName` failure either.
-- **#2 — auto-seed `etc/test/` in `bin/devtest`.** `etc/test/` is gitignored, so fresh worktrees
-  (every background agent) have no local config and trip the above. Have `bin/devtest` (early, before
-  the deploy step) copy any missing `etc/*.dist` → `etc/test/<name-without-.dist>` when the target is
-  absent (never overwrite an existing file), and log what it seeded. This removes a recurring
-  agent-testability snag (the Phase-5 theme). Keep it idempotent and safe to re-run.
+- **#1 — fail-fast on a misconfigured authenticator. [DONE 2026-06-14]** `ServerConfig.getAuthenticator()`
+  (`server/.../ServerConfig.java`) used to return `null` when `server_auth` is blank (or the class
+  fails to load), and `BangServer$Module.configure` (`BangServer:116`) does `bind(Authenticator.class)
+  .to(null)` → an opaque Guice NPE far from the cause. **Fix:** `getAuthenticator()` now throws an
+  `IllegalStateException` up front: on a blank `server_auth`, the message is *"server_auth is not
+  configured. Copy etc/*.dist to etc/test/ (see README / docs/running-the-game.md), or set server_auth
+  in etc/test/server.properties."*; on a `Class.forName` failure it rethrows
+  `"Failed to load authenticator class '<class>' (configured as server_auth)."` with the original
+  cause chained (no longer swallowed/logged-and-nulled). The success path is unchanged — a valid
+  `server_auth = com.threerings.bang.server.ooo.OOOAuthenticator` binds exactly as before. The throw
+  fires during Guice module `configure()`, before any DB contact. File changed:
+  `server/src/main/java/com/threerings/bang/server/ServerConfig.java`. Verified: `:server:compileJava`
+  clean; live `bin/devtest --no-client` with `server_auth` blanked in `etc/test/server.properties`
+  surfaces the clear fail-fast message in the server log instead of the bare Guice NPE, and restoring
+  it returns to normal "Server listening" startup.
+- **#2 — auto-seed `etc/test/` in `bin/devtest`. [DONE 2026-06-14]** `etc/test/` is gitignored, so
+  fresh worktrees (every background agent) had no local config and tripped #1. **Fix:** `bin/devtest`
+  gained a `seed_etc_test` function (called after process cleanup, before the MySQL check and the
+  `./gradlew deploy` step — deploy bakes `etc/test/` into the jars, so seeding must precede it). For
+  each `etc/*.dist` it copies to `etc/test/<name-without-.dist>` only when the target is absent (never
+  overwrites), logs each file seeded with a `[devtest] seeded etc/test/<name> from <name>.dist` line,
+  and stays quiet when everything is already present. Idempotent / safe to re-run. The comment + a
+  closing log line note that the seeded `server.properties` still needs correct `db.*` MySQL
+  credentials — seeding removes the *missing-file* failure, it does not provision MySQL. File changed:
+  `bin/devtest`. Verified: in a fresh worktree (only `etc/test/README` present), running `bin/devtest`
+  seeded `blosxom.conf, build_settings.properties, deployment.properties, server.conf,
+  server.properties`; a second run seeded nothing (idempotent); the server then deployed and reached
+  "Server listening" (MySQL was up as `bang`/`yeehaw`).
 
 ### Phase 7 — Editor + visual regression
 - `bangeditor` on a jME3 AWT canvas; per-town visual regression against pre-cutover screenshots,
