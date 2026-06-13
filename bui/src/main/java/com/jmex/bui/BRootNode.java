@@ -9,11 +9,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.logging.Level;
 
-import com.jme.intersection.CollisionResults;
-import com.jme.renderer.ColorRGBA;
-import com.jme.renderer.Renderer;
-import com.jme.scene.Geometry;
-import com.jme.scene.Spatial;
+import com.jme3.math.ColorRGBA;
+import com.jme3.renderer.RenderManager;
 
 import com.jmex.bui.Log;
 import com.jmex.bui.backend.BackendProvider;
@@ -24,16 +21,18 @@ import com.jmex.bui.event.MouseEvent;
 import com.jmex.bui.layout.BorderLayout;
 
 /**
- * Connects the BUI system into the JME scene graph.
+ * Connects the BUI system into the rendering host.
+ *
+ * <p> Since the jME3 cutover (Phase 1) this is no longer a scene-graph node. The host drives
+ * BUI by (a) calling {@link #updateRootState} once per frame (tooltip/timer logic + geom-view
+ * updates) and (b) calling {@link #renderWindows} on the render thread, bracketed by the
+ * backend's {@code beginFrame}/{@code endFrame} (see {@code docs/jme3-bui-host.md}). The
+ * concrete jME3 root node ({@code Jme3RootNode}) and its input path arrive in Phase 3.
  */
-public abstract class BRootNode extends Geometry
+public abstract class BRootNode
 {
     public BRootNode ()
     {
-        super("BUI Root Node");
-
-        // we need to render in the ortho queue
-        setRenderQueueMode(Renderer.QUEUE_ORTHO);
     }
 
     /**
@@ -294,11 +293,13 @@ public abstract class BRootNode extends Geometry
         }
     }
 
-    // documentation inherited
-    public void updateGeometricState (float time, boolean initiator)
+    /**
+     * Drives per-frame BUI logic: geometry-view updates plus tooltip timing. The host calls
+     * this once per frame with the elapsed time. (Replaces the fork scene node's
+     * {@code updateGeometricState} hook.)
+     */
+    public void updateRootState (float time)
     {
-        super.updateGeometricState(time, initiator);
-
         // update our geometry views if we have any
         for (int ii = 0, ll = _geomviews.size(); ii < ll; ii++) {
             _geomviews.get(ii).update(time);
@@ -363,20 +364,15 @@ public abstract class BRootNode extends Geometry
         _tipwin.validate();
     }
 
-    // documentation inherited
-    public void onDraw (Renderer renderer)
+    /**
+     * Renders all registered windows, back-to-front, through the installed
+     * {@link BackendProvider} backend. The host calls this on the render thread, bracketed by
+     * the backend's {@code beginFrame}/{@code endFrame}. The {@code RenderManager} argument is
+     * a pass-through token threaded into BUI's render tree; the jME3 backend renders through
+     * its own render manager and ignores it.
+     */
+    public void renderWindows (RenderManager renderer)
     {
-        // we're rendered in the ortho queue, so we just add ourselves to the queue here and we'll
-        // get a call directly to draw() later when the ortho queue is rendered
-        if (!renderer.isProcessingQueue()) {
-            renderer.checkAndAdd(this);
-        }
-    }
-
-    // documentation inherited
-    public void draw (Renderer renderer)
-    {
-        super.draw(renderer);
         BWindow modalWin = null;
         if (_modalShade != null) {
             for (int ii = _windows.size() - 1; ii >= 0; ii--) {
@@ -400,18 +396,6 @@ public abstract class BRootNode extends Geometry
                 Log.log.log(Level.WARNING, win + " failed in render()", t);
             }
         }
-    }
-
-    // documentation inherited
-    public void findCollisions (Spatial scene, CollisionResults results)
-    {
-        // nothing doing
-    }
-
-    // documentation inherited
-    public boolean hasCollision (Spatial scene, boolean checkTriangles)
-    {
-        return false; // nothing doing
     }
 
     /**

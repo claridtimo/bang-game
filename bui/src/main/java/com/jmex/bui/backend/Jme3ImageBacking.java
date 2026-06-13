@@ -23,7 +23,7 @@ import com.jmex.bui.BImage;
 /**
  * The {@link BImageBacking} implementation on jMonkeyEngine 3.
  *
- * <p> The fork {@link com.jme.image.Image} handed to {@link #setImage} is a plain pixel
+ * <p> The jME3 {@link com.jme3.texture.Image} handed to {@link #setImage} is a plain pixel
  * container produced by {@link BImage} from an AWT raster: byte order is BGR
  * ({@code TYPE_3BYTE_BGR}) or ABGR ({@code TYPE_4BYTE_ABGR}), which map directly onto jME3's
  * {@link com.jme3.texture.Image.Format#BGR8 BGR8} / {@link com.jme3.texture.Image.Format#ABGR8
@@ -49,17 +49,17 @@ public class Jme3ImageBacking implements BImageBacking
     }
 
     // documentation inherited from interface BImageBacking
-    public void setImage (com.jme.image.Image image)
+    public void setImage (com.jme3.texture.Image image)
     {
         _twidth = image.getWidth();
         _theight = image.getHeight();
 
-        com.jme3.texture.Image.Format format = (image.getType() == com.jme.image.Image.RGB888)
-            ? com.jme3.texture.Image.Format.BGR8
-            : com.jme3.texture.Image.Format.ABGR8;
+        // BImage builds the image as BGR8 (opaque) or ABGR8 (with alpha) -- see BImage; both
+        // map directly onto jME3 with no channel reshuffle.
+        com.jme3.texture.Image.Format format = image.getFormat();
 
         // copy the source pixels into a fresh direct buffer for jME3 to own
-        ByteBuffer src = image.getData();
+        ByteBuffer src = image.getData(0);
         src.rewind();
         ByteBuffer dst = BufferUtils.createByteBuffer(src.remaining());
         dst.put(src);
