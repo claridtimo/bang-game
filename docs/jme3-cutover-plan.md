@@ -399,15 +399,45 @@ approaching the fork baselines in `baseline/fork-before/`):
   baked in: match the game window on **"howdy"** (not "bang" — that hits a "bang-game" terminal
   title) and click via window-relative `warp_pointer` (root-coord `translate_coords` returns bogus
   negatives on this multi-monitor display). Runbook: `docs/running-the-game.md` — every future "run
-  the app" agent brief points at it. Pairs with the Phase-7 offscreen harnesses
+  the app" agent brief points at it. Pairs with the Phase-5 offscreen harnesses
   (`RenderToPng`/`RenderWaterToPng`) for deterministic windowless model/water shots.
-- **4e — TODO:** particles — the 60 `particles.jme` are still a degraded single-blob; re-author as
-  jME3 `ParticleEmitter` params (combat-effect icons already render). The `*Emission` controllers
-  exist as jME3 `AbstractControl`s from Phase 2, awaiting real emitters.
+_(Phase 4 core rendering is done at 4a–4d. The remaining fidelity items moved out to **Phase 6**:
+particles → 6a, live-render/input defects → 6b — they follow the Phase-5 testing harnesses, which
+accelerate diagnosing them.)_
 
-### Phase 4f — TODO: remaining live-render & input defects (cluster-1/3 fidelity + Phase-3 input)
-Defects observed on live boards (2026-06-13), grouped as a formal sub-phase. Reproduce/diagnose with
-the `bin/devtest` run sheet and the `RenderToPng` harness:
+### Phase 5 — Agent testability (brought forward — ahead of the fidelity/editor work)
+
+Brought forward (was originally last): these harnesses directly accelerate the Phase-6 fidelity
+defects and the Phase-7 editor regression, so they come first. This is a real-time 3D OpenGL
+networked game — the hard part of agent-driven work is that an agent can neither reliably *see* the
+rendered output (X-grabs off `DISPLAY=:1` are flaky) nor deterministically *drive* gameplay; there is
+no Playwright equivalent (an OpenGL framebuffer has no DOM). `bin/devtest` (4d) already covers the
+live-client path. JDK 25 and a JUnit 4→5 bump do **not** help (JDK 21 already has JFR + helpful NPEs;
+the bottleneck is coverage of a hard-to-assert app, not the runner). The two harnesses to finish:
+
+1. **Headless offscreen render-to-PNG (highest value; seed already built).** Generalize the existing
+   `tools/j3o-converter` `RenderToPng`/`RenderWaterToPng` into a board/scene/model render-to-PNG that
+   runs windowless on a `FrameBuffer`, so agents diff deterministic snapshots against
+   `baseline/fork-before/` instead of flaky X-grabs. Feeds CI visual regression and per-change checks
+   (incl. the Phase-6 sprite defects + the Phase-7 editor regression).
+2. **Headless Narya bot client + server-side dobj assertions.** A rendering-free client that logs in,
+   drives gameplay through the service API, and asserts on distributed-object state — the closest
+   thing to "Playwright for this game." Leans on the existing AI/`-autoplay`/bot + the Narya wire.
+
+Supporting, lower priority: fold the converter harnesses (j3o 310/310, board 364/364) + the 3 unit
+tests into a JUnit + CI gate (AssertJ for ergonomics; JUnit 5 optional, not the point); JFR for
+frame-timing/perf telemetry. Not worth doing for tooling reasons: JDK 25, the JUnit major bump.
+
+### Phase 6 — Remaining fidelity & polish
+
+Reproduce/diagnose with the Phase-5 harnesses + the `bin/devtest` run sheet.
+
+**6a — particles.** The 60 `particles.jme` are still a degraded single-blob; re-author as jME3
+`ParticleEmitter` params (combat-effect icons already render). The `*Emission` controllers exist as
+jME3 `AbstractControl`s from Phase 2, awaiting real emitters.
+
+**6b — remaining live-render & input defects** (observed on live boards 2026-06-13; cluster-1/3
+fidelity + Phase-3 input):
 
 - **Claim/counter numbers render sideways (rotated ~90°).** The floating gold-claim nugget count is a
   camera-facing billboard. `GenericCounterNode.createGeometry` (and `CounterSprite`) now do
@@ -442,34 +472,11 @@ the `bin/devtest` run sheet and the `RenderToPng` harness:
   (`BangApp`/`GameInputHandler`). Until fixed, agents can't pan to compose shots — pick boards whose
   default camera frames the subject.
 
-### Phase 5 — Agent testability (brought forward — ahead of the editor)
-
-Brought forward from its original spot (was Phase 7): these harnesses directly accelerate the editor
-regression (Phase 6) and diagnosing the 4f defects, so they come first. This is a real-time 3D OpenGL
-networked game — the hard part of agent-driven work is that an agent can neither reliably *see* the
-rendered output (X-grabs off `DISPLAY=:1` are flaky) nor deterministically *drive* gameplay; there is
-no Playwright equivalent (an OpenGL framebuffer has no DOM). `bin/devtest` (4d) already covers the
-live-client path. JDK 25 and a JUnit 4→5 bump do **not** help (JDK 21 already has JFR + helpful NPEs;
-the bottleneck is coverage of a hard-to-assert app, not the runner). The two harnesses to finish:
-
-1. **Headless offscreen render-to-PNG (highest value; seed already built).** Generalize the existing
-   `tools/j3o-converter` `RenderToPng`/`RenderWaterToPng` into a board/scene/model render-to-PNG that
-   runs windowless on a `FrameBuffer`, so agents diff deterministic snapshots against
-   `baseline/fork-before/` instead of flaky X-grabs. Feeds CI visual regression and per-change checks
-   (incl. the 4f sprite defects + the Phase-6 editor regression).
-2. **Headless Narya bot client + server-side dobj assertions.** A rendering-free client that logs in,
-   drives gameplay through the service API, and asserts on distributed-object state — the closest
-   thing to "Playwright for this game." Leans on the existing AI/`-autoplay`/bot + the Narya wire.
-
-Supporting, lower priority: fold the converter harnesses (j3o 310/310, board 364/364) + the 3 unit
-tests into a JUnit + CI gate (AssertJ for ergonomics; JUnit 5 optional, not the point); JFR for
-frame-timing/perf telemetry. Not worth doing for tooling reasons: JDK 25, the JUnit major bump.
-
-### Phase 6 — Editor + visual regression
+### Phase 7 — Editor + visual regression
 - `bangeditor` on a jME3 AWT canvas; per-town visual regression against pre-cutover screenshots,
   driven by the Phase-5 offscreen render harness.
 
-### Phase 7 — Cleanup
+### Phase 8 — Cleanup
 - Delete the `jme` fork module and the remaining cutover scaffolding once nothing references it.
 - Drop the now-unnecessary deps: bare `gdx` (kept only as a transitional keycode-constant source —
   replace with jME3 keycodes) and any lingering LWJGL2 bits.
