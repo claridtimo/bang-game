@@ -10,7 +10,7 @@ import java.util.HashSet;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
-import com.jme.util.export.binary.BinaryImporter;
+import com.jme3.export.binary.BinaryImporter;
 import com.samskivert.jdbc.RepositoryUnit;
 import com.samskivert.util.Invoker;
 
