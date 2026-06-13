@@ -337,3 +337,31 @@ cluster still needs).** All paths under `client/shared/.../com/threerings/bang/`
 ## Acceptance
 Client + editor run on jME3 3.9 / LWJGL3 with gameplay and per-town visuals preserved
 (the Phase 3 acceptance bar from UPGRADE_PLAN, re-verified on the new engine).
+
+## Phase 7 — Agent testability (post-cutover follow-up, not part of cutover acceptance)
+
+Rationale: this is a real-time 3D OpenGL networked game, so the hard part of agent-driven work is
+that an agent can neither reliably *see* the rendered output (screen-grabs off `DISPLAY=:1` are
+flaky — window focus, timing, the "Idled Out" inactivity timer) nor deterministically *drive*
+gameplay. There is no Playwright equivalent: an OpenGL framebuffer has no DOM/semantic tree to
+query. JDK 25 and a JUnit 4→5 bump do **not** help here (JDK 21 already has JFR + helpful NPEs; the
+test bottleneck is coverage of a hard-to-assert app, not the runner). The leverage is two bespoke
+harnesses, both leaning on infrastructure the cutover already produced:
+
+1. **Headless offscreen render-to-PNG harness (highest value).** Render a specific
+   scene/board/model to a jME3 `FrameBuffer` → PNG with no window, on demand and deterministically.
+   Replaces flaky X-display grabs with scriptable visual snapshots an agent can diff against
+   baselines (e.g. `baseline/fork-before/`). Builds on the Phase-3 `ScreenshotAppState` hook + the
+   model/board loaders. Enables visual regression in CI and per-change visual verification.
+2. **Headless Narya bot client + server-side dobj assertions.** A rendering-free client that logs
+   in, drives gameplay through the service API, and asserts on distributed-object state — the
+   closest thing to "Playwright for this game." Leans on the existing AI/`-autoplay`/bot
+   infrastructure and the Narya wire protocol; verifies game logic with zero graphics.
+
+Supporting, lower priority: fold the converter verification harnesses (j3o 310/310, board 364/364)
+and the 3 existing unit tests into a JUnit + CI gate (add AssertJ for ergonomics — JUnit 5 optional,
+not the point); `xdotool` for crude live-window input injection; JFR for frame-timing/perf telemetry.
+Not worth doing for tooling reasons: JDK 25, the JUnit major bump.
+
+Also a Phase-6 reminder captured here: `BangPrefs.SILENT` is muted-by-default on this branch as a
+dev convenience — revert it to opt-in (audible default, `-Dsound` no longer needed) before ship.
