@@ -45,3 +45,37 @@ tasks.register("bakeModels", JavaExec) {
   mainClass = "com.threerings.bang.tools.j3o.BakeModels"
   args = [ rootProject.file("assets/build/staging/rsrc").absolutePath ]
 }
+
+// Phase 7 seed: render a single baked model.j3o to a PNG offscreen (no window), through the real
+// runtime load/resolve/clone path and lit like the board, so a model's textures/materials/lighting
+// can be inspected in isolation (used to confirm the building models render fully textured).
+//   ./gradlew :tools:j3o-converter:renderToPng \
+//       -PmodelType=props/frontier_town/buildings/saloon -Pout=/tmp/saloon.png
+//
+// RenderToPng loads a baked .j3o through stock jME3 + the fork-free app-side Model facade, on a
+// real LWJGL3 GL context; it does NOT use the fork model.dat reader. So it runs on an isolated
+// classpath of jME3 + LWJGL3 + app main only, deliberately excluding the modeltool/fork/gdx deps
+// (which drag in LWJGL2 and seal the org.lwjgl package, clashing with LWJGL3 —
+// "sealing violation: can't seal package org.lwjgl").
+configurations {
+  renderToPngRuntime
+}
+dependencies {
+  renderToPngRuntime "org.jmonkeyengine:jme3-core:${jme3Version}"
+  renderToPngRuntime "org.jmonkeyengine:jme3-desktop:${jme3Version}"
+  renderToPngRuntime "org.jmonkeyengine:jme3-lwjgl3:${jme3Version}"
+  // the fork-free app-side Model facade + ModelTextureResolver (com.threerings.jme.model.*), so
+  // RenderToPng reproduces the live ModelCache load/resolve/clone path headlessly. app main is
+  // jme3-only (no fork/gdx/LWJGL2), so it does not reintroduce the org.lwjgl sealing clash.
+  renderToPngRuntime project(":app")
+}
+tasks.register("renderToPng", JavaExec) {
+  classpath = sourceSets.main.output + configurations.renderToPngRuntime
+  mainClass = "com.threerings.bang.tools.j3o.RenderToPng"
+  def rsrc = rootProject.file("assets/build/staging/rsrc").absolutePath
+  def modelType = project.hasProperty("modelType") ?
+      project.property("modelType").toString() : "props/frontier_town/buildings/saloon"
+  def out = project.hasProperty("out") ? project.property("out").toString() :
+      "${rsrc}/../../../${modelType.replaceAll('/', '_')}.png"
+  args = [ rsrc, modelType, out ]
+}
