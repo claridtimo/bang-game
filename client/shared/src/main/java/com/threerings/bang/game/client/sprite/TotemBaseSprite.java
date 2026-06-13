@@ -99,8 +99,8 @@ public class TotemBaseSprite extends TargetablePropSprite
                 _ctx.getModelCache().getModel("bonuses", type, zations,
                         new ResultAttacher<Model>(totemPiece) {
                     public void requestCompleted (Model model) {
-                        // calculate the height of the model
-                        model.updateGeometricState(0f, true);
+                        // calculate the height of the model (jME3 refreshes geometric state in the
+                        // scene update loop; the world bound is available once attached)
                         BoundingVolume bound = model.getWorldBound();
                         float height = bound.getCenter().z;
                         if (bound instanceof BoundingBox) {
@@ -118,10 +118,8 @@ public class TotemBaseSprite extends TargetablePropSprite
                     }
                 });
                 attachChild(totemPiece);
-                totemPiece.updateRenderState();
             }
         }
-        updateRenderState();
     }
 
     /**

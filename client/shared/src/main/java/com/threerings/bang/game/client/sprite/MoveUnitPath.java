@@ -151,7 +151,7 @@ public class MoveUnitPath extends LineSegmentPath
             return;
         }
         _pivots[half] = new Vector3f();
-        _pivots[half].interpolate(_points[idx-1], _points[idx+1], 0.5f);
+        _pivots[half].interpolateLocal(_points[idx-1], _points[idx+1], 0.5f);
         _points[_current].subtract(_pivots[half], v1);
         _points[_current + 1].subtract(_pivots[half], v2);
         _startAngles[half] = FastMath.atan2(v1.y, v1.x);
