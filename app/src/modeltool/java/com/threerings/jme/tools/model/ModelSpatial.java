@@ -19,7 +19,7 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-package com.threerings.jme.model;
+package com.threerings.jme.tools.model;
 
 import com.jme.renderer.Renderer;
 import com.jme.scene.Spatial;

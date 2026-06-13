@@ -131,8 +131,17 @@ processResources.dependsOn "genBundles"
 // compiles our model XML into binary form
 tasks.register("compileModels") {
   dependsOn configurations.tools
+  // jME3 cutover (Phase 1): the fork-format model compiler (CompileModelTask + the fork
+  // Model/ModelMesh/SkinMesh classes) moved out of app's fork-free `main` source set into app's
+  // `modeltool` source set (package com.threerings.jme.tools.*), which still depends on the fork
+  // `jme` module. It is NOT on `configurations.tools` (that resolves app's main output), so the
+  // taskdef classpath is app's modeltool runtime classpath plus the tools config. The fork-format
+  // model.dat this produces is baked to jME3 .j3o by tools/j3o-converter (Phase 3).
+  def modelCompilerCp = project(":app").sourceSets.modeltool.runtimeClasspath
+  dependsOn modelCompilerCp
   doLast {
-    ant.taskdef(classpath: configurations.tools.asPath, name: "compile",
+    def compilerPath = (configurations.tools + modelCompilerCp).asPath
+    ant.taskdef(classpath: compilerPath, name: "compile",
                 classname: "com.threerings.jme.tools.CompileModelTask")
     ant.compile(dest: stagingDir) {
       fileset(dir: "rsrc",  includes: "**/model.properties")

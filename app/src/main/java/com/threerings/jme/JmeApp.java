@@ -22,157 +22,112 @@
 package com.threerings.jme;
 
 import java.io.File;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
-import java.util.Arrays;
-
-import com.samskivert.util.Queue;
 import com.samskivert.util.RunQueue;
 import com.samskivert.util.StringUtil;
 
-import com.badlogic.gdx.ApplicationListener;
-import com.badlogic.gdx.Gdx;
+import com.jme3.asset.AssetManager;
+import com.jme3.renderer.Camera;
+import com.jme3.renderer.RenderManager;
+import com.jme3.scene.Node;
 
-import com.jme.renderer.Camera;
-import com.jme.renderer.ColorRGBA;
-import com.jme.renderer.Renderer;
-
-import com.jme.scene.Node;
-import com.jme.scene.state.LightState;
-import com.jme.scene.state.RenderState;
-import com.jme.scene.state.ZBufferState;
-
-import com.jme.system.DisplaySystem;
-import com.jme.system.JmeException;
-
-import com.jme.input.InputHandler;
-import com.jme.input.KeyInput;
-import com.jme.input.MouseInput;
 import com.jmex.bui.BRootNode;
-import com.jmex.bui.PolledRootNode;
-
-import com.jme.light.PointLight;
-import com.jme.math.Vector3f;
-import com.jme.util.Timer;
 
 import com.threerings.jme.camera.CameraHandler;
 
 /**
- * Defines a basic application framework providing integration with the
- * <a href="../presents/package.html">Presents</a> networking system and
- * targeting the framerate of the display.
+ * Defines a basic application framework providing integration with the Presents networking system
+ * and a jME3 scene-graph host.
+ *
+ * <p>jME3 cutover (Phase 1): this is the host loop, the primary {@code app} rebuild target
+ * (§3.1 / risk #8 of the migration map). It was the gdx {@code ApplicationListener} driving the
+ * fork {@code DisplaySystem}/{@code Renderer}: gdx owned the LWJGL2 window+GL context+main loop,
+ * and the fork rendered into it (engine-notes "three layers sharing one GL context"). Under jME3
+ * the engine owns its own LWJGL3 context and main loop, so the gdx host and the fork render
+ * driving go away entirely. The full host — a {@code com.jme3.app.SimpleApplication} (or custom
+ * {@code Application}) on the LWJGL3 context, the {@code RawInputListener} → BUI input path, and
+ * the {@code Jme3RenderBackend} install — is the <b>Phase-3 atomic flip</b>; that flip cannot
+ * land until {@code client/shared} compiles (Phase 2). So Phase 1 retypes this class onto jME3
+ * types and preserves its {@link JmeContext} + {@link RunQueue} seam, leaving the live context
+ * creation / per-frame render loop to the Phase-3 {@code SimpleApplication} subclass.
+ *
+ * <p>The fork's 1×1-init reinit dance (engine-notes §threading: the editor's {@code LwjglCanvas}
+ * created the GL display before AWT layout, forcing {@code JmeApp.resize()} to {@code reinit} the
+ * renderer + refresh the frustum) goes away — jME3 owns the context and sizes it correctly.
  */
 public class JmeApp
-    implements RunQueue, ApplicationListener
+    implements RunQueue, JmeContext
 {
     /**
-     * Returns a context implementation that provides access to all the
-     * necessary bits.
+     * Returns a context implementation that provides access to all the necessary bits.
      */
     public JmeContext getContext ()
     {
-        return _ctx;
+        return this;
     }
 
-    @Override public void create () {
-        // initialize the rendering system
-        initDisplay();
-        if (!_display.isCreated()) {
-            throw new IllegalStateException("Failed to initialize display?");
-        }
+    /**
+     * Installs the jME3 services this host exposes. Phase 3's {@code SimpleApplication} host
+     * calls this from {@code simpleInitApp()} with the engine-owned services; until then it lets
+     * tools/tests build a context without a live GL context.
+     */
+    public void init (AssetManager assetManager, RenderManager renderManager, Camera camera)
+    {
+        _assetManager = assetManager;
+        _renderManager = renderManager;
+        _camera = camera;
 
-        // create an appropriate timer
-        _timer = Timer.getTimer();
-
-        // initialize our main camera controls and user input handling
-        initInput();
-
-        // initialize the root node
         initRoot();
-
-        // initialize the lighting
-        initLighting();
-
-        // initialize the UI support stuff
+        initInput();
         initInterface();
-
-        // update everything for the zeroth tick
-        _iface.updateRenderState();
-        _geom.updateRenderState();
-        _root.updateGeometricState(0f, true);
-        _root.updateRenderState();
-    }
-
-    @Override public void resize (int width, int height) {
-        // when we're embedded in an AWT canvas (the editor), the GL context is created while
-        // the canvas is still 1x1; AWT lays it out to its real size afterwards, so we have to
-        // propagate the new dimensions to the display system, renderer, and camera as they
-        // come in (BUI windows, popups, and tooltips all lay out from the display system's
-        // recorded size, which is otherwise only set at window creation)
-        if (_display == null || _display.getRenderer() == null ||
-            _camera == null || width <= 0 || height <= 0) {
-            return;
-        }
-        _display.setWidth(width);
-        _display.setHeight(height);
-        _display.getRenderer().reinit(width, height);
-        setPerspectiveFrustum(width, height);
-        _camera.update();
     }
 
     /**
      * (Re)applies our standard perspective frustum to the camera for the given viewport size.
      */
-    protected void setPerspectiveFrustum (int width, int height)
+    public void setPerspectiveFrustum (int width, int height)
     {
-        _camera.setFrustumPerspective(45.0f, width/(float)height, 1, 10000);
-    }
-
-    @Override public void render () {
-        if (_dispatchThread == null) {
-            _dispatchThread = Thread.currentThread();
+        if (_camera != null && width > 0 && height > 0) {
+            _camera.setFrustumPerspective(45.0f, width / (float)height, 1, 10000);
         }
-
-        // update our simulation and render a frame
-        long frameStart = _timer.getTime();
-        if (_updateEnabled) {
-            update(frameStart);
-        }
-        if (_renderEnabled) {
-            render(frameStart);
-            _display.getRenderer().displayBackBuffer();
-        }
-    }
-
-    @Override public void pause () {
-    }
-
-    @Override public void resume () {
-    }
-
-    @Override public void dispose () {
     }
 
     /**
-     * Returns the frames per second averaged over the last 32 frames.
+     * Returns the frames per second averaged over recent frames. Populated by the Phase-3 host.
      */
     public float getRecentFrameRate ()
     {
-        return _timer.getFrameRate();
+        return _frameRate;
     }
 
     /**
-     * Instructs the application to stop the main loop, cleanup and exit.
+     * Instructs the application to stop the main loop, cleanup and exit. The live teardown is
+     * wired by the Phase-3 host; here we just flip the running flag.
      */
     public void stop ()
     {
         _finished = true;
-        Gdx.app.exit();
     }
 
     // from interface RunQueue
     public void postRunnable (Runnable r)
     {
-        Gdx.app.postRunnable(r);
+        // queued here in Phase 1; the Phase-3 host drains this on the jME3 render thread (jME3's
+        // Application.enqueue), replacing gdx's postRunnable.
+        _runnables.add(r);
+    }
+
+    /**
+     * Drains and runs any queued runnables. Called by the Phase-3 host once per frame on the
+     * render thread.
+     */
+    public void executeRunnables ()
+    {
+        Runnable r;
+        while ((r = _runnables.poll()) != null) {
+            r.run();
+        }
     }
 
     // from interface RunQueue
@@ -188,59 +143,17 @@ public class JmeApp
     }
 
     /**
-     * Initializes the underlying rendering system, creating a display of
-     * the proper resolution and depth.
-     */
-    protected void initDisplay ()
-        throws JmeException
-    {
-        // create the main display system
-        _display = DisplaySystem.getDisplaySystem();
-
-        // tell JME about GDX's display parameters
-        boolean fullscreen = false; // TODO
-        _display.createWindow(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(),
-                              Gdx.graphics.getBufferFormat().depth, 60, fullscreen);
-
-        // create a camera
-        int width = _display.getWidth(), height = _display.getHeight();
-        _camera = _display.getRenderer().createCamera(width, height);
-
-        // start with a black background
-        _display.getRenderer().setBackgroundColor(ColorRGBA.black);
-
-        // enable all of the "quick compares," which means that states will
-        // be refreshed only when necessary
-        Arrays.fill(RenderState.QUICK_COMPARE, true);
-
-        // set up the camera
-        setPerspectiveFrustum(width, height);
-        Vector3f loc = new Vector3f(0.0f, 0.0f, 25.0f);
-        Vector3f left = new Vector3f(-1.0f, 0.0f, 0.0f);
-        Vector3f up = new Vector3f(0.0f, 1.0f, 0.0f);
-        Vector3f dir = new Vector3f(0.0f, 0f, -1.0f);
-        _camera.setFrame(loc, left, up, dir);
-        _camera.update();
-        _display.getRenderer().setCamera(_camera);
-
-        // tell the renderer to keep track of rendering information (total
-        // triangles drawn, etc.)
-        _display.getRenderer().enableStatistics(true);
-    }
-
-    /**
-     * Sets up a main input controller to handle the camera and deal with
-     * global user input.
+     * Sets up a main input controller to handle the camera and deal with global user input.
      */
     protected void initInput ()
     {
         _camhand = createCameraHandler(_camera);
-        _input = createInputHandler(_camhand);
+        // the jME3 InputManager mappings (GodViewHandler.registerWith) are installed by the
+        // Phase-3 host once it owns the input manager.
     }
 
     /**
-     * Creates the camera handler which provides various camera manipulation
-     * functionality.
+     * Creates the camera handler which provides various camera manipulation functionality.
      */
     protected CameraHandler createCameraHandler (Camera camera)
     {
@@ -248,50 +161,17 @@ public class JmeApp
     }
 
     /**
-     * Creates the input handler used to control our camera and manage non-UI
-     * keyboard input.
-     */
-    protected InputHandler createInputHandler (CameraHandler hand)
-    {
-        return new InputHandler();
-    }
-
-    /**
-     * Creates our root node and sets up the basic rendering system.
+     * Creates our root node and the geometry sub-node.
      */
     protected void initRoot ()
     {
         _root = new Node("Root");
 
-        // set up a node for our geometry
+        // set up a node for our geometry. depth/light/render-state setup that the fork did with
+        // ZBufferState/LightState render-state objects is now per-Geometry Material state +
+        // Spatial.addLight, applied by the board renderer in Phase 2/4.
         _geom = new Node("Geometry");
-
-        // make everything opaque by default
-        _geom.setRenderQueueMode(Renderer.QUEUE_OPAQUE);
-
-        // set up a zbuffer
-        ZBufferState zbuf = _display.getRenderer().createZBufferState();
-        zbuf.setEnabled(true);
-        zbuf.setFunction(ZBufferState.CF_LEQUAL);
-        _geom.setRenderState(zbuf);
         _root.attachChild(_geom);
-    }
-
-    /**
-     * Sets up some default lighting.
-     */
-    protected void initLighting ()
-    {
-        PointLight light = new PointLight();
-        light.setDiffuse(new ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
-        light.setAmbient(new ColorRGBA(0.5f, 0.5f, 0.5f, 1.0f));
-        light.setLocation(new Vector3f(100, 100, 100));
-        light.setEnabled(true);
-
-        _lights = _display.getRenderer().createLightState();
-        _lights.setEnabled(true);
-        _lights.attach(light);
-        _geom.setRenderState(_lights);
     }
 
     /**
@@ -305,80 +185,22 @@ public class JmeApp
 
         // create our root node
         _rnode = createRootNode();
-        _iface.attachChild(_rnode);
-
-        // we don't hide the cursor
-        MouseInput.get().setCursorVisible(true);
     }
 
     /**
-     * Allows a customized root node to be created.
+     * Allows a customized BUI root node to be created. The fork {@code PolledRootNode} (LWJGL2/
+     * gdx input glue) was deleted in the bui migration; the jME3 {@code Jme3RootNode}
+     * (RawInputListener-fed) is installed at the Phase-3 host flip, so this returns null until
+     * a subclass overrides it.
      */
     protected BRootNode createRootNode ()
     {
-        return new PolledRootNode(_timer, _input);
+        return null;
     }
 
     /**
-     * Called every frame to update whatever sort of real time business we
-     * have that needs updating.
-     */
-    protected void update (long frameTick)
-    {
-        // recalculate the frame rate
-        _timer.update();
-
-        // update the camera handler
-        _camhand.update(_frameTime);
-
-        // run all of the controllers attached to nodes
-        _frameTime = (_lastTick == 0L) ? 0f : (float)(frameTick - _lastTick) /
-            _timer.getResolution();
-        _lastTick = frameTick;
-        _root.updateGeometricState(_frameTime, true);
-    }
-
-    /**
-     * Called every frame to issue the rendering instructions for this frame.
-     */
-    protected void render (float frameTime)
-    {
-        // clear out our previous information
-        _display.getRenderer().clearStatistics();
-        _display.getRenderer().clearBuffers();
-
-        // draw the root node and all of its children
-        _display.getRenderer().draw(_root);
-
-        // this would render bounding boxes
-        // _display.getRenderer().drawBounds(_root);
-    }
-
-    /**
-     * Called when the application is terminating cleanly after having
-     * successfully completed initialization and begun the main loop.
-     */
-    protected void cleanup ()
-    {
-        _display.reset();
-        KeyInput.destroyIfInitalized();
-        MouseInput.destroyIfInitalized();
-    }
-
-    /**
-     * Closes the display and exits the JVM process.
-     */
-    protected void exit ()
-    {
-        if (_display != null) {
-            _display.close();
-        }
-        System.exit(0);
-    }
-
-    /**
-     * Prepends the necessary bits onto the supplied path to properly
-     * locate it in our configuration directory.
+     * Prepends the necessary bits onto the supplied path to properly locate it in our
+     * configuration directory.
      */
     protected String getConfigPath (String file)
     {
@@ -395,59 +217,57 @@ public class JmeApp
         return cfgdir + File.separator + file;
     }
 
-    /** Provides access to various needed bits. */
-    protected JmeContext _ctx = new JmeContext() {
-        public DisplaySystem getDisplay () {
-            return _display;
-        }
+    // from interface JmeContext
+    public AssetManager getAssetManager () {
+        return _assetManager;
+    }
 
-        public Renderer getRenderer () {
-            return _display.getRenderer();
-        }
+    // from interface JmeContext
+    public RenderManager getRenderManager () {
+        return _renderManager;
+    }
 
-        public CameraHandler getCameraHandler () {
-            return _camhand;
-        }
+    // from interface JmeContext
+    public Camera getCamera () {
+        return _camera;
+    }
 
-        public Node getGeometry () {
-            return _geom;
-        }
+    // from interface JmeContext
+    public CameraHandler getCameraHandler () {
+        return _camhand;
+    }
 
-        public Node getInterface () {
-            return _iface;
-        }
+    // from interface JmeContext
+    public Node getGeometry () {
+        return _geom;
+    }
 
-        public InputHandler getInputHandler () {
-            return _input;
-        }
+    // from interface JmeContext
+    public Node getInterface () {
+        return _iface;
+    }
 
-        public BRootNode getRootNode () {
-            return _rnode;
-        }
-    };
+    // from interface JmeContext
+    public BRootNode getRootNode () {
+        return _rnode;
+    }
 
-    protected Timer _timer;
     protected Thread _dispatchThread;
-    protected long _lastTick;
     protected float _frameTime;
+    protected float _frameRate;
 
-    protected String _api;
-    protected DisplaySystem _display;
+    protected AssetManager _assetManager;
+    protected RenderManager _renderManager;
     protected Camera _camera;
     protected CameraHandler _camhand;
 
-    protected InputHandler _input;
     protected BRootNode _rnode;
 
-    protected long _ticksPerFrame;
-    protected int _targetFPS;
     protected boolean _updateEnabled = true, _renderEnabled = true;
     protected boolean _finished;
-    protected int _failures;
 
     protected Node _root, _geom, _iface;
-    protected LightState _lights;
 
-    /** If we fail 100 frames in a row, stick a fork in ourselves. */
-    protected static final int MAX_SUCCESSIVE_FAILURES = 100;
+    /** Runnables posted from other threads, drained on the render thread by the Phase-3 host. */
+    protected final ConcurrentLinkedQueue<Runnable> _runnables = new ConcurrentLinkedQueue<>();
 }

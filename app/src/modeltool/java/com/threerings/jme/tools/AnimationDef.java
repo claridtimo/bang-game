@@ -39,7 +39,7 @@ import com.jme.scene.Spatial;
 
 import com.samskivert.util.Tuple;
 
-import com.threerings.jme.model.Model;
+import com.threerings.jme.tools.model.Model;
 import com.threerings.jme.util.JmeUtil;
 
 import com.threerings.jme.tools.ModelDef.TransformNode;

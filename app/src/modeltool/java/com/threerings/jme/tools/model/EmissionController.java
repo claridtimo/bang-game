@@ -19,14 +19,12 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-package com.threerings.jme.model;
+package com.threerings.jme.tools.model;
 
 import java.io.IOException;
 
 import java.util.Properties;
 
-import com.jme.math.Quaternion;
-import com.jme.math.Vector3f;
 import com.jme.scene.Controller;
 import com.jme.scene.Spatial;
 import com.jme.util.export.JMEExporter;
@@ -34,46 +32,44 @@ import com.jme.util.export.JMEImporter;
 import com.jme.util.export.InputCapsule;
 import com.jme.util.export.OutputCapsule;
 
-import com.threerings.jme.util.JmeUtil;
-
 /**
- * A procedural animation that rotates a node around at a constant angular
- * velocity.
+ * A model controller whose target represents an emitter.
  */
-public class Rotator extends ModelController
+public abstract class EmissionController extends ModelController
 {
     @Override
     public void configure (Properties props, Spatial target)
     {
         super.configure(props, target);
-        _axis = JmeUtil.parseAxis(props.getProperty("axis", "x"));
-        _velocity = Float.parseFloat(props.getProperty("velocity", "3.14"));
+        _hideTarget = Boolean.parseBoolean(
+            props.getProperty("hide_target", "true"));
     }
     
-    // documentation inherited
-    public void update (float time)
+    @Override
+    public void init (Model model)
     {
-        if (!isActive()) {
-            return;
+        super.init(model);
+        if (_hideTarget) {
+            _target.setCullMode(Spatial.CULL_ALWAYS);
+            if (_target instanceof ModelNode) {
+                // make sure the node isn't turned back on by an
+                // animation
+                ((ModelNode)_target).setForceCull(true);
+            }
         }
-        _rot.fromAngleNormalAxis(time * _velocity, _axis);
-        _target.getLocalRotation().multLocal(_rot);
     }
     
     @Override
     public Controller putClone (
         Controller store, Model.CloneCreator properties)
     {
-        Rotator rstore;
         if (store == null) {
-            rstore = new Rotator();
-        } else {
-            rstore = (Rotator)store;
+            return null;
         }
-        super.putClone(rstore, properties);
-        rstore._axis = _axis;
-        rstore._velocity = _velocity;
-        return rstore;
+        EmissionController estore = (EmissionController)store;
+        super.putClone(estore, properties);
+        estore._hideTarget = _hideTarget;
+        return estore;
     }
     
     @Override
@@ -82,8 +78,7 @@ public class Rotator extends ModelController
     {
         super.read(im);
         InputCapsule capsule = im.getCapsule(this);
-        _axis = (Vector3f)capsule.readSavable("axis", null);
-        _velocity = capsule.readFloat("velocity", 0f);
+        _hideTarget = capsule.readBoolean("hideTarget", true);
     }
     
     @Override
@@ -92,18 +87,11 @@ public class Rotator extends ModelController
     {
         super.write(ex);
         OutputCapsule capsule = ex.getCapsule(this);
-        capsule.write(_axis, "axis", null);
-        capsule.write(_velocity, "velocity", 0f);
+        capsule.write(_hideTarget, "hideTarget", true);
     }
     
-    /** The axis about which to rotate. */
-    protected Vector3f _axis;
-    
-    /** The velocity at which to rotate in radians per second. */
-    protected float _velocity;
-    
-    /** A temporary quaternion. */
-    protected Quaternion _rot = new Quaternion();
+    /** Whether or not the target should be hidden from view. */
+    protected boolean _hideTarget;
     
     private static final long serialVersionUID = 1;
 }

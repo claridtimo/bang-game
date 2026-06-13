@@ -38,7 +38,7 @@ import com.jme.util.DummyDisplaySystem;
 import com.samskivert.util.PropertiesUtil;
 import com.samskivert.util.StringUtil;
 
-import com.threerings.jme.model.Model;
+import com.threerings.jme.tools.model.Model;
 import com.threerings.jme.tools.ModelDef.TransformNode;
 import com.threerings.jme.tools.xml.AnimationParser;
 import com.threerings.jme.tools.xml.ModelParser;

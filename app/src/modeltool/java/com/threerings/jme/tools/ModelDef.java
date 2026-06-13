@@ -53,11 +53,11 @@ import com.samskivert.util.PropertiesUtil;
 import com.samskivert.util.StringUtil;
 import com.samskivert.util.Tuple;
 
-import com.threerings.jme.model.Model;
-import com.threerings.jme.model.ModelController;
-import com.threerings.jme.model.ModelMesh;
-import com.threerings.jme.model.ModelNode;
-import com.threerings.jme.model.SkinMesh;
+import com.threerings.jme.tools.model.Model;
+import com.threerings.jme.tools.model.ModelController;
+import com.threerings.jme.tools.model.ModelMesh;
+import com.threerings.jme.tools.model.ModelNode;
+import com.threerings.jme.tools.model.SkinMesh;
 import com.threerings.jme.util.JmeUtil;
 
 import static com.threerings.jme.Log.log;

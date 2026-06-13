@@ -19,12 +19,15 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-package com.threerings.jme.model;
+package com.threerings.jme.tools.model;
 
 import java.io.IOException;
 
 import java.util.Properties;
 
+import com.jme.image.Texture;
+import com.jme.math.Vector2f;
+import com.jme.math.Vector3f;
 import com.jme.scene.Controller;
 import com.jme.scene.Spatial;
 import com.jme.util.export.JMEExporter;
@@ -32,44 +35,51 @@ import com.jme.util.export.JMEImporter;
 import com.jme.util.export.InputCapsule;
 import com.jme.util.export.OutputCapsule;
 
+import com.samskivert.util.StringUtil;
+
+import static com.threerings.jme.Log.log;
+
 /**
- * A model controller whose target represents an emitter.
+ * A procedural animation that translates the model's textures at a constant velocity.
  */
-public abstract class EmissionController extends ModelController
+public class TextureTranslator extends TextureController
 {
     @Override
     public void configure (Properties props, Spatial target)
     {
         super.configure(props, target);
-        _hideTarget = Boolean.parseBoolean(
-            props.getProperty("hide_target", "true"));
+        String velstr = props.getProperty("velocity", "1, 0");
+        float[] vel = StringUtil.parseFloatArray(velstr);
+        if (vel != null && vel.length == 2) {
+            _velocity = new Vector2f(vel[0], vel[1]);
+        } else {
+            log.warning("Invalid velocity [velocity=" + velstr + "].");
+        }
     }
     
-    @Override
-    public void init (Model model)
+    // documentation inherited
+    public void update (float time)
     {
-        super.init(model);
-        if (_hideTarget) {
-            _target.setCullMode(Spatial.CULL_ALWAYS);
-            if (_target instanceof ModelNode) {
-                // make sure the node isn't turned back on by an
-                // animation
-                ((ModelNode)_target).setForceCull(true);
-            }
+        super.update(time);
+        if (!isActive()) {
+            return;
         }
+        _translation.addLocal(_velocity.x * time, _velocity.y * time, 0f);
     }
     
     @Override
     public Controller putClone (
         Controller store, Model.CloneCreator properties)
     {
+        TextureTranslator tstore;
         if (store == null) {
-            return null;
+            tstore = new TextureTranslator();
+        } else {
+            tstore = (TextureTranslator)store;
         }
-        EmissionController estore = (EmissionController)store;
-        super.putClone(estore, properties);
-        estore._hideTarget = _hideTarget;
-        return estore;
+        super.putClone(tstore, properties);
+        tstore._velocity = _velocity;
+        return tstore;
     }
     
     @Override
@@ -78,7 +88,7 @@ public abstract class EmissionController extends ModelController
     {
         super.read(im);
         InputCapsule capsule = im.getCapsule(this);
-        _hideTarget = capsule.readBoolean("hideTarget", true);
+        _velocity = (Vector2f)capsule.readSavable("velocity", null);
     }
     
     @Override
@@ -87,11 +97,26 @@ public abstract class EmissionController extends ModelController
     {
         super.write(ex);
         OutputCapsule capsule = ex.getCapsule(this);
-        capsule.write(_hideTarget, "hideTarget", true);
+        capsule.write(_velocity, "velocity", null);
     }
     
-    /** Whether or not the target should be hidden from view. */
-    protected boolean _hideTarget;
+    @Override
+    protected void initTextures ()
+    {
+        super.initTextures();
+        
+        // use the same translation vector for all textures
+        _translation = new Vector3f();
+        for (Texture texture : _textures) {
+            texture.setTranslation(_translation);
+        }
+    }
+    
+    /** The velocity at which to translate the texture. */
+    protected Vector2f _velocity;
+    
+    /** The shared translation vector. */
+    protected transient Vector3f _translation;
     
     private static final long serialVersionUID = 1;
 }

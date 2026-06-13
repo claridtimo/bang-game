@@ -19,14 +19,13 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-package com.threerings.jme.model;
+package com.threerings.jme.tools.model;
 
 import java.io.IOException;
 
 import java.util.Properties;
 
-import com.jme.image.Texture;
-import com.jme.math.Vector2f;
+import com.jme.math.Quaternion;
 import com.jme.math.Vector3f;
 import com.jme.scene.Controller;
 import com.jme.scene.Spatial;
@@ -35,51 +34,46 @@ import com.jme.util.export.JMEImporter;
 import com.jme.util.export.InputCapsule;
 import com.jme.util.export.OutputCapsule;
 
-import com.samskivert.util.StringUtil;
-
-import static com.threerings.jme.Log.log;
+import com.threerings.jme.util.JmeUtil;
 
 /**
- * A procedural animation that translates the model's textures at a constant velocity.
+ * A procedural animation that rotates a node around at a constant angular
+ * velocity.
  */
-public class TextureTranslator extends TextureController
+public class Rotator extends ModelController
 {
     @Override
     public void configure (Properties props, Spatial target)
     {
         super.configure(props, target);
-        String velstr = props.getProperty("velocity", "1, 0");
-        float[] vel = StringUtil.parseFloatArray(velstr);
-        if (vel != null && vel.length == 2) {
-            _velocity = new Vector2f(vel[0], vel[1]);
-        } else {
-            log.warning("Invalid velocity [velocity=" + velstr + "].");
-        }
+        _axis = JmeUtil.parseAxis(props.getProperty("axis", "x"));
+        _velocity = Float.parseFloat(props.getProperty("velocity", "3.14"));
     }
     
     // documentation inherited
     public void update (float time)
     {
-        super.update(time);
         if (!isActive()) {
             return;
         }
-        _translation.addLocal(_velocity.x * time, _velocity.y * time, 0f);
+        _rot.fromAngleNormalAxis(time * _velocity, _axis);
+        _target.getLocalRotation().multLocal(_rot);
     }
     
     @Override
     public Controller putClone (
         Controller store, Model.CloneCreator properties)
     {
-        TextureTranslator tstore;
+        Rotator rstore;
         if (store == null) {
-            tstore = new TextureTranslator();
+            rstore = new Rotator();
         } else {
-            tstore = (TextureTranslator)store;
+            rstore = (Rotator)store;
         }
-        super.putClone(tstore, properties);
-        tstore._velocity = _velocity;
-        return tstore;
+        super.putClone(rstore, properties);
+        rstore._axis = _axis;
+        rstore._velocity = _velocity;
+        return rstore;
     }
     
     @Override
@@ -88,7 +82,8 @@ public class TextureTranslator extends TextureController
     {
         super.read(im);
         InputCapsule capsule = im.getCapsule(this);
-        _velocity = (Vector2f)capsule.readSavable("velocity", null);
+        _axis = (Vector3f)capsule.readSavable("axis", null);
+        _velocity = capsule.readFloat("velocity", 0f);
     }
     
     @Override
@@ -97,26 +92,18 @@ public class TextureTranslator extends TextureController
     {
         super.write(ex);
         OutputCapsule capsule = ex.getCapsule(this);
-        capsule.write(_velocity, "velocity", null);
+        capsule.write(_axis, "axis", null);
+        capsule.write(_velocity, "velocity", 0f);
     }
     
-    @Override
-    protected void initTextures ()
-    {
-        super.initTextures();
-        
-        // use the same translation vector for all textures
-        _translation = new Vector3f();
-        for (Texture texture : _textures) {
-            texture.setTranslation(_translation);
-        }
-    }
+    /** The axis about which to rotate. */
+    protected Vector3f _axis;
     
-    /** The velocity at which to translate the texture. */
-    protected Vector2f _velocity;
+    /** The velocity at which to rotate in radians per second. */
+    protected float _velocity;
     
-    /** The shared translation vector. */
-    protected transient Vector3f _translation;
+    /** A temporary quaternion. */
+    protected Quaternion _rot = new Quaternion();
     
     private static final long serialVersionUID = 1;
 }
