@@ -13,22 +13,15 @@ import com.google.inject.Injector;
 import com.google.inject.Singleton;
 import com.google.inject.Guice;
 
+import org.lwjgl.openal.AL;
+
 import com.badlogic.gdx.backends.lwjgl.LwjglCanvas;
-import com.badlogic.gdx.backends.lwjgl.LwjglApplication;
-import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
 
 import com.threerings.bang.client.BangApp;
 
 public class EditorDesktop
 {
     public static void main (String[] args) {
-        LwjglApplicationConfiguration cfg = new LwjglApplicationConfiguration();
-        cfg.title = "Bang! Howdy Editor";
-        cfg.width = 1024;
-        cfg.height = 768;
-        // cfg.resizble = false;
-        // TODO: cfg.setFromDisplayMode when in fullscreen mode
-
         // configure our debug log
         BangApp.configureLog("editor.log");
 
@@ -48,6 +41,18 @@ public class EditorDesktop
         // let the BangClientController know we're in editor mode
         System.setProperty("editor", "true");
 
+        // the editor exits via System.exit (EXIT_ON_CLOSE and the editor controller's quit
+        // paths) with the render loop still live, so close the AL device during shutdown to
+        // keep openal-soft's atexit cleanup from segfaulting against its own mixer thread
+        // (same hazard BangDesktop guards against with its ordered-exit signal handlers)
+        Runtime.getRuntime().addShutdownHook(new Thread("EditorDesktop AL cleanup") {
+            @Override public void run () {
+                if (AL.isCreated()) {
+                    AL.destroy();
+                }
+            }
+        });
+
         // build the UI on the AWT event dispatch thread: realizing the canvas (in frame.pack)
         // triggers LwjglCanvas.create -> Display.create, which makes the GL context current on
         // the calling thread. All subsequent GL work (the libGDX render loop and the editor's
@@ -63,15 +68,15 @@ public class EditorDesktop
                 EditorApp app = injector.getInstance(EditorApp.class);
                 app.frame = frame;
 
-                System.out.println("Start?");
                 LwjglCanvas canvas = new LwjglCanvas(app);
                 app.canvas = canvas.getCanvas();
 
-                // display the GL canvas to start so that it initializes everything
+                // display the GL canvas to start so that it initializes everything; size the
+                // frame before showing it so it appears once at its final size
                 frame.getContentPane().add(canvas.getCanvas(), BorderLayout.CENTER);
                 frame.pack();
-                frame.setVisible(true);
                 frame.setSize(new Dimension(1224, 768));
+                frame.setVisible(true);
             }
         });
     }

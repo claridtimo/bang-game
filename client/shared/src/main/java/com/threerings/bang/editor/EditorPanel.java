@@ -191,19 +191,23 @@ public class EditorPanel extends JPanel
         _vwin.add(view, BorderLayout.CENTER);
         _ctx.getRootNode().addWindow(_vwin);
 
-        // resize the window with the canvas
+        // size the window to the canvas now and on every canvas resize
         Component canvas = ((EditorApp)_ctx.getApp()).getCanvas();
         canvas.addComponentListener(
             new ComponentAdapter() {
                 public void componentResized (ComponentEvent e) {
-                    Component c = e.getComponent();
-                    _vwin.setBounds(0, 0, c.getWidth(), c.getHeight());
+                    sizeToCanvas(e.getComponent());
                 }
             }
         );
+        sizeToCanvas(canvas);
+    }
 
-        // size to the canvas, not the display system: the GL display was created while the
-        // canvas was still 1x1 (before AWT laid it out), so its recorded size is stale
+    /**
+     * Sizes our view window to fill the supplied AWT canvas.
+     */
+    protected void sizeToCanvas (Component canvas)
+    {
         _vwin.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
     }
 

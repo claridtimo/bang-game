@@ -5,7 +5,7 @@ dependencies {
           classifier: "natives-desktop"
   // narya 1.19's Streamer hard-references depot's ByteEnum when streaming any enum;
   // depot is optional for narya but required on the classpath at runtime
-  runtimeOnly "com.samskivert:depot:1.8"
+  runtimeOnly "com.samskivert:depot:${depotVersion}"
 }
 
 // bake the deployment config into our jar alongside our other resources
