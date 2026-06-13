@@ -52,9 +52,9 @@ public class WendigoSprite extends MobileSprite
         super.init(ctx, view, board, sounds, piece, tick);
         setRenderState(RenderUtil.blendAlpha);
         setRenderQueueMode(Renderer.QUEUE_TRANSPARENT);
-        MaterialState mstate = _ctx.getRenderer().createMaterialState();
-        mstate.getAmbient().set(ColorRGBA.white);
-        mstate.getDiffuse().set(ColorRGBA.white);
+        MaterialState mstate = _ctx.getRenderManager().createMaterialState();
+        mstate.getAmbient().set(ColorRGBA.White);
+        mstate.getDiffuse().set(ColorRGBA.White);
         mstate.getDiffuse().a = 0f;
         setRenderState(mstate);
         updateRenderState();
@@ -207,9 +207,9 @@ public class WendigoSprite extends MobileSprite
      */
     public void fade (final boolean in, final float duration)
     {
-        final MaterialState mstate = _ctx.getRenderer().createMaterialState();
-        mstate.getAmbient().set(ColorRGBA.white);
-        mstate.getDiffuse().set(ColorRGBA.white);
+        final MaterialState mstate = _ctx.getRenderManager().createMaterialState();
+        mstate.getAmbient().set(ColorRGBA.White);
+        mstate.getDiffuse().set(ColorRGBA.White);
         mstate.getDiffuse().a = (in ? 0f : 1f);
         setRenderState(mstate);
         _view.getNode().addController(new Controller() {

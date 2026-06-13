@@ -601,7 +601,7 @@ public class BangView extends BWindow
             _ctx.getRootNode().addWindow(critview);
             critview.pack();
             _ctx.getInterface().attachChild(
-                new WindowSlider(critview, WindowSlider.FROM_TOP_STICKY, 1f, 0, 15));
+                new WindowSlider(critview, _ctx.getCamera().getWidth(), _ctx.getCamera().getHeight(), WindowSlider.FROM_TOP_STICKY, 1f, 0, 15));
         }
     }
 
@@ -621,7 +621,7 @@ public class BangView extends BWindow
             _ctx.getRootNode().addWindow(scenHUD);
             scenHUD.pack();
             _ctx.getInterface().attachChild(
-                    new WindowSlider(scenHUD, WindowSlider.FROM_TOP_STICKY, 1f, 0, 15));
+                    new WindowSlider(scenHUD, _ctx.getCamera().getWidth(), _ctx.getCamera().getHeight(), WindowSlider.FROM_TOP_STICKY, 1f, 0, 15));
         }
     }
 

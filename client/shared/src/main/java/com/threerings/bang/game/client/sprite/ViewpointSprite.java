@@ -28,7 +28,7 @@ public class ViewpointSprite extends PieceSprite
         }
 
         Pyramid pyramid = new Pyramid("marker", TILE_SIZE/2, TILE_SIZE/2);
-        pyramid.setSolidColor(ColorRGBA.gray);
+        pyramid.setSolidColor(ColorRGBA.Gray);
         pyramid.setModelBound(new BoundingBox());
         pyramid.updateModelBound();
         attachChild(pyramid);

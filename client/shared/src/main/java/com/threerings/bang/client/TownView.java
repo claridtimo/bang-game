@@ -319,10 +319,10 @@ public class TownView extends BWindow
                 }
             });
 
-            _hstate = _ctx.getRenderer().createMaterialState();
-            _hstate.getAmbient().set(ColorRGBA.white);
-            _hstate.getDiffuse().set(ColorRGBA.white);
-            _hstate.getEmissive().set(ColorRGBA.white);
+            _hstate = _ctx.getRenderManager().createMaterialState();
+            _hstate.getAmbient().set(ColorRGBA.White);
+            _hstate.getDiffuse().set(ColorRGBA.White);
+            _hstate.getEmissive().set(ColorRGBA.White);
 
             // load up our hover cursor
             try {
@@ -609,7 +609,7 @@ public class TownView extends BWindow
                     // delete the old texture using a dummy state now that we're in the main thread
                     int oldTextureId = _poptex.getTextureId();
                     if (oldTextureId > 0) {
-                        TextureState tstate = _ctx.getRenderer().createTextureState();
+                        TextureState tstate = _ctx.getRenderManager().createTextureState();
                         Texture tex = new Texture();
                         tex.setTextureId(oldTextureId);
                         tstate.setTexture(tex);

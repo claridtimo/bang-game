@@ -49,12 +49,12 @@ public class SafeMarkerSprite extends MarkerSprite
                 Texture btex = ctx.getTextureCache().getTexture(
                     root + HIGHLIGHT_TEXS[ii] + ".png");
                 int idx = ii * DIRECTIONS.length;
-                texstates[idx] = ctx.getRenderer().createTextureState();
+                texstates[idx] = ctx.getRenderManager().createTextureState();
                 if (emissive) {
                     Texture etex = ctx.getTextureCache().getTexture(
                         root + EMISSIVE_TEXS[ii] + ".png");
                     etex.setApply(Texture.AM_BLEND);
-                    etex.setBlendColor(ColorRGBA.white);
+                    etex.setBlendColor(ColorRGBA.White);
                     texstates[idx].setTexture(etex, 0);
                     texstates[idx].setTexture(btex, 1);
                 } else {
@@ -117,7 +117,7 @@ public class SafeMarkerSprite extends MarkerSprite
      */
     protected TextureState createRotatedState (TextureState ostate, float angle)
     {
-        TextureState nstate = _ctx.getRenderer().createTextureState();
+        TextureState nstate = _ctx.getRenderManager().createTextureState();
         for (int ii = 0, nn = ostate.getNumberOfSetTextures(); ii < nn; ii++) {
             Texture ntex = ostate.getTexture(ii).createSimpleClone();
             ntex.setRotation(new Quaternion().fromAngleNormalAxis(angle, Vector3f.UNIT_Z));

@@ -172,8 +172,8 @@ public class WendigoHandler extends EffectHandler
             sprite.getModelNode().pauseAnimation(true);
             sprite.attachChild(this);
             final int penderId = notePender();
-            final MaterialState mstate = _ctx.getRenderer().createMaterialState();
-            mstate.getAmbient().set(ColorRGBA.white);
+            final MaterialState mstate = _ctx.getRenderManager().createMaterialState();
+            mstate.getAmbient().set(ColorRGBA.White);
             mstate.getDiffuse().set(1f, 1f, 1f, 0f);
             setRenderState(mstate);
             updateRenderState();

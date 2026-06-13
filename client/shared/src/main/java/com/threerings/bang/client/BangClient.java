@@ -354,7 +354,9 @@ public class BangClient extends BasicClient
         _ctx.getRootNode().addWindow(_mview);
         _mview.pack();
         _mview.center();
-        FadeInOutEffect fade = new FadeInOutEffect(ColorRGBA.black, 1f, 0f, 0.25f, true) {
+        FadeInOutEffect fade = new FadeInOutEffect(
+                _ctx.getAssetManager(), _ctx.getCamera().getWidth(), _ctx.getCamera().getHeight(),
+                ColorRGBA.Black, 1f, 0f, 0.25f, true) {
             protected void fadeComplete () {
                 super.fadeComplete();
                 // now start unpacking our resources
@@ -597,7 +599,7 @@ public class BangClient extends BasicClient
         popup.pack(twidth, -1);
         int dy = (_mview instanceof BangView) ? ((BangView)_mview).getCenterOffset() : 0;
         _ctx.getInterface().attachChild(
-            new WindowSlider(popup, WindowSlider.FROM_TOP, 0.25f, 0, dy));
+            new WindowSlider(popup, _ctx.getCamera().getWidth(), _ctx.getCamera().getHeight(), WindowSlider.FROM_TOP, 0.25f, 0, dy));
     }
 
     /**
@@ -639,7 +641,7 @@ public class BangClient extends BasicClient
             BangUI.play(BangUI.FeedbackSound.WINDOW_DISMISS);
             int dy = (_mview instanceof BangView) ? ((BangView)_mview).getCenterOffset() : 0;
             _ctx.getInterface().attachChild(
-                new WindowSlider(popup, WindowSlider.TO_RIGHT, 0.25f, 0, dy) {
+                new WindowSlider(popup, _ctx.getCamera().getWidth(), _ctx.getCamera().getHeight(), WindowSlider.TO_RIGHT, 0.25f, 0, dy) {
                 protected void slideComplete () {
                     super.slideComplete();
                     if (popup.isAdded()) {
@@ -1216,7 +1218,9 @@ public class BangClient extends BasicClient
 
         // if we have an existing main view, fade that out
         if (_mview != null) {
-            FadeInOutEffect fade = new FadeInOutEffect(ColorRGBA.black, 0f, 1f, 0.5f, true) {
+            FadeInOutEffect fade = new FadeInOutEffect(
+                _ctx.getAssetManager(), _ctx.getCamera().getWidth(), _ctx.getCamera().getHeight(),
+                ColorRGBA.Black, 0f, 1f, 0.5f, true) {
                 protected void fadeComplete () {
                     super.fadeComplete();
                     _ctx.getRootNode().removeAllWindows();
@@ -1261,7 +1265,9 @@ public class BangClient extends BasicClient
         if (view instanceof BangView || view instanceof TownView) {
             return;
         }
-        _ctx.getInterface().attachChild(new FadeInOutEffect(ColorRGBA.black, 1f, 0f, 0.25f, true));
+        _ctx.getInterface().attachChild(new FadeInOutEffect(
+                _ctx.getAssetManager(), _ctx.getCamera().getWidth(), _ctx.getCamera().getHeight(),
+                ColorRGBA.Black, 1f, 0f, 0.25f, true));
     }
 
     /**

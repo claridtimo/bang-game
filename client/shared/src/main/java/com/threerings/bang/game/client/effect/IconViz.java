@@ -80,7 +80,7 @@ public class IconViz extends EffectViz
                     _ipath, CARD_SIZE, CARD_SIZE));
 
             } else {
-                ColorRGBA color = ColorRGBA.white;
+                ColorRGBA color = ColorRGBA.White;
                 if (_color != null) {
                     color = _color;
                 } else if (_sprite != null) {

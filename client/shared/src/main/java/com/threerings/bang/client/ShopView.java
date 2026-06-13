@@ -98,7 +98,7 @@ public abstract class ShopView extends BWindow
         super(ctx.getStyleSheet(), new AbsoluteLayout());
         setStyleClass("shop_view");
         _ctx = ctx;
-        _ctx.getRenderer().setBackgroundColor(ColorRGBA.black);
+        _ctx.getRenderManager().setBackgroundColor(ColorRGBA.Black);
         _msgs = ctx.getMessageManager().getBundle(ident);
 
         // this is town but not shop specific

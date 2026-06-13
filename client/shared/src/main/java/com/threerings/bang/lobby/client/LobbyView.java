@@ -140,7 +140,7 @@ public class LobbyView extends BWindow
         super.wasAdded();
 
         // switch to a gray background
-        _ctx.getRenderer().setBackgroundColor(ColorRGBA.gray);
+        _ctx.getRenderManager().setBackgroundColor(ColorRGBA.Gray);
     }
 
     @Override // documentation inherited
@@ -149,7 +149,7 @@ public class LobbyView extends BWindow
         super.wasRemoved();
 
         // restore the black background
-        _ctx.getRenderer().setBackgroundColor(ColorRGBA.black);
+        _ctx.getRenderManager().setBackgroundColor(ColorRGBA.Black);
     }
 
     // documentation inherited from interface PlaceView

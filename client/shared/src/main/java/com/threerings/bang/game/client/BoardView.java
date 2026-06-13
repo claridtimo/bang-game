@@ -194,7 +194,7 @@ public class BoardView extends BComponent
         _node = new Node("board_view");
 
         // let there be lights
-        _lstate = _ctx.getRenderer().createLightState();
+        _lstate = _ctx.getRenderManager().createLightState();
         _lights = new DirectionalLight[BangBoard.NUM_LIGHTS];
         for (int i = 0; i < _lights.length; i++) {
             _lstate.attach(_lights[i] = new DirectionalLight());
@@ -205,9 +205,9 @@ public class BoardView extends BComponent
         _node.setNormalsMode(Spatial.NM_GL_NORMALIZE_PROVIDED);
 
         // default states
-        MaterialState mstate = _ctx.getRenderer().createMaterialState();
-        mstate.getDiffuse().set(ColorRGBA.white);
-        mstate.getAmbient().set(ColorRGBA.white);
+        MaterialState mstate = _ctx.getRenderManager().createMaterialState();
+        mstate.getDiffuse().set(ColorRGBA.White);
+        mstate.getAmbient().set(ColorRGBA.White);
         _node.setRenderState(mstate);
         _node.setRenderState(RenderUtil.lequalZBuf);
         _node.setRenderState(RenderUtil.opaqueAlpha);
@@ -602,9 +602,9 @@ public class BoardView extends BComponent
             public void update (float time) {
                 if ((_elapsed += time) < duration) {
                     float alpha = _elapsed / duration;
-                    light.getDiffuse().interpolate(color, ColorRGBA.black,
+                    light.getDiffuse().interpolate(color, ColorRGBA.Black,
                         alpha);
-                    light.getAmbient().interpolate(color, ColorRGBA.black,
+                    light.getAmbient().interpolate(color, ColorRGBA.Black,
                         0.5f + alpha * 0.5f);
 
                 } else {
@@ -953,7 +953,7 @@ public class BoardView extends BComponent
         clearMarquee(0f);
 
         // restore the black background color
-        _ctx.getRenderer().setBackgroundColor(ColorRGBA.black);
+        _ctx.getRenderManager().setBackgroundColor(ColorRGBA.Black);
 
         // let the child nodes know that they need to clean up any textures
         // they've created
@@ -985,7 +985,7 @@ public class BoardView extends BComponent
         ParticlePool.clear();
 
         // clear the render queue of any lingering references
-        _ctx.getRenderer().clearQueue();
+        _ctx.getRenderManager().clearQueue();
     }
 
     /**
@@ -1075,7 +1075,8 @@ public class BoardView extends BComponent
     protected void createPausedFadeIn ()
     {
         _fadein = new FadeInOutEffect(
-            ColorRGBA.black, 1f, 0f, getFadeInTime(), false) {
+                _ctx.getAssetManager(), _ctx.getCamera().getWidth(), _ctx.getCamera().getHeight(),
+                ColorRGBA.Black, 1f, 0f, getFadeInTime(), false) {
             protected void fadeComplete () {
                 super.fadeComplete();
                 fadeInComplete();
@@ -1149,7 +1150,7 @@ public class BoardView extends BComponent
         }
         FogState fstate = (FogState)_node.getRenderState(RenderState.RS_FOG);
         if (fstate == null) {
-            fstate = _ctx.getRenderer().createFogState();
+            fstate = _ctx.getRenderManager().createFogState();
             fstate.setDensityFunction(FogState.DF_EXP);
             _node.setRenderState(fstate);
             _node.updateRenderState();
@@ -1166,7 +1167,7 @@ public class BoardView extends BComponent
     {
         int bg = (_board.getFogDensity() > 0f) ?
             _board.getFogColor() : _board.getSkyHorizonColor();
-        _ctx.getRenderer().setBackgroundColor(RenderUtil.createColorRGBA(bg));
+        _ctx.getRenderManager().setBackgroundColor(RenderUtil.createColorRGBA(bg));
     }
 
     /**
@@ -1337,7 +1338,7 @@ public class BoardView extends BComponent
 
         // create the marquee, center it and display it
         addMarquee(_marquee = createMarqueeLabel(text),
-            _ctx.getRenderer().getWidth()/2, _ctx.getRenderer().getHeight()/2);
+            _ctx.getRenderManager().getWidth()/2, _ctx.getRenderManager().getHeight()/2);
     }
 
     /**
@@ -1385,7 +1386,7 @@ public class BoardView extends BComponent
                 "m.loading_pct", String.valueOf(pct)));
         if (_loading == null) {
             addMarquee(_loading = new BLabel(pctstr, "loading_marquee"),
-                _ctx.getRenderer().getWidth()/2, 100);
+                _ctx.getRenderManager().getWidth()/2, 100);
         } else {
             _loading.setText(pctstr);
         }
@@ -1448,8 +1449,8 @@ public class BoardView extends BComponent
                 }
             };
             _mroot.addWindow(_mwindow);
-            _mwindow.setBounds(0, 0, _ctx.getRenderer().getWidth(),
-                _ctx.getRenderer().getHeight());
+            _mwindow.setBounds(0, 0, _ctx.getRenderManager().getWidth(),
+                _ctx.getRenderManager().getHeight());
         }
         _mwindow.add(marquee, new com.jmex.bui.util.Point(x, y));
     }
@@ -1749,7 +1750,7 @@ public class BoardView extends BComponent
                 set.getX(ii), set.getY(ii), true, false);
             highlight.setRenderState(_tgtstate);
             highlight.updateRenderState();
-            highlight.setDefaultColor(valid ? ColorRGBA.white : INVALID_TARGET_HIGHLIGHT_COLOR);
+            highlight.setDefaultColor(valid ? ColorRGBA.White : INVALID_TARGET_HIGHLIGHT_COLOR);
         }
     }
 

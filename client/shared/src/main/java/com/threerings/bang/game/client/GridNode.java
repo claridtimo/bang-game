@@ -49,7 +49,7 @@ public class GridNode extends Line
         updateModelBound();
 
         if (!editorMode) {
-            if (Config.useVBOs && _ctx.getRenderer().supportsVBO()) {
+            if (Config.useVBOs && _ctx.getRenderManager().supportsVBO()) {
                 VBOInfo vboinfo = new VBOInfo(true);
                 vboinfo.setVBOIndexEnabled(true);
                 setVBOInfo(vboinfo);

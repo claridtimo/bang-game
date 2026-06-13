@@ -3,6 +3,7 @@
 
 package com.threerings.bang.util;
 
+import com.threerings.jme.util.JmeUtil;
 import java.util.ArrayList;
 
 import com.jme.scene.Controller;
@@ -99,7 +100,7 @@ public class ParticleUtil
     protected static SpatialVisitor<ParticleGeometry> _stopper =
         new SpatialVisitor<ParticleGeometry>(ParticleGeometry.class) {
         protected void visit (ParticleGeometry geom) {
-            geom.setRepeatType(Controller.RT_CLAMP);
+            geom.setRepeatType(JmeUtil.RT_CLAMP);
         }
     };
 }

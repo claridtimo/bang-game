@@ -41,9 +41,9 @@ public class BisonSprite extends MobileSprite
         
         // fade the bison in and out at the beginning and end of the path
         final float duration = (path.size() - 1) / speed;
-        final MaterialState mstate = _ctx.getRenderer().createMaterialState();
-        mstate.getAmbient().set(ColorRGBA.white);
-        mstate.getDiffuse().set(ColorRGBA.white);
+        final MaterialState mstate = _ctx.getRenderManager().createMaterialState();
+        mstate.getAmbient().set(ColorRGBA.White);
+        mstate.getDiffuse().set(ColorRGBA.White);
         setRenderState(mstate);
         setRenderState(RenderUtil.blendAlpha);
         setRenderState(RenderUtil.overlayZBuf);

@@ -79,7 +79,7 @@ public class TerrainNode extends Node
             super("cursor");
 
             setMode(LOOP);
-            getBatch(0).getDefaultColor().set(ColorRGBA.white);
+            getBatch(0).getDefaultColor().set(ColorRGBA.White);
             setLightCombineMode(LightState.OFF);
             setRenderState(RenderUtil.lequalZBuf);
 
@@ -498,8 +498,8 @@ public class TerrainNode extends Node
         protected int _vwidth, _vheight;
 
         /** The colors for normal and hover modes. */
-        protected ColorRGBA _defaultColor = ColorRGBA.white,
-            _hoverColor = ColorRGBA.white;
+        protected ColorRGBA _defaultColor = ColorRGBA.White,
+            _hoverColor = ColorRGBA.White;
 
         /** The textures for normal and hover modes. */
         protected TextureState _defaultTexture, _hoverTexture;
@@ -556,9 +556,9 @@ public class TerrainNode extends Node
         // we normalize things ourself
         setNormalsMode(NM_USE_PROVIDED);
 
-        MaterialState mstate = _ctx.getRenderer().createMaterialState();
+        MaterialState mstate = _ctx.getRenderManager().createMaterialState();
         mstate.setColorMaterial(MaterialState.CM_DIFFUSE);
-        mstate.getAmbient().set(ColorRGBA.white);
+        mstate.getAmbient().set(ColorRGBA.White);
 
         // this is a workaround for a mysterious bug in JME (or maybe LWJGL, or my OpenGL drivers).
         // without some difference in the material parameters between the terrain node and the
@@ -588,7 +588,7 @@ public class TerrainNode extends Node
         // find out now whether we should use shaders (so that the block creator knows)
         boolean useShaders = false;
         if (shouldUseShaders()) {
-            GLSLShaderObjectsState sstate = _ctx.getRenderer().createGLSLShaderObjectsState();
+            GLSLShaderObjectsState sstate = _ctx.getRenderManager().createGLSLShaderObjectsState();
             if (!configureShaderState(sstate, 2, true)) {
                 _disableShaders = true;
             } else {
@@ -636,7 +636,7 @@ public class TerrainNode extends Node
                     continue;
                 }
                 _blocks[x][y].deleteCreatedTextures();
-                _blocks[x][y].mesh.unlockMeshes(_ctx.getRenderer());
+                _blocks[x][y].mesh.unlockMeshes(_ctx.getRenderManager());
                 VBOInfo vboinfo = _blocks[x][y].mesh.getVBOInfo(0);
                 if (vboinfo != null) {
                     RenderUtil.deleteVBOs(_ctx, vboinfo);
@@ -1540,7 +1540,7 @@ public class TerrainNode extends Node
             // if we are using VBOs, we can set them here; display lists must
             // be compiled on the main thread
             if (!_editorMode) {
-                if (Config.useVBOs && _ctx.getRenderer().supportsVBO()) {
+                if (Config.useVBOs && _ctx.getRenderManager().supportsVBO()) {
                     VBOInfo vboinfo = new VBOInfo(true);
                     vboinfo.setVBOIndexEnabled(true);
                     mesh.setVBOInfo(vboinfo);
@@ -1560,11 +1560,11 @@ public class TerrainNode extends Node
         {
             // compile display lists if not using VBOs
             if (!_editorMode && Config.useDisplayLists && !(Config.useVBOs &&
-                    _ctx.getRenderer().supportsVBO())) {
+                    _ctx.getRenderManager().supportsVBO())) {
                 // in order to ensure that texture coords are sent when
                 // compiling the shared geometry to a display list, we must
                 // include a dummy texture state
-                TextureState tstate = _ctx.getRenderer().createTextureState();
+                TextureState tstate = _ctx.getRenderManager().createTextureState();
                 tstate.setTexture(null, 0);
                 tstate.setTexture(null, 1);
                 mesh.setRenderState(tstate);
@@ -1748,7 +1748,7 @@ public class TerrainNode extends Node
             for (int y = ebounds.y, ymax = y+ebounds.height; y < ymax; y++) {
                 for (int x = ebounds.x, xmax = x+ebounds.width; x < xmax;
                         x++) {
-                    color.interpolate(ColorRGBA.white, ColorRGBA.black,
+                    color.interpolate(ColorRGBA.White, ColorRGBA.Black,
                         getShadowValue(x, y));
                     BufferUtils.setInBuffer(color, cbuf, idx++);
                 }
@@ -1847,7 +1847,7 @@ public class TerrainNode extends Node
                 if (ii > 0) {
                     // passes after the first are added on
                     if (_addAlpha == null) {
-                        _addAlpha = _ctx.getRenderer().createAlphaState();
+                        _addAlpha = _ctx.getRenderManager().createAlphaState();
                         _addAlpha.setBlendEnabled(true);
                         _addAlpha.setSrcFunction(AlphaState.SB_ONE);
                         _addAlpha.setDstFunction(AlphaState.DB_ONE);
@@ -1856,7 +1856,7 @@ public class TerrainNode extends Node
                     pass.setRenderState(RenderUtil.overlayZBuf);
                     pass.setIsCollidable(false);
                 }
-                GLSLShaderObjectsState sstate = _ctx.getRenderer().createGLSLShaderObjectsState();
+                GLSLShaderObjectsState sstate = _ctx.getRenderManager().createGLSLShaderObjectsState();
                 pass.setRenderState(sstate);
 
                 TextureState tstate = _ctx.getDisplay().getRenderer().createTextureState();
@@ -1940,7 +1940,7 @@ public class TerrainNode extends Node
         public void deleteCreatedTextures ()
         {
             // delete the generated alpha textures
-            TextureState tstate = _ctx.getRenderer().createTextureState();
+            TextureState tstate = _ctx.getRenderManager().createTextureState();
             for (Texture texture : alphaTextures) {
                 if (texture.getTextureId() > 0) {
                     tstate.deleteTextureId(texture.getTextureId());

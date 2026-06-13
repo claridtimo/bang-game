@@ -138,9 +138,9 @@ public class PieceSprite extends Sprite
         // create and set the material that we will use to change shadow values
         // (if appropriate)
         if (isShadowable()) {
-            _mstate = ctx.getRenderer().createMaterialState();
-            _mstate.getDiffuse().set(ColorRGBA.white);
-            _mstate.getAmbient().set(ColorRGBA.white);
+            _mstate = ctx.getRenderManager().createMaterialState();
+            _mstate.getDiffuse().set(ColorRGBA.White);
+            _mstate.getAmbient().set(ColorRGBA.White);
             setRenderState(_mstate);
         }
 

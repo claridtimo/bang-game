@@ -4,6 +4,7 @@
 package com.threerings.bang.game.client.effect;
 
 import com.jme.image.Texture;
+import com.jme3.scene.Geometry;
 import com.jme3.math.ColorRGBA;
 import com.jme.scene.Controller;
 import com.jme.scene.state.MaterialState;
@@ -34,15 +35,15 @@ public class IronPlateViz extends InfluenceViz
                 "textures/environ/spheremap.png");
             _sphereMap.getTexture().setEnvironmentalMapMode(Texture.EM_SPHERE);
         }
-        _mstate = ctx.getRenderer().createMaterialState();
+        _mstate = ctx.getRenderManager().createMaterialState();
         _mstate.getDiffuse().set(1f, 1f, 1f, 0f);
-        _mstate.getEmissive().set(ColorRGBA.white);
-        _mstate.getAmbient().set(ColorRGBA.white);
+        _mstate.getEmissive().set(ColorRGBA.White);
+        _mstate.getAmbient().set(ColorRGBA.White);
         _overlay = new RenderState[] { _sphereMap, _mstate,
             RenderUtil.blendAlpha, RenderUtil.overlayZBuf };
             
-        new SpatialVisitor<ModelMesh>(ModelMesh.class) {
-            protected void visit (ModelMesh mesh) {
+        new SpatialVisitor<Geometry>(Geometry.class) {
+            protected void visit (Geometry mesh) {
                 mesh.addOverlay(_overlay);
             }
         }.traverse(_target.getModelNode());
@@ -56,8 +57,8 @@ public class IronPlateViz extends InfluenceViz
     {
         ((MobileSprite)_target).removeActionHandler(_handler);
         
-        new SpatialVisitor<ModelMesh>(ModelMesh.class) {
-            protected void visit (ModelMesh mesh) {
+        new SpatialVisitor<Geometry>(Geometry.class) {
+            protected void visit (Geometry mesh) {
                 mesh.removeOverlay(_overlay);
             }
         }.traverse(_target.getModelNode());

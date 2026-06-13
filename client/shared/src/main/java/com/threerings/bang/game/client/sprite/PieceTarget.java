@@ -101,7 +101,7 @@ public class PieceTarget extends Node
     {
         if (pending) {
             if (_pendingTick == -1) {
-                _tgtquad.getBatch(0).getDefaultColor().set(ColorRGBA.red);
+                _tgtquad.getBatch(0).getDefaultColor().set(ColorRGBA.Red);
             }
             _pendingTick = _tick;
         } else {
@@ -338,5 +338,5 @@ public class PieceTarget extends Node
 
     protected static final ColorRGBA DEFAULT_COLOR =
         new ColorRGBA(230f/255f, 165f/255f, 20f/255f, 0.85f);
-    protected static final ColorRGBA POSSIBLE_COLOR = ColorRGBA.white;
+    protected static final ColorRGBA POSSIBLE_COLOR = ColorRGBA.White;
 }

@@ -3,6 +3,7 @@
 
 package com.threerings.bang.game.client.sprite;
 
+import com.threerings.jme.util.JmeUtil;
 import java.io.IOException;
 
 import java.nio.IntBuffer;
@@ -98,7 +99,7 @@ public class GunshotEmission extends FrameEmission
         _smoke.setEndSize(2f * _size);
         _smoke.setStartColor(new ColorRGBA(0.2f, 0.2f, 0.2f, 0.75f));
         _smoke.setEndColor(new ColorRGBA(0.35f, 0.35f, 0.35f, 0f));
-        _smoke.getParticleController().setRepeatType(Controller.RT_CLAMP);
+        _smoke.getParticleController().setRepeatType(JmeUtil.RT_CLAMP);
         _smoke.getParticleController().setActive(false);
         _smoke.setModelBound(new BoundingBox());
         _smoke.setIsCollidable(false);
@@ -301,8 +302,8 @@ public class GunshotEmission extends FrameEmission
             if ((_elapsed += time) >= FLARE_DURATION) {
                 _model.getEmissionNode().detachChild(this);
             }
-            getBatch(0).getDefaultColor().interpolate(ColorRGBA.white,
-                ColorRGBA.black, _elapsed / FLARE_DURATION);
+            getBatch(0).getDefaultColor().interpolate(ColorRGBA.White,
+                ColorRGBA.Black, _elapsed / FLARE_DURATION);
         }
         
         protected float _elapsed;

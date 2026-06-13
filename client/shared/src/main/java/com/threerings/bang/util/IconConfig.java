@@ -68,7 +68,7 @@ public class IconConfig
      */
     public static Quad createIcon (BasicContext ctx, String path)
     {
-        return createIcon(ctx, path, TILE_SIZE, TILE_SIZE, ColorRGBA.white);
+        return createIcon(ctx, path, TILE_SIZE, TILE_SIZE, ColorRGBA.White);
     }
     
     /**
@@ -85,7 +85,7 @@ public class IconConfig
     public static Quad createIcon (
         BasicContext ctx, String path, float width, float height)
     {
-        return createIcon(ctx, path, width, height, ColorRGBA.white);
+        return createIcon(ctx, path, width, height, ColorRGBA.White);
     }
     
     /**
@@ -110,7 +110,7 @@ public class IconConfig
         IconConfig iconfig = _icons.get(path);
         if (iconfig != null) {
             icon = iconfig.createIconInstance(ctx, path);
-            color = iconfig.tint ? color : ColorRGBA.white;
+            color = iconfig.tint ? color : ColorRGBA.White;
         } else {
             icon = createIcon(RenderUtil.createTextureState(ctx, path),
                 width, height);
@@ -210,7 +210,7 @@ public class IconConfig
         iconfig.frameRate = BangUtil.getFloatProperty(
             icon, props, "frame_rate", 8f);
         iconfig.repeatType = JmeUtil.parseRepeatType(props.getProperty("repeat_type"),
-            Controller.RT_WRAP);
+            JmeUtil.RT_WRAP);
         
         _icons.put(icon, iconfig);
     }

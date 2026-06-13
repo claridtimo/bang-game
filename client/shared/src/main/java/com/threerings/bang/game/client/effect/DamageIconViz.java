@@ -123,7 +123,7 @@ public class DamageIconViz extends IconViz
         float offset =  DAMAGE_SIZE * 0.58f;
         _readout = new Quad[readoutsize];
         if (_showText) {
-            _dmgTState = _ctx.getRenderer().createTextureState();
+            _dmgTState = _ctx.getRenderManager().createTextureState();
             _dmgTState.setEnabled(true);
             Vector2f[] tcoords = new Vector2f[4];
             Texture tex = RenderUtil.createTextTexture(

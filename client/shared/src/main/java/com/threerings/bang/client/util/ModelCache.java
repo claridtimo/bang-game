@@ -21,6 +21,7 @@ import com.jme.scene.state.GLSLShaderObjectsState;
 import com.jme.scene.state.RenderState;
 import com.jme.scene.state.TextureState;
 import com.jme.util.ShaderAttribute;
+import com.jme3.scene.Geometry;
 import com.jme3.util.BufferUtils;
 
 import com.samskivert.util.IntListUtil;
@@ -53,7 +54,7 @@ public class ModelCache extends PrototypeCache<ModelCache.ModelKey, Model>
 
         // create a texture state here in order to make sure that the
         // texture state initialization isn't called from the loader
-        _ctx.getRenderer().createTextureState();
+        _ctx.getRenderManager().createTextureState();
 
         // create the interval to flush cleared prototypes
         new Interval(ctx.getApp()) {
@@ -64,7 +65,7 @@ public class ModelCache extends PrototypeCache<ModelCache.ModelKey, Model>
                 }
 
                 // clear the VBO cache to make sure there are no lingering references
-                _ctx.getRenderer().clearVBOCache();
+                _ctx.getRenderManager().clearVBOCache();
             }
         }.schedule(FLUSH_INTERVAL, true);
     }
@@ -170,7 +171,7 @@ public class ModelCache extends PrototypeCache<ModelCache.ModelKey, Model>
         } else {
             prototype.setAnimationMode(Model.AnimationMode.MORPH);
         }
-        prototype.lockStaticMeshes(_ctx.getRenderer(), Config.useVBOs,
+        prototype.lockStaticMeshes(_ctx.getRenderManager(), Config.useVBOs,
             Config.useDisplayLists);
     }
 
@@ -265,8 +266,8 @@ public class ModelCache extends PrototypeCache<ModelCache.ModelKey, Model>
 
             // and all shader attributes for which VBOs are enabled
             final ArrayList<ShaderAttribute> sattrs = new ArrayList<ShaderAttribute>();
-            new SpatialVisitor<ModelMesh>(ModelMesh.class) {
-                protected void visit (ModelMesh mesh) {
+            new SpatialVisitor<Geometry>(Geometry.class) {
+                protected void visit (Geometry mesh) {
                     GLSLShaderObjectsState sstate = (GLSLShaderObjectsState)mesh.getRenderState(
                         RenderState.RS_GLSL_SHADER_OBJECTS);
                     if (sstate == null) {
@@ -322,7 +323,7 @@ public class ModelCache extends PrototypeCache<ModelCache.ModelKey, Model>
             TextureState tstate = _tstates.get(path);
             if (tstate == null) {
                 _tstates.put(path,
-                    tstate = _ctx.getRenderer().createTextureState());
+                    tstate = _ctx.getRenderManager().createTextureState());
                 float scale = BangPrefs.isMediumDetail() ? 1f : 0.5f;
                 tstate.setTexture(_zations == null ?
                     _ctx.getTextureCache().getTexture(path, scale) :

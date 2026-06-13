@@ -82,9 +82,9 @@ public class MarkerSprite extends PieceSprite
     }
 
     protected static final ColorRGBA[] COLORS = {
-        ColorRGBA.blue, // START
-        ColorRGBA.green, // BONUS
-        ColorRGBA.red, // CATTLE
+        ColorRGBA.Blue, // START
+        ColorRGBA.Green, // BONUS
+        ColorRGBA.Red, // CATTLE
         new ColorRGBA(1, 1, 0, 1), // LODE
         new ColorRGBA(0, 1, 1, 1), // TOTEM
         new ColorRGBA(1, 0, 1, 1), // SAFE
@@ -94,8 +94,8 @@ public class MarkerSprite extends PieceSprite
     };
 
     protected static final Object[] SPRITES = {
-        "sphere", ColorRGBA.blue,   // START
-        "sphere", ColorRGBA.green,  // BONUS
+        "sphere", ColorRGBA.Blue,   // START
+        "sphere", ColorRGBA.Green,  // BONUS
         "extras", "frontier_town/cow", // CATTLE
         "bonuses", "frontier_town/nugget", // LODE
         "bonuses", "indian_post/totem_crown", // TOTEM

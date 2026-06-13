@@ -542,7 +542,7 @@ public class UnitStatusView extends BWindow
                 // clear out our background when our unit dies
                 _bground = null;
                 // and draw our icon at 50% alpha
-                _unit.getBatch(0).getDefaultColor().set(ColorRGBA.white);
+                _unit.getBatch(0).getDefaultColor().set(ColorRGBA.White);
                 setAlpha(0.5f);
                 _isInvalid = false;
             } else {
@@ -562,7 +562,7 @@ public class UnitStatusView extends BWindow
                 // tint the unit icon red if it has a visible hindrance
                 /*
                 if (unit.getHindrance() == null || !unit.getHindrance().isVisible()) {
-                    _unit.getBatch(0).getDefaultColor().set(ColorRGBA.white);
+                    _unit.getBatch(0).getDefaultColor().set(ColorRGBA.White);
                 } else {
                     _unit.getBatch(0).getDefaultColor().set(1f, 0.5f, 0.5f, 0.8f);
                 }

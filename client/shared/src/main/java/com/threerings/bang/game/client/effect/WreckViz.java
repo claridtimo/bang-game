@@ -102,9 +102,9 @@ public class WreckViz extends ParticleEffectViz
             // initialize the render state for transparency control
             setRenderQueueMode(Renderer.QUEUE_TRANSPARENT);
             setRenderState(RenderUtil.blendAlpha);
-            _mstate = _ctx.getRenderer().createMaterialState();
-            _mstate.getDiffuse().set(ColorRGBA.white);
-            _mstate.getAmbient().set(ColorRGBA.white);
+            _mstate = _ctx.getRenderManager().createMaterialState();
+            _mstate.getDiffuse().set(ColorRGBA.White);
+            _mstate.getAmbient().set(ColorRGBA.White);
             setRenderState(_mstate);
 
             // fire the piece in a random direction

@@ -83,12 +83,12 @@ public class PieceStatus extends Node
             _info[ii] = new TerrainNode.SharedHighlight(
                 "info" + ii, highlight);
             _info[ii].setRenderQueueMode(Renderer.QUEUE_TRANSPARENT);
-            _info[ii].setRenderState(ctx.getRenderer().createTextureState());
+            _info[ii].setRenderState(ctx.getRenderManager().createTextureState());
             _info[ii].updateRenderState();
             attachChild(_info[ii]);
 
             _icon[ii] = new Quad("icon" + ii, ICON_SIZE, ICON_SIZE);
-            _icon[ii].setRenderState(ctx.getRenderer().createTextureState());
+            _icon[ii].setRenderState(ctx.getRenderManager().createTextureState());
             _icon[ii].setRenderState(RenderUtil.blendAlpha);
             _icon[ii].getLocalTranslation().x = ICON_SIZE/2f;
             _icon[ii].getLocalTranslation().y = ICON_SIZE/2f;
@@ -178,7 +178,7 @@ public class PieceStatus extends Node
 
         if (_selected != selected) {
             _selected = selected;
-            ColorRGBA color = _selected ? ColorRGBA.white : getDarkerColor();
+            ColorRGBA color = _selected ? ColorRGBA.White : getDarkerColor();
             _info[0].getBatch(0).getDefaultColor().set(color);
             _icon[0].getBatch(0).getDefaultColor().set(color);
         }
@@ -207,7 +207,7 @@ public class PieceStatus extends Node
     {
         if (_tempstate == null) {
             // we'll use this to load our textures into OpenGL as we go
-            _tempstate = _ctx.getRenderer().createTextureState();
+            _tempstate = _ctx.getRenderManager().createTextureState();
 
             // we generate ten discrete damage levels and pick the closest one
             // to represent a unit's damage (this is to avoid slow and

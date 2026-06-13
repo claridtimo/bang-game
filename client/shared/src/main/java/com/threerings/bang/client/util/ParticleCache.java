@@ -236,7 +236,7 @@ public class ParticleCache extends PrototypeCache<String, Spatial>
         AlphaState astate = (AlphaState)prototype.getRenderState(
             RenderState.RS_ALPHA);
         if (astate != null && astate.getDstFunction() == AlphaState.DB_ONE) {
-            FogState fstate = _ctx.getRenderer().createFogState();
+            FogState fstate = _ctx.getRenderManager().createFogState();
             fstate.setEnabled(false);
             instance.setRenderState(fstate);
         }

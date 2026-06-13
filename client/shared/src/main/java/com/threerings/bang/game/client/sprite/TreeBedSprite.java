@@ -4,6 +4,7 @@
 package com.threerings.bang.game.client.sprite;
 
 import com.jme.image.Texture;
+import com.jme3.scene.Geometry;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.math.ColorRGBA;
@@ -143,12 +144,12 @@ public class TreeBedSprite extends ActiveSprite
                 Texture etex = _ctx.getTextureCache().getTexture(
                     troot + "_emissive.png");
                 etex.setApply(Texture.AM_BLEND);
-                etex.setBlendColor(ColorRGBA.white);
-                _btstate = _ctx.getRenderer().createTextureState();
+                etex.setBlendColor(ColorRGBA.White);
+                _btstate = _ctx.getRenderManager().createTextureState();
                 _btstate.setTexture(etex, 0);
                 _btstate.setTexture(
                     _ctx.getTextureCache().getTexture(troot + ".png"), 1);
-                _mtstate = _ctx.getRenderer().createTextureState();
+                _mtstate = _ctx.getRenderManager().createTextureState();
                 _mtstate.setTexture(etex, 0);
                 _mtstate.setTexture(
                     _ctx.getTextureCache().getTexture(troot + "_max.png"), 1);
@@ -200,9 +201,9 @@ public class TreeBedSprite extends ActiveSprite
         final Vector3f axis = new Vector3f(PieceCodes.DX[dir],
             PieceCodes.DY[dir], 0f);
 
-        final MaterialState mstate = _ctx.getRenderer().createMaterialState();
-        mstate.getAmbient().set(ColorRGBA.white);
-        mstate.getDiffuse().set(ColorRGBA.white);
+        final MaterialState mstate = _ctx.getRenderManager().createMaterialState();
+        mstate.getAmbient().set(ColorRGBA.White);
+        mstate.getDiffuse().set(ColorRGBA.White);
         model.setRenderState(mstate);
         model.setRenderState(RenderUtil.blendAlpha);
         model.updateRenderState();
@@ -241,9 +242,9 @@ public class TreeBedSprite extends ActiveSprite
             if (_overlay == null) {
                 _overlay = new RenderState[2];
                 _overlay[0] = _omstate =
-                    _ctx.getRenderer().createMaterialState();
-                _omstate.getAmbient().set(ColorRGBA.white);
-                _omstate.getDiffuse().set(ColorRGBA.white);
+                    _ctx.getRenderManager().createMaterialState();
+                _omstate.getAmbient().set(ColorRGBA.White);
+                _omstate.getDiffuse().set(ColorRGBA.White);
             }
             _omstate.getDiffuse().a = alpha;
             _overlay[1] = t2;
@@ -254,8 +255,8 @@ public class TreeBedSprite extends ActiveSprite
         _ptstate = t1;
         _ststate = t2;
         if (swap || add || remove) {
-            new SpatialVisitor<ModelMesh>(ModelMesh.class) {
-                protected void visit (ModelMesh mesh) {
+            new SpatialVisitor<Geometry>(Geometry.class) {
+                protected void visit (Geometry mesh) {
                     TextureState tstate = (TextureState)mesh.getRenderState(
                         RenderState.RS_TEXTURE);
                     if (tstate.getTexture(0).getImageLocation().indexOf(

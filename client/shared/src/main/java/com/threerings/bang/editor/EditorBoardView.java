@@ -136,7 +136,7 @@ public class EditorBoardView extends BoardView
         WireframeState wstate = (WireframeState)_node.getRenderState(
             RenderState.RS_WIREFRAME);
         if (wstate == null) {
-            wstate = _ctx.getRenderer().createWireframeState();
+            wstate = _ctx.getRenderManager().createWireframeState();
             wstate.setFace(WireframeState.WS_FRONT_AND_BACK);
             _node.setRenderState(wstate);
 

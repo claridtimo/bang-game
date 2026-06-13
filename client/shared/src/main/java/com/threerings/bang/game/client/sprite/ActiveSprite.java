@@ -284,9 +284,9 @@ public class ActiveSprite extends PieceSprite
     {
         setRenderState(RenderUtil.blendAlpha);
         if (_mstate == null) {
-            _mstate = _ctx.getRenderer().createMaterialState();
-            _mstate.setAmbient(ColorRGBA.white);
-            _mstate.setDiffuse(ColorRGBA.white);
+            _mstate = _ctx.getRenderManager().createMaterialState();
+            _mstate.setAmbient(ColorRGBA.White);
+            _mstate.setDiffuse(ColorRGBA.White);
             setRenderState(_mstate);
         }
         updateRenderState();

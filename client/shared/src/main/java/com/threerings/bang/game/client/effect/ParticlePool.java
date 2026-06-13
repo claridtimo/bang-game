@@ -3,6 +3,7 @@
 
 package com.threerings.bang.game.client.effect;
 
+import com.threerings.jme.util.JmeUtil;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -169,7 +170,7 @@ public class ParticlePool
         particles.setParticleSpinSpeed(0.1f);
         particles.setStartSize(TILE_SIZE / 5);
         particles.setEndSize(TILE_SIZE / 3);
-        particles.getParticleController().setRepeatType(Controller.RT_CLAMP);
+        particles.getParticleController().setRepeatType(JmeUtil.RT_CLAMP);
         particles.setModelBound(new BoundingBox());
         particles.setIsCollidable(false);
 
@@ -248,7 +249,7 @@ public class ParticlePool
         particles.setEndSize(TILE_SIZE);
         particles.setStartColor(new ColorRGBA(0.75f, 0.75f, 0.75f, 0.75f));
         particles.setEndColor(new ColorRGBA(0.75f, 0.75f, 0.75f, 0f));
-        particles.getParticleController().setRepeatType(Controller.RT_CLAMP);
+        particles.getParticleController().setRepeatType(JmeUtil.RT_CLAMP);
         particles.setModelBound(new BoundingBox());
         particles.setIsCollidable(false);
 

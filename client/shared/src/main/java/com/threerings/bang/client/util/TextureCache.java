@@ -40,7 +40,7 @@ public class TextureCache
     public TextureCache (BasicContext ctx)
     {
         _ctx = ctx;
-        _dtstate = ctx.getRenderer().createTextureState();
+        _dtstate = ctx.getRenderManager().createTextureState();
 
         // create the interval to flush cleared textures
         new Interval(ctx.getApp()) {

@@ -36,7 +36,7 @@ public class GenericCounterNode extends Node
         // create a billboard to display this mine's current nugget count
         _ctx = ctx;
         _quad = new Quad("counter", 25, 25);
-        _tstate = _ctx.getRenderer().createTextureState();
+        _tstate = _ctx.getRenderManager().createTextureState();
         _tstate.setEnabled(true);
         _quad.setRenderState(_tstate);
         updateCount(counter);
@@ -64,8 +64,8 @@ public class GenericCounterNode extends Node
             }
             Vector2f[] tcoords = new Vector2f[4];
             Texture tex = RenderUtil.createTextTexture(
-                _ctx, BangUI.COUNTER_FONT, ColorRGBA.gray,
-                ColorRGBA.darkGray, String.valueOf(counter.getCount()),
+                _ctx, BangUI.COUNTER_FONT, ColorRGBA.Gray,
+                ColorRGBA.DarkGray, String.valueOf(counter.getCount()),
                 tcoords, null);
             _quad.setTextureBuffer(
                 0, BufferUtils.createFloatBuffer(tcoords));

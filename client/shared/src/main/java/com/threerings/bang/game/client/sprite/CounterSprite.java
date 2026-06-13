@@ -98,7 +98,7 @@ public class CounterSprite extends PropSprite
 
         // create a billboard to display this mine's current nugget count
         _counter = new Quad("counter", 25, 25);
-        _tstate = _ctx.getRenderer().createTextureState();
+        _tstate = _ctx.getRenderManager().createTextureState();
         _tstate.setEnabled(true);
         _counter.setRenderState(_tstate);
         _counter.setRenderState(RenderUtil.blendAlpha);

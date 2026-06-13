@@ -35,7 +35,7 @@ public class BackTextureRenderer
         _height = height;
 
         // createCamera updates, so be sure to call the old one
-        _camera = ctx.getRenderer().createCamera(width, height);
+        _camera = ctx.getRenderManager().createCamera(width, height);
         ctx.getCameraHandler().getCamera().update();
     }
 
@@ -115,7 +115,7 @@ public class BackTextureRenderer
     public void render (ArrayList<?> spats, Texture tex)
     {
         // render to back buffer
-        Renderer parentRenderer = _ctx.getRenderer();
+        Renderer parentRenderer = _ctx.getRenderManager();
         preDraw(parentRenderer);
         for (int ii = 0, nn = spats.size(); ii < nn; ii++) {
             ((Spatial)spats.get(ii)).onDraw(parentRenderer);
@@ -130,7 +130,7 @@ public class BackTextureRenderer
     public void render (ArrayList<?> spats, Texture... texs)
     {
         // render to back buffer
-        Renderer parentRenderer = _ctx.getRenderer();
+        Renderer parentRenderer = _ctx.getRenderManager();
         preDraw(parentRenderer);
         for (int ii = 0, nn = spats.size(); ii < nn; ii++) {
             ((Spatial)spats.get(ii)).onDraw(parentRenderer);
@@ -147,7 +147,7 @@ public class BackTextureRenderer
     public void render (Spatial spat, Texture... texs)
     {
         // render to back buffer
-        Renderer parentRenderer = _ctx.getRenderer();
+        Renderer parentRenderer = _ctx.getRenderManager();
         preDraw(parentRenderer);
         spat.onDraw(parentRenderer);
         postDraw(parentRenderer);

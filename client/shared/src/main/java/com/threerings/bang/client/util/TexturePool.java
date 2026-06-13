@@ -33,7 +33,7 @@ public class TexturePool
     {
         _ctx = ctx;
         _maxSize = maxSize;
-        _dtstate = ctx.getRenderer().createTextureState();
+        _dtstate = ctx.getRenderManager().createTextureState();
     }
 
     // documentation inherited from interface BImage.TexturePool

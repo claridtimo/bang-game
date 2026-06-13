@@ -48,16 +48,16 @@ public class SkyNode extends Node
                 DOME_RADIUS);
             _dgeom.setModelBound(new BoundingBox());
             _dgeom.updateModelBound();
-            TextureState tstate = ctx.getRenderer().createTextureState();
+            TextureState tstate = ctx.getRenderManager().createTextureState();
             tstate.setTexture(null, 0);
             _dgeom.setRenderState(tstate);
-            if (Config.useVBOs && ctx.getRenderer().supportsVBO()) {
+            if (Config.useVBOs && ctx.getRenderManager().supportsVBO()) {
                 VBOInfo vboinfo = new VBOInfo(true);
                 vboinfo.setVBOIndexEnabled(true);
                 _dgeom.setVBOInfo(vboinfo);
 
             } else if (Config.useDisplayLists) {
-                _dgeom.lockMeshes(ctx.getRenderer());
+                _dgeom.lockMeshes(ctx.getRenderManager());
             }
         }
         _dome = new SharedMesh("dome", _dgeom);
@@ -66,8 +66,8 @@ public class SkyNode extends Node
         _dome.setLocalRotation(rot);
         _dome.setLocalTranslation(new Vector3f(0f, 0f, -10f));
         _dome.setRenderState(
-            _gtstate = ctx.getRenderer().createTextureState());
-        ZBufferState zbstate = ctx.getRenderer().createZBufferState();
+            _gtstate = ctx.getRenderManager().createTextureState());
+        ZBufferState zbstate = ctx.getRenderManager().createZBufferState();
         zbstate.setFunction(ZBufferState.CF_ALWAYS);
         zbstate.setWritable(false);
         _dome.setRenderState(zbstate);
@@ -94,16 +94,16 @@ public class SkyNode extends Node
                 }
             }
             _cgeom.setColorBuffer(0, cbuf);
-            TextureState tstate = ctx.getRenderer().createTextureState();
+            TextureState tstate = ctx.getRenderManager().createTextureState();
             tstate.setTexture(null, 0);
             _cgeom.setRenderState(tstate);
-            if (Config.useVBOs && ctx.getRenderer().supportsVBO()) {
+            if (Config.useVBOs && ctx.getRenderManager().supportsVBO()) {
                 VBOInfo vboinfo = new VBOInfo(true);
                 vboinfo.setVBOIndexEnabled(true);
                 _cgeom.setVBOInfo(vboinfo);
 
             } else if (Config.useDisplayLists) {
-                _cgeom.lockMeshes(ctx.getRenderer());
+                _cgeom.lockMeshes(ctx.getRenderManager());
             }
         }
         _clouds = new SharedMesh("clouds", _cgeom);

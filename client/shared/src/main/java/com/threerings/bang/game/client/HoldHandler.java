@@ -114,9 +114,9 @@ public class HoldHandler extends EffectHandler
         
         ShotSprite sprite = new ShotSprite(
             _ctx, "bonuses/frontier_town/nugget", null);
-        final MaterialState mstate = _ctx.getRenderer().createMaterialState();
-        mstate.getAmbient().set(ColorRGBA.white);
-        mstate.getDiffuse().set(ColorRGBA.white);
+        final MaterialState mstate = _ctx.getRenderManager().createMaterialState();
+        mstate.getAmbient().set(ColorRGBA.White);
+        mstate.getDiffuse().set(ColorRGBA.White);
         sprite.setRenderState(mstate);
         sprite.setRenderState(RenderUtil.blendAlpha);
         sprite.addController(new Spinner(sprite, FastMath.PI/2));

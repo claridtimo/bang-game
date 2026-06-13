@@ -4,6 +4,7 @@
 package com.threerings.bang.game.client.effect;
 
 import com.jme.image.Texture;
+import com.jme3.scene.Geometry;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.math.ColorRGBA;
@@ -48,7 +49,7 @@ public class HeroInfluenceViz extends InfluenceViz
 
         // create the geometry we'll add the count to
         _count = new Quad("count", 25, 25);
-        _tstate = ctx.getRenderer().createTextureState();
+        _tstate = ctx.getRenderManager().createTextureState();
         _tstate.setEnabled(true);
         _count.setRenderState(_tstate);
         _count.setRenderState(RenderUtil.blendAlpha);
@@ -62,7 +63,7 @@ public class HeroInfluenceViz extends InfluenceViz
                 "textures/environ/spheremap.png");
             _sphereMap.getTexture().setEnvironmentalMapMode(Texture.EM_SPHERE);
         }
-        _mstate = ctx.getRenderer().createMaterialState();
+        _mstate = ctx.getRenderManager().createMaterialState();
         ColorRGBA color = getJPieceColor(_owner);
         _mstate.getEmissive().set(color.r, color.g, color.b, 0.6f);
         _mstate.getDiffuse().set(color.r*.8f, color.g*.8f, color.b*.8f, 0f);
@@ -71,8 +72,8 @@ public class HeroInfluenceViz extends InfluenceViz
         _overlay = new RenderState[] { _sphereMap, _mstate,
             RenderUtil.addAlpha, RenderUtil.overlayZBuf };
 
-        new SpatialVisitor<ModelMesh>(ModelMesh.class) {
-            protected void visit (ModelMesh mesh) {
+        new SpatialVisitor<Geometry>(Geometry.class) {
+            protected void visit (Geometry mesh) {
                 mesh.addOverlay(_overlay);
             }
         }.traverse(_target.getModelNode());
@@ -131,8 +132,8 @@ public class HeroInfluenceViz extends InfluenceViz
                 _mstate.getDiffuse().a  = alpha;
                 if (_elapsed >= duration) {
                     _target.removeController(this);
-                    new SpatialVisitor<ModelMesh>(ModelMesh.class) {
-                        protected void visit (ModelMesh mesh) {
+                    new SpatialVisitor<Geometry>(Geometry.class) {
+                        protected void visit (Geometry mesh) {
                             mesh.removeOverlay(_overlay);
                         }
                     }.traverse(_target.getModelNode());

@@ -68,20 +68,20 @@ public class WaterNode extends Node
 
         // otherwise, use a combination of sphere map, lighting, and material
         // that approximates the effect
-        setRenderState(_smtstate = _ctx.getRenderer().createTextureState());
+        setRenderState(_smtstate = _ctx.getRenderManager().createTextureState());
 
         // use the board's main light in a new state that enables specular
         // properties
-        LightState lstate = _ctx.getRenderer().createLightState();
+        LightState lstate = _ctx.getRenderManager().createLightState();
         lstate.attach(light);
         lstate.setLocalViewer(true);
         lstate.setSeparateSpecular(true);
         setRenderState(lstate);
 
-        MaterialState mstate = _ctx.getRenderer().createMaterialState();
-        mstate.getDiffuse().set(ColorRGBA.black);
-        mstate.getAmbient().set(ColorRGBA.black);
-        mstate.getSpecular().set(ColorRGBA.white);
+        MaterialState mstate = _ctx.getRenderManager().createMaterialState();
+        mstate.getDiffuse().set(ColorRGBA.Black);
+        mstate.getAmbient().set(ColorRGBA.Black);
+        mstate.getSpecular().set(ColorRGBA.White);
         mstate.setShininess(32f);
         setRenderState(mstate);
     }
@@ -193,7 +193,7 @@ public class WaterNode extends Node
                     color.interpolate(wcolor, scolor, reflectivity);
 
                 } else {
-                    color.set(ColorRGBA.black);
+                    color.set(ColorRGBA.Black);
                 }
                 pbuf.put((byte)(color.r * 255));
                 pbuf.put((byte)(color.g * 255));

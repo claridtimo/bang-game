@@ -39,7 +39,7 @@ public class EditorApp extends JmeApp // TODO: use GDX's canvas stuffs
         super.create();
 
         // two-pass transparency is expensive
-        _ctx.getRenderer().getQueue().setTwoPassTransparency(false);
+        _ctx.getRenderManager().getQueue().setTwoPassTransparency(false);
 
         // // queue an update to make sure that the context is current before the client's event
         // // handlers start firing.  somehow calling repaint() doesn't have the same effect.

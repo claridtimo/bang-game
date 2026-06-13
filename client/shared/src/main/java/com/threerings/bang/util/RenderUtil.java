@@ -197,7 +197,7 @@ public class RenderUtil
      */
     public static Quad createTextQuad (BasicContext ctx, Font font, String text)
     {
-        return createTextQuad(ctx, font, ColorRGBA.white, null, text);
+        return createTextQuad(ctx, font, ColorRGBA.White, null, text);
     }
 
     /**
@@ -219,7 +219,7 @@ public class RenderUtil
     {
         Vector2f[] tcoords = new Vector2f[4];
         Dimension size = new Dimension();
-        TextureState tstate = ctx.getRenderer().createTextureState();
+        TextureState tstate = ctx.getRenderManager().createTextureState();
         Texture tex = createTextTexture(
             ctx, font, color, ocolor, text, tcoords, size, outline);
         tstate.setTexture(tex);
@@ -394,7 +394,7 @@ public class RenderUtil
     public static TextureState createTextureState (
         BasicContext ctx, Texture texture)
     {
-        TextureState tstate = ctx.getRenderer().createTextureState();
+        TextureState tstate = ctx.getRenderManager().createTextureState();
         tstate.setEnabled(true);
         tstate.setTexture(texture);
         return tstate;
@@ -482,7 +482,7 @@ public class RenderUtil
         rot.multLocal(trans);
         stex.setTranslation(new Vector3f(0.5f - trans.x, 0.5f - trans.y, 0f));
 
-        _shadtex = ctx.getRenderer().createTextureState();
+        _shadtex = ctx.getRenderManager().createTextureState();
         _shadtex.setTexture(stex);
         return _shadtex;
     }
@@ -512,7 +512,7 @@ public class RenderUtil
      */
     public static void deleteVBOs (BasicContext ctx, VBOInfo vboinfo)
     {
-        Renderer r = ctx.getRenderer();
+        Renderer r = ctx.getRenderManager();
         r.deleteVBO(vboinfo.getVBOColorID());
         vboinfo.setVBOColorID(-1);
         r.deleteVBO(vboinfo.getVBOIndexID());

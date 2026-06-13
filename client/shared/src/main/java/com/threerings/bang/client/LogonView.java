@@ -128,7 +128,7 @@ public class LogonView extends BWindow
         setStyleClass("logon_view");
 
         _ctx = ctx;
-        _ctx.getRenderer().setBackgroundColor(ColorRGBA.black);
+        _ctx.getRenderManager().setBackgroundColor(ColorRGBA.Black);
 
         _msgs = ctx.getMessageManager().getBundle(BangAuthCodes.AUTH_MSGS);
         String username = BangPrefs.config.getValue("username", "");

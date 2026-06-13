@@ -24,8 +24,8 @@ public class NoncorporealViz extends InfluenceViz
     {
         super.init(ctx, target);
         target.setRenderState(
-            _mstate = ctx.getRenderer().createMaterialState());
-        _mstate.getDiffuse().set(ColorRGBA.white);
+            _mstate = ctx.getRenderManager().createMaterialState());
+        _mstate.getDiffuse().set(ColorRGBA.White);
         _mstate.setAmbient(_mstate.getDiffuse());
         target.setRenderState(RenderUtil.blendAlpha);
         target.updateRenderState();
@@ -48,7 +48,7 @@ public class NoncorporealViz extends InfluenceViz
             public void update (float time) {
                 _elapsed = Math.min(_elapsed + time, FADE_DURATION);
                 float alpha = _elapsed / FADE_DURATION;
-                _mstate.getDiffuse().interpolate(ColorRGBA.white,
+                _mstate.getDiffuse().interpolate(ColorRGBA.White,
                     NONCORPOREAL_COLOR, in ? alpha : (1f - alpha));
                 if (_elapsed >= FADE_DURATION) {
                     _target.removeController(this);

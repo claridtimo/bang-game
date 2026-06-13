@@ -99,7 +99,7 @@ public class UnitSprite extends MobileSprite
             // if we have a pending node, adjust its highlight as well
             if (_pendnode != null) {
                 if (hovered) {
-                    _pendnode.getBatch(0).getDefaultColor().set(ColorRGBA.white);
+                    _pendnode.getBatch(0).getDefaultColor().set(ColorRGBA.White);
                 } else {
                     _pendnode.getBatch(0).getDefaultColor().set(getJPieceColor(_piece.owner));
                 }

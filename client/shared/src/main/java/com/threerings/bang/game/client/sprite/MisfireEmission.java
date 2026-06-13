@@ -3,6 +3,7 @@
 
 package com.threerings.bang.game.client.sprite;
 
+import com.threerings.jme.util.JmeUtil;
 import java.util.HashMap;
 import java.util.Properties;
 
@@ -73,7 +74,7 @@ public class MisfireEmission extends SpriteEmission
         _smoke.setEndSize(5f * _size);
         _smoke.setStartColor(new ColorRGBA(0f, 0f, 0f, 0.8f));
         _smoke.setEndColor(new ColorRGBA(0.15f, 0.15f, 0.15f, 0f));
-        _smoke.getParticleController().setRepeatType(Controller.RT_CLAMP);
+        _smoke.getParticleController().setRepeatType(JmeUtil.RT_CLAMP);
         _smoke.getParticleController().setActive(false);
         _smoke.setModelBound(new BoundingBox());
         _smoke.setIsCollidable(false);

@@ -248,7 +248,8 @@ public class BangBoardView extends BoardView
         // ...and fade the whole screen to black
         _ctx.getInterface().attachChild(
             new FadeInOutEffect(
-                ColorRGBA.black, 0f, 1f, 2f, true) {
+                _ctx.getAssetManager(), _ctx.getCamera().getWidth(), _ctx.getCamera().getHeight(),
+                ColorRGBA.Black, 0f, 1f, 2f, true) {
                 protected void fadeComplete () {
                     super.fadeComplete();
                     // and prepare to fade the new board in
@@ -614,7 +615,8 @@ public class BangBoardView extends BoardView
 
         // fade to white before changing lights
         _ctx.getInterface().attachChild(new FadeInOutEffect(
-            ColorRGBA.white, 0f, 1f, NOON_FADE_DURATION, false) {
+                _ctx.getAssetManager(), _ctx.getCamera().getWidth(), _ctx.getCamera().getHeight(),
+                ColorRGBA.White, 0f, 1f, NOON_FADE_DURATION, false) {
             protected void fadeComplete () {
                 super.fadeComplete();
                 continueSettingHighNoon();
@@ -734,7 +736,7 @@ public class BangBoardView extends BoardView
         clearMarquee(0f);
         if (_bangobj.marquee != null) {
             addMarquee(_marquee = createMarqueeLabel(msgs.xlate(_bangobj.marquee)),
-                    _ctx.getRenderer().getWidth()/2, _ctx.getRenderer().getHeight()/2 - 90);
+                    _ctx.getRenderManager().getWidth()/2, _ctx.getRenderManager().getHeight()/2 - 90);
         }
 
         _pmarquees = new BWindow(_ctx.getStyleSheet(), new AbsoluteLayout()) {
@@ -829,7 +831,8 @@ public class BangBoardView extends BoardView
 
         // fade back in
         _ctx.getInterface().attachChild(new FadeInOutEffect(
-            ColorRGBA.white, 1f, 0f, NOON_FADE_DURATION, false));
+                _ctx.getAssetManager(), _ctx.getCamera().getWidth(), _ctx.getCamera().getHeight(),
+                ColorRGBA.White, 1f, 0f, NOON_FADE_DURATION, false));
     }
 
     @Override // documentation inherited
@@ -1172,7 +1175,7 @@ public class BangBoardView extends BoardView
 
         // move all of our loaded models into position
         long delay = 1L;
-        Camera camera = _ctx.getRenderer().getCamera();
+        Camera camera = _ctx.getRenderManager().getCamera();
         BoundingBox bbox = new BoundingBox(new Vector3f(),
             TILE_SIZE/2, TILE_SIZE/2, TILE_SIZE/2);
         long pathDelay = 0L, segTime = (long)(1000L / Config.getMovementSpeed());

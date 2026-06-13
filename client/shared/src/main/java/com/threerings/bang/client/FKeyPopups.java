@@ -200,7 +200,7 @@ public class FKeyPopups
         // other hackery to handle taking screen shots
         if (keyCode == Keys.F12) {
             String fname = "bang_screen_" + _sfmt.format(new Date());
-            _ctx.getRenderer().takeScreenShot(fname);
+            _ctx.getRenderManager().takeScreenShot(fname);
             String msg = MessageBundle.tcompose(
                 "m.screenshot_taken", fname + ".png");
             _ctx.getChatDirector().displayFeedback(BangCodes.BANG_MSGS, msg);
@@ -323,19 +323,19 @@ public class FKeyPopups
                 ColorRGBA color;
                 if (umsg instanceof TellFeedbackMessage) {
                     who = MessageBundle.tcompose("m.history_tell", umsg.speaker);
-                    color = ColorRGBA.magenta;
+                    color = ColorRGBA.Magenta;
                 } else if (umsg.localtype == ChatCodes.USER_CHAT_TYPE) {
                     who = MessageBundle.tcompose("m.history_told", umsg.speaker);
-                    color = ColorRGBA.magenta;
+                    color = ColorRGBA.Magenta;
                 } else {
                     who = MessageBundle.tcompose("m.history_speak", umsg.speaker);
-                    color = ColorRGBA.blue;
+                    color = ColorRGBA.Blue;
                 }
                 history.appendText(_cmsgs.xlate(who), color);
                 history.appendText(" " + umsg.message + "\n");
 
             } else if (msg instanceof SystemMessage) {
-                history.appendText(msg.message + "\n", ColorRGBA.red);
+                history.appendText(msg.message + "\n", ColorRGBA.Red);
             }
         }
         window.add(new BScrollPane(history));

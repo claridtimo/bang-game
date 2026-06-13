@@ -65,12 +65,12 @@ public class RepairViz extends ParticleEffectViz
 
             _trenderer = RenderUtil.createTextureRenderer(_ctx, TEXTURE_SIZE,
                 TEXTURE_SIZE);
-            _trenderer.setBackgroundColor(ColorRGBA.black);
+            _trenderer.setBackgroundColor(ColorRGBA.Black);
             _texture = _ctx.getTextureCache().createTexture();
             _texture.setRTTSource(Texture.RTT_SOURCE_RGB);
             _trenderer.setupTexture(_texture);
 
-            _tstate = _ctx.getRenderer().createTextureState();
+            _tstate = _ctx.getRenderManager().createTextureState();
             _tstate.setTexture(_texture);
             setRenderState(_tstate);
             setRenderState(RenderUtil.addAlpha);
@@ -173,7 +173,7 @@ public class RepairViz extends ParticleEffectViz
                     _loc.x + dist * FastMath.cos(angle),
                     _loc.y + dist * FastMath.sin(angle), _loc.z));
                 _panes[ii].getBatch(0).getDefaultColor().interpolate(
-                    ColorRGBA.black, ColorRGBA.white, a * 0.5f);
+                    ColorRGBA.Black, ColorRGBA.White, a * 0.5f);
             }
         }
 
