@@ -7,24 +7,10 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 
-import java.io.File;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-
-import org.lwjgl.opengl.ARBBufferObject;
-import org.lwjgl.opengl.GL11;
-
-import com.jme.scene.VBOInfo;
-import com.jme.scene.batch.GeomBatch;
-import com.jme.scene.state.GLSLShaderObjectsState;
-import com.jme.scene.state.RenderState;
-import com.jme.scene.state.TextureState;
-import com.jme.util.ShaderAttribute;
 import com.jme3.scene.Geometry;
-import com.jme3.util.BufferUtils;
+import com.jme3.scene.Spatial;
+import com.jme3.texture.Texture;
 
-import com.samskivert.util.IntListUtil;
 import com.samskivert.util.Interval;
 import com.samskivert.util.ListUtil;
 import com.samskivert.util.ObjectUtil;
@@ -32,29 +18,36 @@ import com.samskivert.util.ResultHandler;
 import com.samskivert.util.ResultListener;
 
 import com.threerings.jme.model.Model;
-import com.threerings.jme.model.ModelMesh;
+import com.threerings.jme.model.ModelTextureResolver;
 import com.threerings.jme.model.TextureProvider;
-import com.threerings.jme.util.BatchVisitor;
-import com.threerings.jme.util.SpatialVisitor;
 
 import com.threerings.media.image.Colorization;
 
 import com.threerings.bang.client.BangPrefs;
-import com.threerings.bang.client.Config;
 import com.threerings.bang.util.BasicContext;
 
 /**
  * Maintains a cache of resolved 3D models.
+ *
+ * <p>jME3 cutover (Phase 2): re-pointed off the fork {@code Model.readFromFile}/{@code model.dat}
+ * path onto stock jME3 {@code AssetManager.loadModel(".j3o")} wrapped in the app-side
+ * {@link Model} facade. The fork-era per-instance resource bookkeeping (VBOInfo / display-list /
+ * shader-attribute deletion, GL_VENDOR-gated hardware skinning) is gone: jME3 owns VBO lifecycle,
+ * and skinning rides on the {@code .j3o}'s {@code SkinningControl}. Per-instance variant /
+ * colorization / detail re-resolution is threaded through {@link ModelTextureResolver} via the
+ * facade's {@link TextureProvider} seam.
+ *
+ * <p><b>Phase boundary.</b> The {@code .j3o} bake + loader registration
+ * ({@code BangModelLoader} on the client {@code AssetManager}) is wired at the Phase-3 host flip;
+ * until then {@link #loadPrototype} resolves against the live {@code AssetManager} the host
+ * supplies. The colorization recolour behind {@link ModelTextureResolver#colorize} is the
+ * colorization port's job (designed; identity hook today).
  */
 public class ModelCache extends PrototypeCache<ModelCache.ModelKey, Model>
 {
     public ModelCache (BasicContext ctx)
     {
         super(ctx);
-
-        // create a texture state here in order to make sure that the
-        // texture state initialization isn't called from the loader
-        _ctx.getRenderManager().createTextureState();
 
         // create the interval to flush cleared prototypes
         new Interval(ctx.getApp()) {
@@ -63,9 +56,6 @@ public class ModelCache extends PrototypeCache<ModelCache.ModelKey, Model>
                 while ((ref = _cleared.poll()) != null) {
                     PrototypeReference.class.cast(ref).flush();
                 }
-
-                // clear the VBO cache to make sure there are no lingering references
-                _ctx.getRenderManager().clearVBOCache();
             }
         }.schedule(FLUSH_INTERVAL, true);
     }
@@ -149,30 +139,24 @@ public class ModelCache extends PrototypeCache<ModelCache.ModelKey, Model>
     protected Model loadPrototype (ModelKey key)
         throws Exception
     {
-        File file = _ctx.getResourceManager().getResourceFile(
-            key.type + "/model.dat");
         long start = PerfMonitor.getCurrentMicros();
-        int size = (int)file.length();
-        Model model = Model.readFromFile(file);
+        // jME3 loads the baked .j3o through the AssetManager; the facade wraps the loaded
+        // content + its AnimComposer/SkinningControl and re-exposes the client model API.
+        Spatial content = _ctx.getAssetManager().loadModel(key.type + "/model.j3o");
+        Model model = new Model(content);
         model.resolveTextures(new ModelTextureProvider(key, null));
-        PerfMonitor.recordModelLoad(start, size);
+        PerfMonitor.recordModelLoad(start, 0);
         return model;
     }
 
     // documentation inherited
     protected void initPrototype (Model prototype)
     {
-        if (BangPrefs.isMediumDetail()) {
-            // for now, only use hardware skinning on Nvidia cards
-            String vendor = GL11.glGetString(GL11.GL_VENDOR);
-            if (vendor.startsWith("NVIDIA")) {
-                prototype.configureShaders(_ctx.getShaderCache());
-            }
-        } else {
+        // jME3 owns VBO/skinning lifecycle; the only fork-era prototype tuning that still
+        // applies is the animation mode hint (informational on jME3).
+        if (!BangPrefs.isMediumDetail()) {
             prototype.setAnimationMode(Model.AnimationMode.MORPH);
         }
-        prototype.lockStaticMeshes(_ctx.getRenderManager(), Config.useVBOs,
-            Config.useDisplayLists);
     }
 
     // documentation inherited
@@ -198,114 +182,25 @@ public class ModelCache extends PrototypeCache<ModelCache.ModelKey, Model>
         public PrototypeReference (Model prototype, Model original)
         {
             super(prototype, _cleared);
-            if (original == null) {
-                recordResources(prototype);
-            } else {
-                _original = original;
-            }
+            _original = original;
         }
 
         /**
-         * Deletes the resources held by the prototype.
+         * Deletes the resources held by the prototype. jME3 reclaims GPU buffers via its own
+         * {@code NativeObjectManager}/GC, so the fork's manual VBO/display-list deletion is gone;
+         * we only release the variant's reference to its default-variant original.
          */
         public void flush ()
         {
-            if (_original != null) {
-                // we "flush" variants by releasing the reference to the original
-                _original = null;
-                return;
-            }
-            if (_lists != null) {
-                for (int list : _lists) {
-                    GL11.glDeleteLists(list, 1);
-                }
-                _lists = null;
-            }
-            if (_vbois == null && _sattrs == null) {
-                return;
-            }
-
-            int[] buffers = null;
-            if (_vbois != null) {
-                for (VBOInfo vboi : _vbois) {
-                    buffers = maybeAdd(buffers, vboi.getVBOVertexID());
-                    buffers = maybeAdd(buffers, vboi.getVBONormalID());
-                    buffers = maybeAdd(buffers, vboi.getVBOIndexID());
-                    buffers = maybeAdd(buffers, vboi.getVBOColorID());
-                    for (int ii = 0, nn = TextureState.getNumberOfTotalUnits(); ii < nn; ii++) {
-                        buffers = maybeAdd(buffers, vboi.getVBOTextureID(ii));
-                    }
-                }
-            }
-            if (_sattrs != null) {
-                for (ShaderAttribute sattr : _sattrs) {
-                    buffers = maybeAdd(buffers, sattr.vboID);
-                }
-            }
-            if (buffers != null) {
-                ARBBufferObject.glDeleteBuffersARB(
-                    BufferUtils.createIntBuffer(IntListUtil.compact(buffers)));
-            }
-            _vbois = null;
-            _sattrs = null;
-        }
-
-        protected void recordResources (Model prototype)
-        {
-            // find and store all VBOInfos
-            final ArrayList<VBOInfo> vbois = new ArrayList<VBOInfo>();
-            new BatchVisitor() {
-                protected void visit (GeomBatch batch) {
-                    VBOInfo vboi = batch.getVBOInfo();
-                    if (vboi != null) {
-                        vbois.add(vboi);
-                    }
-                    _lists = maybeAdd(_lists, batch.getDisplayListID());
-                }
-            }.traverse(prototype);
-
-            // and all shader attributes for which VBOs are enabled
-            final ArrayList<ShaderAttribute> sattrs = new ArrayList<ShaderAttribute>();
-            new SpatialVisitor<Geometry>(Geometry.class) {
-                protected void visit (Geometry mesh) {
-                    GLSLShaderObjectsState sstate = (GLSLShaderObjectsState)mesh.getRenderState(
-                        RenderState.RS_GLSL_SHADER_OBJECTS);
-                    if (sstate == null) {
-                        return;
-                    }
-                    for (ShaderAttribute attrib : sstate.attribs.values()) {
-                        if (attrib.useVBO) {
-                            sattrs.add(attrib);
-                        }
-                    }
-                }
-            }.traverse(prototype);
-
-            _vbois = vbois.isEmpty() ? null : vbois.toArray(new VBOInfo[vbois.size()]);
-            _sattrs = sattrs.isEmpty() ? null : sattrs.toArray(new ShaderAttribute[sattrs.size()]);
-            _lists = (_lists == null) ? null : IntListUtil.compact(_lists);
-        }
-
-        protected int[] maybeAdd (int[] values, int value)
-        {
-            return (value > 0) ? IntListUtil.add(values, value) : values;
+            _original = null;
         }
 
         /** A reference to the default variant (if this isn't it) to keep it from being
          * collected when this variant is in use. */
         protected Model _original;
-
-        /** The VBOs to delete. */
-        protected VBOInfo[] _vbois;
-
-        /** Shader attributes to delete. */
-        protected ShaderAttribute[] _sattrs;
-
-        /** The display lists to delete. */
-        protected int[] _lists;
     }
 
-    /** Resolved model textures using the texture cache. */
+    /** Re-resolves model textures for an instance via the {@link ModelTextureResolver}. */
     protected class ModelTextureProvider
         implements TextureProvider
     {
@@ -313,23 +208,19 @@ public class ModelCache extends PrototypeCache<ModelCache.ModelKey, Model>
         {
             _key = key;
             _zations = zations;
+            // the variant index (fork CloneCreator.random analogue) selects among multi-valued
+            // textures; detail scales texture resolution. Threaded into the resolver per the
+            // ModelCache-equivalent design (docs/jme3-model-loader.md §2).
+            _resolver = new ModelTextureResolver(_ctx.getAssetManager());
         }
 
         // documentation inherited from interface TextureProvider
-        public TextureState getTexture (String name)
+        public Texture getTexture (Geometry geom, String name)
         {
-            String path = name.startsWith("/") ?
-                name.substring(1) : cleanPath(_key.type + "/" + name);
-            TextureState tstate = _tstates.get(path);
-            if (tstate == null) {
-                _tstates.put(path,
-                    tstate = _ctx.getRenderManager().createTextureState());
-                float scale = BangPrefs.isMediumDetail() ? 1f : 0.5f;
-                tstate.setTexture(_zations == null ?
-                    _ctx.getTextureCache().getTexture(path, scale) :
-                    _ctx.getTextureCache().getTexture(path, _zations, scale));
-            }
-            return tstate;
+            String path = _resolver.textureAssetPath(_key.type, name);
+            // colorization recolour is applied behind ModelTextureResolver.colorize (designed;
+            // identity today). Variant/detail selection rides the resolver's own state.
+            return _ctx.getAssetManager().loadTexture(path);
         }
 
         /** The model key. */
@@ -338,9 +229,8 @@ public class ModelCache extends PrototypeCache<ModelCache.ModelKey, Model>
         /** The colorizations to apply, or <code>null</code> for none. */
         protected Colorization[] _zations;
 
-        /** Maps texture paths to texture states created so far. */
-        protected HashMap<String, TextureState> _tstates =
-            new HashMap<String, TextureState>();
+        /** The shared re-resolution engine. */
+        protected ModelTextureResolver _resolver;
     }
 
     /** Identifies a model type/variant. */
