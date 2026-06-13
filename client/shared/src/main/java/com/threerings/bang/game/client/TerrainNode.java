@@ -1506,13 +1506,15 @@ public class TerrainNode extends Node
 
         protected void buildFixedLayers (Rectangle rect)
         {
-            // base layer: most common terrain, opaque, writes depth
+            // base layer: most common terrain, opaque, writes depth. Uses the terrain splat
+            // MatDef with no AlphaMap (fully opaque) so it shares the lighting/fog path with the
+            // splat layers.
             Geometry base = new Geometry("base", mesh);
             int ccode = layers[0] - 1;
             Texture2D gtex = getGroundTexture(ccode);
-            Material bmat = RenderUtil.createTextureMaterial(_ctx, gtex);
-            bmat.setBoolean("VertexColor", true); // shadow modulation
+            Material bmat = RenderUtil.createTerrainMaterial(_ctx, gtex, null);
             RenderUtil.applyBackCull(bmat);
+            applyFog(bmat);
             base.setMaterial(bmat);
             node.attachChild(base);
 
@@ -1520,7 +1522,7 @@ public class TerrainNode extends Node
                 return;
             }
 
-            // splat layers: alpha-blended, depth-test only
+            // splat layers: per-pixel alpha-blended via the A8 splat alpha map, depth-test only.
             initAlphaTotals(ccode, rect);
             for (int ii = 1; ii < layers.length; ii++) {
                 int code = layers[ii] - 1;
@@ -1528,23 +1530,42 @@ public class TerrainNode extends Node
                 if (ground == null) {
                     continue;
                 }
+                // the faithful multi-texture splat: this layer's per-pixel coverage comes from its
+                // A8 alpha map (sampled in 0..1 block space via TexCoord2 by TerrainSplat.frag),
+                // so terrain types blend at their boundaries instead of overwriting opaquely.
+                Texture2D alpha = createAlphaTexture(code, rect, false);
+                alphaTextures.add(alpha);
+
                 Geometry splat = new Geometry("layer" + ii, mesh);
-                Material smat = RenderUtil.createTextureMaterial(_ctx, ground);
-                smat.setBoolean("VertexColor", true);
+                Material smat = RenderUtil.createTerrainMaterial(_ctx, ground, alpha);
                 RenderUtil.applyBlendAlpha(smat);
                 RenderUtil.applyOverlayZBuf(smat);
                 RenderUtil.applyBackCull(smat);
-
-                // Phase 4: bind this A8 alpha map as the splat MatDef's AlphaMap for per-pixel
-                // blending. For now it is generated and carried on the material's user-data; the
-                // fixed-function path approximates with vertex-color + blend.
-                Texture2D alpha = createAlphaTexture(code, rect, false);
-                alphaTextures.add(alpha);
-                splat.setUserData("bang.alphaMap", alpha.getName());
+                applyFog(smat);
 
                 splat.setMaterial(smat);
+                splat.setQueueBucket(Bucket.Transparent);
                 node.attachChild(splat);
             }
+        }
+
+        /** Applies the board's fog ambience to a terrain layer material, if any. */
+        protected void applyFog (Material mat)
+        {
+            if (_board == null) {
+                return;
+            }
+            float density = _board.getFogDensity();
+            if (density <= 0f) {
+                return;
+            }
+            int fc = _board.getFogColor();
+            mat.setBoolean("UseFog", true);
+            mat.setColor("FogColor", new ColorRGBA(
+                ((fc >> 16) & 0xFF) / 255f, ((fc >> 8) & 0xFF) / 255f,
+                (fc & 0xFF) / 255f, 1f));
+            // the fork density is per board-unit; scale to the view-space depth fog used here.
+            mat.setFloat("FogDensity", density);
         }
 
         /**

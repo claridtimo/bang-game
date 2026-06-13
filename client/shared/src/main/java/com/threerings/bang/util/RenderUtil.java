@@ -486,6 +486,27 @@ public class RenderUtil
     }
 
     /**
+     * Creates a terrain splat-layer {@link Material} (the custom {@code shaders/TerrainSplat.j3md}).
+     * The ground texture is sampled per-pixel and modulated by the per-vertex shadow color; if an
+     * alpha map is supplied the layer's coverage comes from it (per-pixel splat blending across
+     * terrain-type boundaries, the jME3 replacement for the fork's fixed-function texture combine).
+     * Pass {@code alpha == null} for the opaque base layer.
+     */
+    public static Material createTerrainMaterial (
+        BasicContext ctx, Texture ground, Texture alpha)
+    {
+        Material mat = new Material(ctx.getAssetManager(), "shaders/TerrainSplat.j3md");
+        if (ground != null) {
+            mat.setTexture("ColorMap", ground);
+        }
+        if (alpha != null) {
+            mat.setTexture("AlphaMap", alpha);
+        }
+        mat.setBoolean("VertexColor", true);
+        return mat;
+    }
+
+    /**
      * Source-compatible alias for {@link #createTextureMaterial(BasicContext, String)}.
      *
      * @deprecated prefer {@link #createTextureMaterial}; the fork returned a {@code TextureState},
