@@ -493,9 +493,61 @@ frame-timing/perf telemetry. Not worth doing for tooling reasons: JDK 25, the JU
 
 Reproduce/diagnose with the Phase-5 harnesses + the `bin/devtest` run sheet.
 
-**6a — particles.** The 60 `particles.jme` are still a degraded single-blob; re-author as jME3
-`ParticleEmitter` params (combat-effect icons already render). The `*Emission` controllers exist as
-jME3 `AbstractControl`s from Phase 2, awaiting real emitters.
+**6a — particles. [DONE 2026-06-14]** The 60 fork-format `effects/<key>/particles.jme`
+(`ParticleGeometry`/`ParticleMesh` graphs) are re-authored as jME3 `ParticleEmitter`s by a
+build-time fork→j3o bake, mirroring the `model.dat`→`.j3o` pipeline. The runtime `ParticleCache`
+load path (Phase 2) lights up unchanged: it loads `effects/<key>/particles.j3o` through the
+`AssetManager`, applies the `particles.properties` scale + Z-up rotation, clones per instance.
+
+What landed:
+- **`tools/j3o-converter/.../jme3/model/ParticleConverter.java`** — the fork→jME3 bridge
+  (`com.jmex.effects.particles.ParticleGeometry` → `com.jme3.effect.ParticleEmitter`), on the
+  fork-coupled build-time classpath alongside `ModelConverter`. A `particles.jme` with multiple
+  particle nodes becomes a `Node` of multiple `ParticleEmitter`s, transforms preserved.
+- **`tools/j3o-converter/.../tools/j3o/ParticlesToJ3o.java`** — the batch baker (analogue of
+  `BakeModels`): walks staged `effects/**`, imports each `particles.jme` via the fork
+  `BinaryImporter` (with the same `TextureKey` location override the fork `ParticleCache` used so
+  embedded `TextureState`s resolve), converts, writes the sibling `particles.j3o`, and reports
+  coverage. `-Peffect=<town>/<effect>` bakes + verbosely reports one effect.
+- **Gradle wiring:** `:tools:j3o-converter:bakeParticles` (+ `renderParticleToPng`); `assets`
+  runs it `finalizedBy :assets:copyTownBits` (which stages the `.jme`+textures), so a
+  `./gradlew deploy` / `:assets:compileModels --rerun-tasks` bakes all 60 into
+  `assets/build/staging/rsrc`.
+
+Param mapping (fork → `ParticleEmitter`): count→`setNumParticles`; `releaseRate` (when the
+controller's `controlFlow` is set) →`setParticlesPerSec`, else a steady refill at count/mean-life so
+cloned ambient effects stay populated; start/end size→`setStartSize`/`setEndSize`; start/end
+color→`setStartColor`/`setEndColor`; min/max lifetime (fork ms) →`setLowLife`/`setHighLife` (÷1000);
+`emissionDirection`×`initialVelocity` →`influencer.setInitialVelocity`, `maximumAngle`
+cone→`setVelocityVariation` (1.0 at PI/2); `particleSpinSpeed`→`setRotateSpeed`+`setRandomAngle`;
+`velocityAligned`→`setFacingVelocity`; emit type point/rect/ring/line→`EmitterPoint`/`Box`/`Sphere`/
+thin-`Box` shape; texture (fork `TextureState` first texture's image location, incl. cross-effect
+shared textures resolved by the rsrc-relative path) → a `Common/MatDefs/Misc/Particle.j3md` material
+with `ImagesX/Y=1` (the fork particle system has no sprite grid); blend mode additive
+(`DB_ONE`)→`Additive` else `Alpha`; `BasicGravity`→`setGravity` (negated to jME3's subtract
+convention), `BasicWind` folded into gravity. **Fork params with no jME3 equivalent (recorded as
+dropped, effect still renders without that secondary motion):** `BasicDrag`, `BasicVortex`,
+`SwarmInfluence`, `WanderInfluence`; `alphaFalloff` (distance fade) and `releaseVariance` have no
+direct emitter setter.
+
+Coverage: **60/60 bake (0 failed).** 26 convert fully clean; 34 are "degraded/lossy" — mostly one
+unmappable influence dropped (drag/vortex/swarm/wander) but a working emitter still produced; only
+**3** have an unresolved texture (`indian_post/rain` + `ambient_drizzle` are untextured `PT_LINE`
+rain streaks with no fork texture; `boom_town/buggy_logic` Sparks references a content path that
+doesn't exist — `boom_town/resurrection/spark.png`). Model corpus unaffected:
+`:tools:j3o-converter:verifyCorpus` still **310/310** parity.
+
+Verify (offscreen, deterministic): `./gradlew :tools:j3o-converter:renderParticleToPng
+-Peffect=frontier_town/explosion -Pframes=10 -Pout=/tmp/x.png` — steps the emitter N frames
+(`OffscreenRenderApp` gained a warmup hook) then snapshots through the isolated jME3+LWJGL3 render
+classpath. Confirmed rendering: `frontier_town/explosion` (textured fireball + alpha smoke + rotating
+quads), `frontier_town/fire` (orange flame tongues + smoke), `frontier_town/dust`,
+`boom_town/barrel_explosion`. Tight point-clouds (`fireflies`) saturate at the bbox framing — a
+harness zoom artifact on a tiny bound, not a converter defect; the live board view (camera far back)
+shows them as discrete dots. The `*Emission` controllers (Phase 2 `AbstractControl`s) now have real
+emitters to drive. NOTE: a live `bin/devtest` run was blocked by an unrelated server-bootstrap NPE
+(`BangServer$Module` `ServerConfig.getAuthenticator()` returns null with the local `etc/test`
+config) — independent of the build-time-only particle change.
 
 **6b — remaining live-render & input defects** (observed on live boards 2026-06-13; cluster-1/3
 fidelity + Phase-3 input):

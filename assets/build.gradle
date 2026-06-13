@@ -186,6 +186,17 @@ bakeModelsTask.configure { mustRunAfter ":assets:compileModels" }
 tasks.named("compileModels").configure { finalizedBy bakeModelsTask }
 processResources.dependsOn bakeModelsTask
 
+// Phase 6a: re-author each staged fork-format effects/<key>/particles.jme into a sibling
+// particles.j3o (a jME3 ParticleEmitter tree) that the runtime client loads natively through the
+// jME3 AssetManager (ParticleCache). The baker (tools:j3o-converter:bakeParticles) reads the fork
+// particles.jme via the retained fork BinaryImporter and writes pure-jME3 .j3o, so no fork
+// dependency reaches the runtime. It must run after copyTownBits has staged the effects tree
+// (the .jme + textures the converter reads).
+def bakeParticlesTask = project(":tools:j3o-converter").tasks.named("bakeParticles")
+bakeParticlesTask.configure { mustRunAfter ":assets:copyTownBits" }
+tasks.named("copyTownBits").configure { finalizedBy bakeParticlesTask }
+processResources.dependsOn bakeParticlesTask
+
 // generates lists of props, units, etc.
 tasks.register("updateLists", Exec) {
   // the list generation expects the staging area to have been populated
