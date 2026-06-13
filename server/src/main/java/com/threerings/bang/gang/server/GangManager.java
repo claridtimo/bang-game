@@ -223,7 +223,7 @@ public class GangManager
             GangRecord grec = _gangrepo.loadGang(mrec.gangId, false);
             if (grec != null) {
                 info.gang = grec.getName();
-                info.rank = mrec.rank;
+                info.rank = mrec.gangRank;
                 info.title = mrec.title;
                 info.buckle = new BuckleInfo(grec.getBucklePrint());
             }
