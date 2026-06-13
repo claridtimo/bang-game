@@ -135,6 +135,15 @@ public class Jme3RootNode extends BRootNode
             }
             _pressed = code;
             _nextRepeat = _tickStamp + INITIAL_REPEAT_DELAY;
+            // jME3 cutover: only swallow the key when a BUI component actually has focus (text
+            // entry, chat, etc.). With nothing focused the event must fall through to the
+            // InputManager mappings so the camera AnalogListener (GodViewHandler: WASD pan / zoom /
+            // orbit) still receives it — consuming unconditionally was why WASD panning was dead.
+            // Remember which presses we consumed so the matching release is consumed too (below).
+            if (_focus != null) {
+                _consumedPresses.add(kie.getKeyCode());
+                kie.setConsumed();
+            }
         } else {
             int modMask = getModMask(code);
             if (modMask != -1) {
@@ -143,14 +152,13 @@ public class Jme3RootNode extends BRootNode
             dispatchEvent(_focus, new KeyEvent(
                 this, _tickStamp, _modifiers, KeyEvent.KEY_RELEASED, (char)0, code));
             _pressed = -1;
-        }
-        // jME3 cutover: only swallow the key event when a BUI component actually has focus (text
-        // entry, chat, etc.). When nothing is focused the event must fall through to the
-        // InputManager mappings so the camera AnalogListener (GodViewHandler: WASD pan / zoom /
-        // orbit) still receives it. Consuming unconditionally here was why WASD panning was dead
-        // (the raw listener ran before the mapping triggers and ate every key).
-        if (_focus != null) {
-            kie.setConsumed();
+            // consume the release iff we consumed its press, keeping the InputManager's per-key
+            // state balanced even when focus changes mid-hold. Gating the release on the *current*
+            // focus instead would let a consumed release the camera mapping never sees leave a pan
+            // stuck on (key pressed unfocused -> pan starts; focus grabbed; release eaten).
+            if (_consumedPresses.remove(kie.getKeyCode())) {
+                kie.setConsumed();
+            }
         }
     }
 
@@ -240,6 +248,11 @@ public class Jme3RootNode extends BRootNode
     protected int _pressed = -1;
     protected char _presschar;
     protected long _nextRepeat;
+
+    /** Raw jME key codes whose KEY_PRESSED we consumed (a BUI component held focus); the matching
+     * KEY_RELEASED is consumed too so the InputManager's analog key state stays balanced across a
+     * focus change mid-hold (see {@link #onKeyEvent}). */
+    protected final java.util.Set<Integer> _consumedPresses = new java.util.HashSet<>();
 
     /** Maps (BUI) key codes to modifier flags. */
     protected static final int[] KEY_MODIFIER_MAP = {
