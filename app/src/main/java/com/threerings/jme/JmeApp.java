@@ -120,6 +120,19 @@ public class JmeApp extends SimpleApplication
         }
         inputManager.setCursorVisible(true);
 
+        // register an asset locator rooted at the dev resource tree (the staged rsrc dir the
+        // bin/ scripts point -Dresource_dir at) so the client can load baked model.j3o, textures
+        // and materials by their rsrc-relative paths. jME3's stock Common/ MatDefs ship inside
+        // jme3-core on the classpath (the default ClasspathLocator already finds them).
+        String rsrcDir = System.getProperty("resource_dir");
+        if (rsrcDir != null) {
+            java.io.File root = new java.io.File(rsrcDir);
+            if (root.isDirectory()) {
+                assetManager.registerLocator(
+                    root.getAbsolutePath(), com.jme3.asset.plugins.FileLocator.class);
+            }
+        }
+
         // make the main viewport clear to black (host owns the viewport background).
         viewPort.setBackgroundColor(ColorRGBA.Black);
 

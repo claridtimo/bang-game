@@ -180,8 +180,9 @@ processResources.dependsOn "compileModels"
 // natively through the jME3 AssetManager (ModelCache). The baker (tools:j3o-converter:bakeModels)
 // reads the fork model.dat via the retained fork reader and writes pure-jME3 .j3o, so no fork
 // dependency reaches the runtime. It must run after compileModels has staged the .dat files.
+evaluationDependsOn(":tools:j3o-converter")
 def bakeModelsTask = project(":tools:j3o-converter").tasks.named("bakeModels")
-bakeModelsTask.configure { mustRunAfter "compileModels" }
+bakeModelsTask.configure { mustRunAfter ":assets:compileModels" }
 tasks.named("compileModels").configure { finalizedBy bakeModelsTask }
 processResources.dependsOn bakeModelsTask
 
