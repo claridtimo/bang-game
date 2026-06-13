@@ -402,6 +402,33 @@ approaching the fork baselines in `baseline/fork-before/`):
   jME3 `ParticleEmitter` params (combat-effect icons already render). The `*Emission` controllers
   exist as jME3 `AbstractControl`s from Phase 2, awaiting real emitters.
 
+### Known live-render defects (observed on a live board, 2026-06-13 — TODO, cluster-1/3 visual fidelity)
+These surfaced while verifying water on a live in-game board (Thunderbird Rock); they are NOT water
+bugs but were noticed in the same render and are queued here so they aren't lost:
+
+- **Claim/counter numbers render sideways (rotated ~90°).** The floating gold-claim nugget count is a
+  camera-facing billboard. `GenericCounterNode.createGeometry` (and `CounterSprite`) now do
+  `bbn.addControl(new BillboardControl())` with the **default alignment** (jME3
+  `BillboardControl.Alignment.Screen`). The fork used `BillboardNode` (SCREEN_ALIGNED) on a **Z-up**
+  board scene graph (the counter is translated along +Z = up). jME3's `Screen`/`Camera` billboard
+  alignment assumes **Y-up** for the billboard's up vector, so the text quad's up-axis ends up
+  perpendicular to screen-up → sideways glyphs. Fix: set the alignment / billboard up-vector to match
+  the board's Z-up convention (try `Alignment.Camera`, and/or pre-rotate the count `Quad` so its
+  texture-up maps to the board's up), then re-check against the fork screenshots. Files:
+  `game/client/sprite/GenericCounterNode.java:54`, `game/client/sprite/CounterSprite.java:107`. Same
+  default-`BillboardControl` pattern also appears in `PieceTarget`, `OneArmedBanditSprite`, and the
+  effect viz (`IconViz`/`IconInfluenceViz`/`HeroInfluenceViz`) — audit all of them for the same
+  up-axis issue while here. (This is the visual side of migration-map risk row "BillboardNode→
+  BillboardControl: alignment enums map".)
+- **Mounted/horse big-shot character model renders incorrectly.** The horse (mounted unit big-shot)
+  model is wrong on the live board — needs a closer look to classify: skinning/anim (SkinningControl
+  / AnimComposer mis-bind from the `.j3o` bake), a wrong variant/clone via the Phase-2 `Model` facade
+  `createInstance`/`resolveTextures` path, or a bad mesh in the `model.dat`→`.j3o` conversion. Start
+  by loading the offending unit through `ModelCache` in the `RenderToPng` harness and comparing to the
+  fork. Likely lives in the model-pipeline cluster (app `Model` facade + `tools/j3o-converter`
+  `ModelToJ3o`), not in board rendering. Capture which specific unit (e.g. a frontier_town/indian_post
+  mounted big-shot) when reproducing.
+
 ### Phase 5 — Editor + visual regression
 - `bangeditor` on a jME3 AWT canvas; per-town visual regression against pre-cutover screenshots.
 
