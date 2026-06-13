@@ -1,0 +1,25 @@
+// Phase 5, step 6: one-time converter for the 165 .board + 3 menu town.board backdrops +
+// 196 bounty .game files, which are vendored jME-fork BinaryExporter Savables with NO XML
+// source and so cannot be regenerated from the build. Reads each file with the RETAINED
+// fork reader (BoardFile.loadFrom / BangConfig via BinaryImporter) and re-serialises into a
+// fork-independent Narya stream (the SAME wire encoding BangBoard/Piece/BangConfig/Criterion
+// already use to reach clients), then round-trips the result and verifies field parity.
+//
+// Deliberately isolated, exactly like tools/j3o-converter: this is the ONLY consumer that
+// drags the fork's export subsystem in for offline use, and nothing depends on it. The
+// shipped runtime board/bounty load paths are NOT touched. Run once at cutover, then delete.
+
+plugins {
+  id "application"
+}
+
+dependencies {
+  // pulls in the game data classes (BoardFile, BangBoard, Piece*, BangConfig, Criterion*),
+  // the retained fork reader/writer (jme/app via client:shared), AND Narya (api dep) which
+  // supplies ObjectOutputStream/ObjectInputStream for the fork-independent target format.
+  implementation project(":client:shared")
+}
+
+application {
+  mainClass = "com.threerings.bang.tools.board.BoardConverter"
+}
