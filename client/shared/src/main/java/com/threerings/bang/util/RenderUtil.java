@@ -407,12 +407,16 @@ public class RenderUtil
             gfx.dispose();
         }
 
-        // fill in the texture coordinates
+        // fill in the texture coordinates. jME3 cutover: jME3's com.jme3.scene.shape.Quad winds its
+        // vertices bottom-left, bottom-right, top-right, top-left with the U axis running along the
+        // quad's local +X. The fork's Quad used a different winding, so the ported coords (which
+        // assigned the texture's U to the quad's +Y) rotated every glyph 90 deg -> the sideways
+        // claim/counter/level numbers. Map U->local X and V->local Y so the text reads upright.
         float tsf = tsize;
-        tcoords[0] = new Vector2f(0, 0);
-        tcoords[1] = new Vector2f(0, height/tsf);
-        tcoords[2] = new Vector2f(width/tsf, height/tsf);
-        tcoords[3] = new Vector2f(width/tsf, 0);
+        tcoords[0] = new Vector2f(0, 0);             // v0 bottom-left
+        tcoords[1] = new Vector2f(width/tsf, 0);     // v1 bottom-right
+        tcoords[2] = new Vector2f(width/tsf, height/tsf); // v2 top-right
+        tcoords[3] = new Vector2f(0, height/tsf);    // v3 top-left
 
         return createTexture(ctx, ImageCache.convertImage(image));
     }
