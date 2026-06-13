@@ -3,7 +3,6 @@
 
 package com.threerings.bang.jme3.model;
 
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
@@ -22,8 +21,12 @@ import com.jme3.anim.Joint;
 import com.jme3.anim.SkinningControl;
 import com.jme3.anim.TransformTrack;
 import com.jme3.anim.util.HasLocalTransform;
+import com.jme3.material.MatParamTexture;
+import com.jme3.material.Material;
+import com.jme3.material.RenderState.FaceCullMode;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.jme3.renderer.queue.RenderQueue.Bucket;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Node;
@@ -71,7 +74,36 @@ import com.threerings.jme.model.SkinMesh;
 public class ModelConverter
 {
     /** Per-geometry statistics used for parity verification. */
-    public record GeoStats (String path, int vertices, int triangles, String texture) { }
+    /**
+     * Per-geometry fidelity snapshot used for round-trip parity. Beyond mesh counts it captures
+     * the material/skinning state that survives the {@code .j3o} round trip, so a dropped glow
+     * map, flipped cull/blend flag, lost transparent bucket, or missing skinning buffer is caught
+     * (the earlier count-and-base-texture-only check passed all of those silently).
+     */
+    public record GeoStats (String path, int vertices, int triangles, String texture,
+                            String glowTexture, String blend, boolean cullOff,
+                            boolean transparentBucket, int maxWeights) { }
+
+    /** Extracts a {@link GeoStats} from a jME3 geometry — used identically on the freshly
+     * converted graph and on the re-imported {@code .j3o}, so parity compares like with like. */
+    public static GeoStats statsOf (String path, Geometry geom)
+    {
+        Mesh m = geom.getMesh();
+        Material mat = geom.getMaterial();
+        return new GeoStats(path, m.getVertexCount(), m.getTriangleCount(),
+            texName(mat, "DiffuseMap"), texName(mat, "GlowMap"),
+            mat.getAdditionalRenderState().getBlendMode().name(),
+            mat.getAdditionalRenderState().getFaceCullMode() == FaceCullMode.Off,
+            geom.getLocalQueueBucket() == Bucket.Transparent,
+            m.getMaxNumWeights());
+    }
+
+    private static String texName (Material mat, String param)
+    {
+        MatParamTexture p = mat.getTextureParam(param);
+        return (p == null || p.getTextureValue() == null || p.getTextureValue().getKey() == null)
+            ? null : p.getTextureValue().getKey().getName();
+    }
 
     /** The outcome of one conversion, with everything a caller needs to verify coverage. */
     public static class Result
@@ -84,6 +116,9 @@ public class ModelConverter
 
         /** Names of animations converted to {@link AnimClip}s. */
         public final List<String> animations = new ArrayList<>();
+
+        /** Animations present in the model but NOT converted (no transforms / no live target). */
+        public final List<String> droppedAnimations = new ArrayList<>();
 
         /** Number of {@link SkinMesh}es converted with full skinning. */
         public int skinnedMeshes;
@@ -230,9 +265,7 @@ public class ModelConverter
         if (tbuf != null) {
             mesh.setBuffer(VertexBuffer.Type.TexCoord, 2, prepare(tbuf));
         }
-        IntBuffer ibuf = fmesh.getIndexBuffer(0);
-        ibuf.clear();
-        mesh.setBuffer(VertexBuffer.Type.Index, 3, ibuf);
+        mesh.setBuffer(VertexBuffer.Type.Index, 3, copy(fmesh.getIndexBuffer(0)));
 
         boolean skinned = false;
         if (fmesh instanceof SkinMesh skin) {
@@ -245,15 +278,15 @@ public class ModelConverter
 
         // material: placeholder Lighting.j3md, textures resolved via the ModelCache-equivalent
         String[] textures = ModelMeshAccess.textures(fmesh);
-        String textureRef = _resolver.applyMaterial(
+        _resolver.applyMaterial(
             geom, _typePath, ModelMeshAccess.textureKey(fmesh), textures,
             ModelMeshAccess.solid(fmesh), ModelMeshAccess.additive(fmesh),
             ModelMeshAccess.transparent(fmesh), ModelMeshAccess.alphaThreshold(fmesh),
-            ModelMeshAccess.emissive(fmesh));
+            ModelMeshAccess.emissive(fmesh), ModelMeshAccess.emissiveMap(fmesh),
+            ModelMeshAccess.sphereMapped(fmesh));
 
         result.geometries++;
-        result.stats.add(new GeoStats(
-            path, mesh.getVertexCount(), mesh.getTriangleCount(), textureRef));
+        result.stats.add(statsOf(path, geom));
         if (skinned) {
             result.skinnedMeshes++;
             _skinnedMeshes.add(geom);
@@ -284,8 +317,13 @@ public class ModelConverter
         Map<ModelNode, Integer> boneIndex = new LinkedHashMap<>();
         List<ModelNode> boneOrder = new ArrayList<>();
 
-        ByteBuffer indices = BufferUtils.createByteBuffer(vertexCount * 4);
+        // UnsignedShort (not UnsignedByte) so armatures with >255 joints don't wrap mod 256;
+        // current content tops out ~31 bones/mesh, but jME3 supports short bone indices natively
+        ShortBuffer indices = BufferUtils.createShortBuffer(vertexCount * 4);
         FloatBuffer weights = BufferUtils.createFloatBuffer(vertexCount * 4);
+
+        int[] oi = new int[4];   // top-4 index/weight scratch, reused across all vertices
+        float[] ow = new float[4];
 
         int vert = 0;
         for (SkinMesh.WeightGroup group : groups) {
@@ -294,7 +332,15 @@ public class ModelConverter
             // vertex in the group, so resolve it once instead of per vertex
             int[] gi = new int[gbones];
             for (int bb = 0; bb < gbones; bb++) {
-                ModelNode node = group.bones[bb].node;
+                // mirror collectBoneNodes' guard: ModelDef.resolveReferences can leave a
+                // Bone (or its node) null for an unresolved bone name; pin to joint 0
+                // rather than NPEing or polluting the bone order with null
+                SkinMesh.Bone bone = group.bones[bb];
+                ModelNode node = (bone != null) ? bone.node : null;
+                if (node == null) {
+                    gi[bb] = 0;
+                    continue;
+                }
                 Integer idx = boneIndex.get(node);
                 if (idx == null) {
                     idx = boneOrder.size();
@@ -303,12 +349,13 @@ public class ModelConverter
                 }
                 gi[bb] = idx;
             }
-            float[] gw = new float[gbones]; // scratch, refilled per vertex in this group
+            float[] gw = new float[gbones];      // scratch, refilled per vertex in this group
+            boolean[] used = new boolean[gbones]; // selection-sort scratch, reused per vertex
             for (int vv = 0; vv < group.vertexCount; vv++, vert++) {
                 for (int bb = 0; bb < gbones; bb++) {
                     gw[bb] = group.weights[vv * gbones + bb];
                 }
-                writeVertexInfluences(gi, gw, indices, weights, result);
+                writeVertexInfluences(gi, gw, used, oi, ow, indices, weights, result);
             }
         }
 
@@ -318,7 +365,7 @@ public class ModelConverter
         mesh.setMaxNumWeights(4);
 
         VertexBuffer ib = new VertexBuffer(VertexBuffer.Type.BoneIndex);
-        ib.setupData(VertexBuffer.Usage.CpuOnly, 4, VertexBuffer.Format.UnsignedByte, indices);
+        ib.setupData(VertexBuffer.Usage.CpuOnly, 4, VertexBuffer.Format.UnsignedShort, indices);
         mesh.setBuffer(ib);
         VertexBuffer wb = new VertexBuffer(VertexBuffer.Type.BoneWeight);
         wb.setupData(VertexBuffer.Usage.CpuOnly, 4, VertexBuffer.Format.Float, weights);
@@ -333,7 +380,8 @@ public class ModelConverter
      * renormalised) and appends them to the index/weight buffers.
      */
     protected void writeVertexInfluences (
-        int[] gi, float[] gw, ByteBuffer indices, FloatBuffer weights, Result result)
+        int[] gi, float[] gw, boolean[] used, int[] oi, float[] ow,
+        ShortBuffer indices, FloatBuffer weights, Result result)
     {
         int n = gi.length;
         // selection sort the top-4 by descending weight (n is tiny)
@@ -341,9 +389,7 @@ public class ModelConverter
         if (n > 4) {
             result.clampedInfluences = true;
         }
-        boolean[] used = new boolean[n];
-        int[] oi = new int[4];
-        float[] ow = new float[4];
+        java.util.Arrays.fill(used, 0, n, false);
         float total = 0f;
         for (int slot = 0; slot < keep; slot++) {
             int best = -1;
@@ -365,7 +411,8 @@ public class ModelConverter
             total = 1f;
         }
         for (int slot = 0; slot < 4; slot++) {
-            indices.put((byte)(oi[slot] & 0xFF));
+            // unused slots are written explicitly (oi/ow are reused scratch and may be stale)
+            indices.put(slot < keep ? (short)(oi[slot] & 0xFFFF) : (short)0);
             weights.put(slot < keep ? ow[slot] / total : 0f);
         }
     }
@@ -388,20 +435,17 @@ public class ModelConverter
                 new Vector3f(s.x, s.y, s.z)));
             _joints.put(bnode, joint);
         }
-        // parent each joint under its nearest bone ancestor; roots stay top-level
-        List<Joint> roots = new ArrayList<>();
+        // parent each joint under its nearest bone ancestor; roots (no bone ancestor) stay
+        // top-level — the Armature derives its roots from the joint parent links itself
         for (Map.Entry<ModelNode, Joint> e : _joints.entrySet()) {
             ModelNode parent = nearestBoneAncestor(e.getKey());
             if (parent != null) {
                 _joints.get(parent).addChild(e.getValue());
-            } else {
-                roots.add(e.getValue());
             }
         }
         List<Joint> all = new ArrayList<>(_joints.values());
         _armature = new Armature(all.toArray(new Joint[0]));
         _armature.saveInitialPose();
-        _armatureRoots = roots;
     }
 
     /** Returns the nearest ancestor ModelNode of {@code node} that is itself a bone. */
@@ -449,11 +493,11 @@ public class ModelConverter
             remap[ii] = (j != null) ? jointIndex.get(j) : 0;
         }
         VertexBuffer ib = mesh.getBuffer(VertexBuffer.Type.BoneIndex);
-        ByteBuffer data = (ByteBuffer)ib.getData();
+        ShortBuffer data = (ShortBuffer)ib.getData();
         data.clear();
         for (int ii = 0; ii < data.capacity(); ii++) {
-            int local = data.get(ii) & 0xFF;
-            data.put(ii, (byte)(remap[local] & 0xFF));
+            int local = data.get(ii) & 0xFFFF;
+            data.put(ii, (short)(remap[local] & 0xFFFF));
         }
         ib.updateData(data);
     }
@@ -467,13 +511,16 @@ public class ModelConverter
     {
         String[] names = model.getAnimationNames();
         AnimComposer composer = null;
+        StringBuilder loopModes = new StringBuilder();
         for (String name : names) {
             Model.Animation anim = model.getAnimation(name);
             if (anim == null || anim.transforms == null || anim.transformTargets == null) {
+                result.droppedAnimations.add(name); // no keyframe data to convert
                 continue;
             }
             AnimClip clip = buildClip(name, anim);
             if (clip == null) {
+                result.droppedAnimations.add(name); // no track resolved to a converted target
                 continue;
             }
             if (composer == null) {
@@ -482,12 +529,29 @@ public class ModelConverter
             composer.addAnimClip(clip);
             result.animations.add(name);
             result.animTracks += clip.getTracks().length;
+            // jME3 carries loop mode on the playback action, not the clip; preserve the fork's
+            // repeatType as user data so the cutover can set LoopMode when it builds actions
+            if (loopModes.length() > 0) {
+                loopModes.append(',');
+            }
+            loopModes.append(name).append('=').append(loopMode(anim.repeatType));
         }
         if (_skinningControl != null) {
             result.root.addControl(_skinningControl);
         }
         if (composer != null) {
             result.root.addControl(composer);
+            result.root.setUserData("bang.loopModes", loopModes.toString());
+        }
+    }
+
+    /** Maps the fork {@code Controller} repeat type to the jME3 {@code LoopMode} name. */
+    protected static String loopMode (int repeatType)
+    {
+        switch (repeatType) {
+        case com.jme.scene.Controller.RT_WRAP:  return "Loop";
+        case com.jme.scene.Controller.RT_CYCLE: return "Cycle";
+        default:                                return "DontLoop"; // RT_CLAMP
         }
     }
 
@@ -568,11 +632,27 @@ public class ModelConverter
         to.setLocalScale(s.x, s.y, s.z);
     }
 
-    /** Resets a buffer to cover its full capacity (jME3 sizes buffers by limit). */
+    /** Defensive copy of a fork float buffer into a fresh jME3-owned buffer. The fork's live
+     * buffers must not be aliased into the jME3 mesh: a runtime loader may load a model more
+     * than once, and the fork model can be read again afterward — sharing (and clear()-ing)
+     * its buffers would corrupt those readers. */
     protected static FloatBuffer prepare (FloatBuffer buf)
     {
         buf.clear();
-        return buf;
+        FloatBuffer out = BufferUtils.createFloatBuffer(buf.remaining());
+        out.put(buf);
+        out.flip();
+        return out;
+    }
+
+    /** Defensive copy of a fork index buffer (see {@link #prepare}). */
+    protected static IntBuffer copy (IntBuffer buf)
+    {
+        buf.clear();
+        IntBuffer out = BufferUtils.createIntBuffer(buf.remaining());
+        out.put(buf);
+        out.flip();
+        return out;
     }
 
     protected final ModelTextureResolver _resolver;
@@ -596,6 +676,5 @@ public class ModelConverter
     protected final java.util.Set<String> _usedJointNames = new java.util.HashSet<>();
 
     protected Armature _armature;
-    protected List<Joint> _armatureRoots;
     protected SkinningControl _skinningControl;
 }

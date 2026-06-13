@@ -88,6 +88,11 @@ public class ModelToJ3o
             System.out.println("Converted " + r.skinnedMeshes + " skinned mesh(es)" +
                 (r.clampedInfluences ? " (some vertices clamped to 4 influences)." : "."));
         }
+        if (!r.droppedAnimations.isEmpty()) {
+            System.out.println("NOTE: " + r.droppedAnimations.size() + " animation(s) dropped " +
+                "(no keyframe data / no converted target): " +
+                String.join(", ", r.droppedAnimations));
+        }
         for (String c : r.droppedControllers) {
             System.out.println("NOTE: controller not converted (effects port): " + c);
         }
@@ -114,13 +119,7 @@ public class ModelToJ3o
         String childPath =
             path.isEmpty() ? spatial.getName() : (path + "/" + spatial.getName());
         if (spatial instanceof Geometry geom) {
-            String texture = null;
-            if (geom.getMaterial().getTextureParam("DiffuseMap") != null) {
-                texture = geom.getMaterial().getTextureParam("DiffuseMap").
-                    getTextureValue().getKey().getName();
-            }
-            stats.add(new ModelConverter.GeoStats(childPath, geom.getMesh().getVertexCount(),
-                geom.getMesh().getTriangleCount(), texture));
+            stats.add(ModelConverter.statsOf(childPath, geom));
         } else if (spatial instanceof Node node) {
             for (Spatial child : node.getChildren()) {
                 collectStats(child, childPath, stats);
@@ -142,13 +141,11 @@ public class ModelToJ3o
         int totalVerts = 0, totalTris = 0;
         for (int ii = 0, nn = Math.min(expected.size(), actual.size()); ii < nn; ii++) {
             ModelConverter.GeoStats exp = expected.get(ii), act = actual.get(ii);
-            boolean match = exp.vertices() == act.vertices() &&
-                exp.triangles() == act.triangles() &&
-                java.util.Objects.equals(exp.texture(), act.texture());
+            // records compare counts, base + glow texture, blend/cull/bucket, and skinning width
+            boolean match = exp.equals(act);
             System.out.println("  " + (match ? "OK " : "MISMATCH ") + exp.path() +
                 ": " + exp.vertices() + "v/" + exp.triangles() + "t/" + exp.texture() +
-                (match ? "" : "  !=  " + act.vertices() + "v/" + act.triangles() +
-                 "t/" + act.texture()));
+                (match ? "" : "\n      expected " + exp + "\n      actual   " + act));
             ok &= match;
             totalVerts += exp.vertices();
             totalTris += exp.triangles();

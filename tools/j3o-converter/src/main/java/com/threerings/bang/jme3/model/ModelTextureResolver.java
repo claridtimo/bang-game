@@ -62,7 +62,7 @@ public class ModelTextureResolver
     public String applyMaterial (
         Geometry geom, String typePath, String textureKey, String[] textures,
         boolean solid, boolean additive, boolean transparent, float alphaThreshold,
-        boolean emissive)
+        boolean emissive, String emissiveMap, boolean sphereMapped)
     {
         Material mat = new Material(_assetManager, "Common/MatDefs/Light/Lighting.j3md");
         String resolved = null;
@@ -71,21 +71,36 @@ public class ModelTextureResolver
             String pick = textures[textures.length == 1 ? 0 :
                 Math.floorMod(_variantIndex, textures.length)];
             resolved = textureAssetPath(typePath, pick);
-            try {
-                TextureKey tkey = new TextureKey(resolved, false);
-                Texture tex = _assetManager.loadTexture(tkey);
+            Texture tex = loadTexture(resolved);
+            if (tex != null) {
                 tex.setWrap(Texture.WrapMode.Repeat);
                 tex = colorize(tex); // colorization hook (no-op by default)
                 mat.setTexture("DiffuseMap", tex);
-            } catch (AssetNotFoundException e) {
+            } else {
                 resolved = null; // leave untextured rather than failing the load
             }
             // preserve the full list and key so a re-resolve (variant/colorize) is possible
             geom.setUserData("bang.textureKey", textureKey);
             geom.setUserData("bang.textures", String.join(",", textures));
         }
-        if (emissive) {
+        // the fork binds a distinct emissive map as a second additive texture unit (lit
+        // windows/signs); carry it onto Lighting.j3md's GlowMap so the glow layer survives
+        if (emissiveMap != null && !emissiveMap.isEmpty()) {
+            String glowPath = textureAssetPath(typePath, emissiveMap);
+            Texture glow = loadTexture(glowPath);
+            if (glow != null) {
+                glow.setWrap(Texture.WrapMode.Repeat);
+                mat.setTexture("GlowMap", glow);
+                mat.setColor("GlowColor", com.jme3.math.ColorRGBA.White);
+                geom.setUserData("bang.emissiveMap", glowPath);
+            }
+        } else if (emissive) {
             mat.setColor("GlowColor", com.jme3.math.ColorRGBA.White);
+        }
+        // sphere/reflection mapping has no stock Lighting.j3md equivalent; preserve the flag so
+        // the cutover's material upgrade can apply an environment/sphere map rather than lose it
+        if (sphereMapped) {
+            geom.setUserData("bang.sphereMapped", true);
         }
         if (!solid) {
             mat.getAdditionalRenderState().setFaceCullMode(FaceCullMode.Off);
@@ -102,9 +117,27 @@ public class ModelTextureResolver
         return resolved;
     }
 
+    /** Loads a texture, returning null (with a diagnostic) instead of throwing when the asset
+     * is genuinely missing — so a bad texture path is visible rather than silently untextured. */
+    protected Texture loadTexture (String path)
+    {
+        try {
+            return _assetManager.loadTexture(new TextureKey(path, false));
+        } catch (AssetNotFoundException e) {
+            System.out.println("WARNING: texture not found, leaving untextured [path=" + path + "].");
+            return null;
+        }
+    }
+
     /**
      * Maps a stored texture name to an asset path relative to the rsrc root, mirroring
      * {@code ModelCache.ModelTextureProvider}: relative to the model dir unless {@code /}-prefixed.
+     *
+     * <p>The {@code ..}-collapsing logic deliberately mirrors {@code PrototypeCache.cleanPath}
+     * (in {@code client/shared}, {@code protected static} so not directly callable here); the two
+     * must stay in lockstep. The shared {@code [^/.]+/\.\./} regex mis-handles a dotted directory
+     * segment immediately before {@code /../}, but no corpus texture path triggers it — matching
+     * the runtime's exact behavior is more important than "fixing" it in only one of the two copies.
      */
     public String textureAssetPath (String typePath, String name)
     {

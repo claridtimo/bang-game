@@ -17,10 +17,6 @@ plugins {
   id "application"
 }
 
-ext {
-  jme3Version = "3.9.0-stable"
-}
-
 dependencies {
   // BUI itself (transitively the fork `jme` jar -- needed because BUI's public API still
   // uses fork type tokens, and BImage extends the fork's GL-free Quad).

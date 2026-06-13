@@ -21,6 +21,7 @@ import com.jme.util.export.binary.BinaryImporter;
 
 import com.threerings.bang.game.data.BangBoard;
 import com.threerings.bang.game.data.BangConfig;
+import com.threerings.bang.game.data.BoardData;
 import com.threerings.bang.game.data.Criterion;
 import com.threerings.bang.game.data.piece.Piece;
 import com.threerings.bang.game.util.BoardFile;
@@ -132,14 +133,13 @@ public class BoardConverter
             BoardSummary before = BoardSummary.of(bf);
 
             byte[] enc = encodeBoard(bf);
-            File out = mapOutput(outDir, rel, ".board", ".nboard");
-            write(out, enc);
-
-            // round-trip: re-read the Narya stream and compare
-            BoardFile rt = decodeBoard(enc);
-            BoardSummary after = BoardSummary.of(rt);
+            // round-trip in memory and only write the output file once it verifies, so a decode
+            // failure or content mismatch never leaves a corrupt/stale .nboard on disk
+            BoardSummary after = BoardSummary.of(decodeBoard(enc));
             String diff = before.diff(after);
+            File out = mapOutput(outDir, rel, ".board", ".nboard");
             if (diff == null) {
+                write(out, enc);
                 tally.boardsOk++;
                 System.out.println("OK   board " + rel + " -> " + out.getName() + "  " +
                     before.terse());
@@ -165,13 +165,12 @@ public class BoardConverter
             GameSummary before = GameSummary.of(cfg);
 
             byte[] enc = encodeGame(cfg);
-            File out = mapOutput(outDir, rel, ".game", ".ngame");
-            write(out, enc);
-
-            BangConfig rt = decodeGame(enc);
-            GameSummary after = GameSummary.of(rt);
+            // verify the in-memory round trip before writing, so a failure leaves no bad .ngame
+            GameSummary after = GameSummary.of(decodeGame(enc));
             String diff = before.diff(after);
+            File out = mapOutput(outDir, rel, ".game", ".ngame");
             if (diff == null) {
+                write(out, enc);
                 tally.gamesOk++;
                 System.out.println("OK   game  " + rel + " -> " + out.getName() + "  " + before);
             } else {
@@ -199,9 +198,12 @@ public class BoardConverter
         oout.writeInt(bf.players);
         oout.writeBoolean(bf.privateBoard);
         oout.writeObject(bf.scenarios);
-        oout.writeObject(bf.board);
-        oout.writeObject(new ArrayList<Piece>(bf.pieces == null ?
-            new ArrayList<Piece>() : bf.pieces));
+        // reuse the canonical {BangBoard, List<Piece>} wrapper rather than streaming board and
+        // pieces as two separate contracts; BoardData is itself Narya-Streamable, so this keeps
+        // one serialization shape that already matches the wire representation
+        List<Piece> pieces = (bf.pieces == null) ?
+            new ArrayList<Piece>() : new ArrayList<Piece>(bf.pieces);
+        oout.writeObject(new BoardData(bf.board, pieces));
         oout.flush();
         return bout.toByteArray();
     }
@@ -217,8 +219,9 @@ public class BoardConverter
         bf.players = oin.readInt();
         bf.privateBoard = oin.readBoolean();
         bf.scenarios = (String[])oin.readObject();
-        bf.board = (BangBoard)oin.readObject();
-        bf.pieces = (List<Piece>)oin.readObject();
+        BoardData bd = (BoardData)oin.readObject();
+        bf.board = bd.board;
+        bf.pieces = bd.pieces;
         return bf;
     }
 

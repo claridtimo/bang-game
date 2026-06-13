@@ -98,7 +98,9 @@ public class VerifyCorpus
                 File j3oFile = new File(outDir, j3oName);
                 BinaryExporter.getInstance().save(converted, j3oFile);
                 Spatial reloaded = am.loadModel(new ModelKey(j3oName));
-                am.clearCache();
+                // drop only this model's j3o so it re-imports fresh next time; keep the shared
+                // textures + Lighting.j3md MatDef cached instead of re-decoding them per model
+                am.deleteFromCache(new ModelKey(j3oName));
 
                 List<ModelConverter.GeoStats> actual = new ArrayList<>();
                 collectStats(reloaded, "", actual);
@@ -155,13 +157,7 @@ public class VerifyCorpus
         String childPath =
             path.isEmpty() ? spatial.getName() : (path + "/" + spatial.getName());
         if (spatial instanceof com.jme3.scene.Geometry geom) {
-            String texture = null;
-            if (geom.getMaterial().getTextureParam("DiffuseMap") != null) {
-                texture = geom.getMaterial().getTextureParam("DiffuseMap").
-                    getTextureValue().getKey().getName();
-            }
-            stats.add(new ModelConverter.GeoStats(childPath, geom.getMesh().getVertexCount(),
-                geom.getMesh().getTriangleCount(), texture));
+            stats.add(ModelConverter.statsOf(childPath, geom));
         } else if (spatial instanceof com.jme3.scene.Node node) {
             for (Spatial child : node.getChildren()) {
                 collectStats(child, childPath, stats);
@@ -178,10 +174,10 @@ public class VerifyCorpus
         }
         for (int ii = 0; ii < expected.size(); ii++) {
             ModelConverter.GeoStats e = expected.get(ii), a = actual.get(ii);
-            if (e.vertices() != a.vertices() || e.triangles() != a.triangles()
-                    || !java.util.Objects.equals(e.texture(), a.texture())) {
-                return "geom " + e.path() + " " + e.vertices() + "v/" + e.triangles() + "t/" +
-                    e.texture() + " != " + a.vertices() + "v/" + a.triangles() + "t/" + a.texture();
+            // records compare all fields (counts, base + glow texture, blend/cull/bucket flags,
+            // skinning maxWeights); path is identical by construction, so equals() is the check
+            if (!e.equals(a)) {
+                return "geom " + e.path() + "\n    expected " + e + "\n    actual   " + a;
             }
         }
         return null;
