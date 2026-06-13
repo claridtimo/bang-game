@@ -46,6 +46,40 @@ tasks.register("bakeModels", JavaExec) {
   args = [ rootProject.file("assets/build/staging/rsrc").absolutePath ]
 }
 
+// Phase 6a: bake each staged fork-format effects/<key>/particles.jme into a sibling
+// particles.j3o (a jME3 ParticleEmitter tree) that the runtime client loads natively through the
+// jME3 AssetManager (ParticleCache). The baker (ParticlesToJ3o) reads the fork particles.jme via
+// the retained fork BinaryImporter and writes pure-jME3 .j3o, so no fork dependency reaches the
+// runtime. It must run after compileModels has staged the rsrc tree (the .jme + textures).
+//   ./gradlew :tools:j3o-converter:bakeParticles
+// Pass -Peffect=<town>/<effect> to bake (and verbosely report) a single effect.
+tasks.register("bakeParticles", JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = "com.threerings.bang.tools.j3o.ParticlesToJ3o"
+  def cmd = [ rootProject.file("assets/build/staging/rsrc").absolutePath ]
+  if (project.hasProperty("effect")) {
+    cmd += project.property("effect").toString()
+  }
+  args = cmd
+}
+
+// Phase 6a: render a baked particles.j3o to a PNG offscreen, stepping the emitter a few frames so
+// particles are alive before the snapshot (ParticleEmitters are time-based). Stays on the isolated
+// jME3 + LWJGL3 classpath (no fork/gdx), so no org.lwjgl sealing clash.
+//   ./gradlew :tools:j3o-converter:renderParticleToPng \
+//       -Peffect=boom_town/barrel_explosion -Pframes=40 -Pout=/tmp/barrel.png
+tasks.register("renderParticleToPng", JavaExec) {
+  classpath = sourceSets.main.output + configurations.renderToPngRuntime
+  mainClass = "com.threerings.bang.tools.j3o.RenderParticleToPng"
+  def rsrc = rootProject.file("assets/build/staging/rsrc").absolutePath
+  def effect = project.hasProperty("effect") ?
+      project.property("effect").toString() : "boom_town/barrel_explosion"
+  def out = project.hasProperty("out") ? project.property("out").toString() :
+      "/tmp/particle_${effect.replaceAll('/', '_')}.png"
+  def frames = project.hasProperty("frames") ? project.property("frames").toString() : "40"
+  args = [ rsrc, effect, out, frames ]
+}
+
 // Phase 7 seed: render a single baked model.j3o to a PNG offscreen (no window), through the real
 // runtime load/resolve/clone path and lit like the board, so a model's textures/materials/lighting
 // can be inspected in isolation (used to confirm the building models render fully textured).
