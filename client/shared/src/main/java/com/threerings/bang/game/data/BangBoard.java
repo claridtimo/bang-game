@@ -12,11 +12,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
-import com.jme.util.export.JMEExporter;
-import com.jme.util.export.JMEImporter;
-import com.jme.util.export.InputCapsule;
-import com.jme.util.export.OutputCapsule;
-import com.jme.util.export.Savable;
+import com.jme3.export.JmeExporter;
+import com.jme3.export.JmeImporter;
+import com.jme3.export.InputCapsule;
+import com.jme3.export.OutputCapsule;
+import com.jme3.export.Savable;
 
 import com.samskivert.util.ArrayUtil;
 import com.samskivert.util.IntIntMap;
@@ -1452,7 +1452,7 @@ public class BangBoard extends SimpleStreamableObject
     }
 
     // documentation inherited from interface Savable
-    public void read (JMEImporter im)
+    public void read (JmeImporter im)
         throws IOException
     {
         InputCapsule capsule = im.getCapsule(this);
@@ -1489,7 +1489,7 @@ public class BangBoard extends SimpleStreamableObject
     }
 
     // documentation inherited from interface Savable
-    public void write (JMEExporter ex)
+    public void write (JmeExporter ex)
         throws IOException
     {
         OutputCapsule capsule = ex.getCapsule(this);
