@@ -103,6 +103,16 @@ public class JmeApp
     }
 
     @Override public void resize (int width, int height) {
+        // when we're embedded in an AWT canvas (the editor), the GL context is created while
+        // the canvas is still 1x1; AWT lays it out to its real size afterwards, so we have to
+        // propagate the new dimensions to the renderer and camera as they come in
+        if (_display == null || _display.getRenderer() == null ||
+            _camera == null || width <= 0 || height <= 0) {
+            return;
+        }
+        _display.getRenderer().reinit(width, height);
+        _camera.setFrustumPerspective(45.0f, width/(float)height, 1, 10000);
+        _camera.update();
     }
 
     @Override public void render () {

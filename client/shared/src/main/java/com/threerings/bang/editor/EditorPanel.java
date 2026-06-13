@@ -20,7 +20,6 @@ import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 
-import com.jme.system.DisplaySystem;
 import com.jmex.bui.BWindow;
 import com.jmex.bui.layout.BorderLayout;
 
@@ -191,10 +190,10 @@ public class EditorPanel extends JPanel
         _vwin = new BWindow(_ctx.getStyleSheet(), new BorderLayout());
         _vwin.add(view, BorderLayout.CENTER);
         _ctx.getRootNode().addWindow(_vwin);
-        DisplaySystem ds = DisplaySystem.getDisplaySystem();
 
         // resize the window with the canvas
-        ((EditorApp)_ctx.getApp()).getCanvas().addComponentListener(
+        Component canvas = ((EditorApp)_ctx.getApp()).getCanvas();
+        canvas.addComponentListener(
             new ComponentAdapter() {
                 public void componentResized (ComponentEvent e) {
                     Component c = e.getComponent();
@@ -203,7 +202,9 @@ public class EditorPanel extends JPanel
             }
         );
 
-        _vwin.setBounds(0, 0, ds.getWidth(), ds.getHeight());
+        // size to the canvas, not the display system: the GL display was created while the
+        // canvas was still 1x1 (before AWT laid it out), so its recorded size is stale
+        _vwin.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
     }
 
     // documentation inherited from interface
