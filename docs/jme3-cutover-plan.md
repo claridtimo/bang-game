@@ -63,6 +63,56 @@ genuine wall rather than thrash" guidance, `app` is left for a dedicated model-p
 pass. Note `tools/j3o-converter`'s `ModelConverter` already reads the fork model format into jME3
 spatials and should be the reference / shared code for that rebuild.
 
+#### app model-pipeline rebuild — architecture decision (2026-06-13)
+
+**Decision: RETIRE app's bespoke model classes + bake `model.dat` → `.j3o` at build time,
+behind a thin app-side `Model`/`ModelNode` jME3 facade that localizes Phase-2 churn.**
+
+The investigation that forced this (STEP 0):
+
+- **The fork reader cannot stay on the runtime classpath.** `tools/j3o-converter`'s
+  `ModelConverter`/`BangModelLoader` `import com.threerings.jme.model.{Model,ModelMesh,ModelNode,
+  SkinMesh}` — i.e. they READ the *fork* model classes (via the fork `BinaryImporter` reading
+  `model.dat`) and convert to jME3. They are a fork→jME3 *bridge*, not a fork-free runtime loader.
+  The documented runtime loader (`docs/jme3-model-loader.md`) keeps the fork reader on the
+  *runtime* classpath. That directly conflicts with the Phase-1 checkpoint (app must compile with
+  the fork `jme` module OFF its classpath) — you cannot host that loader inside a fork-free `app`.
+- **The 310 `model.dat` are fork-`BinaryExporter` Savable graphs**, regenerated each build by the
+  project-owned `CompileModelTask`. So the resolution is to move the fork-format read to
+  **build time**: bake `model.dat` → jME3-native `.j3o` once per build, and let runtime `app`
+  load `.j3o` through stock jME3 with zero fork dependency. `ModelToJ3o` already does exactly this
+  bake on top of the shared `ModelConverter`, corpus-verified 310/310.
+
+So the model classes split three ways:
+
+1. **Build-time (stays fork-coupled, lives in `tools/j3o-converter`):** the fork reader + the
+   `ModelConverter`/`ModelToJ3o`/`ModelTextureResolver` bridge. `CompileModelTask`'s role
+   **shrinks to staging `model.dat`** (unchanged); a new bake step (`ModelToJ3o`, wired into
+   `assets:` in Phase 3) turns each `model.dat` into a sibling `model.j3o`. No runtime fork dep.
+2. **Runtime (fork-free, lives in `app`):** a thin **`Model` facade** — a jME3 `Node` subclass
+   that wraps the loaded `.j3o` `Spatial` and re-exposes the client-facing API shape
+   (`createInstance`/`putClone` → jME3 `clone()`; `startAnimation`/`stopAnimation`/`hasAnimation`/
+   `getAnimationNames`/observers → drive the `.j3o`'s `AnimComposer`/`SkinningControl`;
+   `getEmissionNode`; `getControllers`; `resolveTextures(TextureProvider)` → re-resolve the
+   `bang.textures` user-data via the resolver). This keeps `ModelCache.getModel(...)`'s return
+   type and the ~29 client sprite/effect call sites' shape stable, so Phase-2 churn over the model
+   API is localized to method-body retargeting, not a type-wide `Model`→`Spatial` sweep.
+3. **DELETED outright:** the fork-coupled `ModelMesh`/`SkinMesh`/`ModelSpatial` (TriMesh/batch/
+   GLSL-skinning machinery — the `.j3o` carries jME3 `Mesh`+`SkinningControl` instead), and the
+   fork serialization (`read`/`write`/`putClone`-over-RenderState) bodies of `ModelNode`/`Model`.
+   The procedural controllers (`Rotator`/`Translator`/`Billboard`/`Texture*`) become small jME3
+   `AbstractControl`s; the emission controllers (`EmissionController` + game `*Emission`) are the
+   effects port (Phase 4/§3.3 of the loader doc) and stay client-side.
+
+Why not (a) pure RETIRE (ModelCache returns a bare jME3 `Spatial`): it pushes a type-wide
+`Model`→`Spatial` rewrite plus an anim-API rewrite into ~29 Phase-2 files with no compile anchor.
+Why not (b') keep the runtime fork reader + convert at load: it violates the fork-off-classpath
+checkpoint and ships LWJGL2-era fork code into the LWJGL3 runtime. The chosen split is the only
+one that (i) reuses the corpus-verified converter unchanged, (ii) gets app fork-free, and
+(iii) keeps the client API shape for Phase 2.
+
+**Phase-1 execution status of this decision: see the running status block appended below.**
+
 ### Phase 2 — `client/shared` migration (the bulk: 164 fork-using files)
 - Drive off the map's per-class table: scene graph, render-state→Material across all sites,
   picking/intersection, camera, the `*Sprite`/effect framework, `BangBoardView`/`WaterNode`/sky.
