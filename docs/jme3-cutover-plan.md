@@ -340,8 +340,25 @@ approaching the fork baselines in `baseline/fork-before/`):
   early. Caveats: the offscreen harness's own lighting has a blue tint to calibrate (cosmetic,
   harness-only); the in-game *game* board (vs town view) wasn't re-captured headlessly (autoplay
   doesn't drive BUI big-shot selection) — high confidence it's fine given same `BoardView` renderer.
-- **4c — TODO (implemented, unverified):** water Fresnel sphere-map reflection (`BangWater.j3md`)
-  is written but was never reached in an autoplay session — needs verification on a water board.
+- **4c — DONE:** water Fresnel sphere-map reflection verified and fixed. The shader/material
+  approach is correct (animated, reflective, sphere-environment-mapped — reproduces the fork's
+  EM_SPHERE water<->sky Fresnel blend), confirmed by a headless offscreen render of the actual
+  `BangWater.j3md` material + the same Fresnel sphere map + a wave-displaced surface (new
+  `tools/j3o-converter` `RenderWaterToPng` harness; `baseline/jme3-phase4/water-{before,after}.png`).
+  **Root-cause bug fixed:** the Fresnel sphere map was tagged `ColorSpace.sRGB`, which the
+  gamma-correct live pipeline (jME3 default `GammaCorrection=true`, inherited by `BangDesktop`)
+  sRGB-decodes on sample, crushing the baked water/sky colors to a dark, near-uniform sheet (the
+  classic "flat solid color" water failure). The fork displayed these baked colors verbatim with no
+  gamma management, so the sphere map is now tagged `ColorSpace.Linear` in `WaterNode.refreshColors`
+  — the surface renders at full color with the reflective variation reading as water. Animation is
+  confirmed (the FFT-driven normals change each frame; two harness frames diff across the whole
+  surface). Also fixed the Phase-4b harness blue-tint caveat: it was an RGBA-vs-BGRA channel swap in
+  the framebuffer readback (`Screenshots.convertScreenShot` assumes BGRA) plus a missing sRGB encode
+  on the offscreen color target — `RenderWaterToPng` reads RGBA directly into the image and uses an
+  sRGB color target, so its colors are now neutral/correct. Still wanting a human eyeball: the water
+  on a *live in-game board* (the harness uses representative water/sky colors and a sinusoidal
+  stand-in for the FFT sim, not a shipped `.board`) — high confidence given it drives the identical
+  material + sphere map + shader through a real GL context.
 - **4d — TODO:** particles — the 60 `particles.jme` are still a degraded single-blob; re-author as
   jME3 `ParticleEmitter` params (combat-effect icons already render). The `*Emission` controllers
   exist as jME3 `AbstractControl`s from Phase 2, awaiting real emitters.
