@@ -17,3 +17,13 @@ modernize the layers to align with the Epic-1 jME3/LWJGL3 world. Plan + phases:
 
 Epic 2 depends on Epic 1 only loosely (its Phase 1 — dependency-control mechanism — can land any
 time; the heavier vendoring/combining phases are best done once the game is stable on jME3).
+
+## Epic 3 — Production hardening, CI & operations  *(planned)*
+Make the game operable and safe to ship: wire the Phase-5 test harnesses (render-to-PNG +
+`SnapshotDiff`, the headless Narya bot) into **CI**, encrypt the currently-plaintext client↔server
+transport and review auth/credential storage, scan & patch dependency CVEs, and stand up
+reproducible containerized environments with externalized config, versioned DB migrations, and a
+documented deploy. Plan + phases: [`epic3-production-hardening.md`](epic3-production-hardening.md).
+
+Additive to Epics 1 & 2 and mostly independent: CI (Phase 1) can land any time; the
+visual-regression gates build on the Epic-1 harnesses; CVE patching consumes Epic-2 ownership.
