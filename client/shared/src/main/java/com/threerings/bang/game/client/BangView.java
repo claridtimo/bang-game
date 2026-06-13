@@ -5,9 +5,10 @@ package com.threerings.bang.game.client;
 
 import java.util.ArrayList;
 
-import org.lwjgl.opengl.GL11;
-
-import com.jme.scene.Controller;
+import com.jme3.renderer.RenderManager;
+import com.jme3.renderer.ViewPort;
+import com.jme3.scene.Node;
+import com.jme3.scene.control.AbstractControl;
 
 import com.jmex.bui.BLabel;
 import com.jmex.bui.BWindow;
@@ -231,12 +232,18 @@ public class BangView extends BWindow
                                pstatus[pidx].getAbsoluteY() + 15);
         }
         final int ox = window.getX(), oy = window.getY(), height = (pidx == -1) ? 200 : 100;
-        _ctx.getRootNode().addController(new Controller() {
-            public void update (float time) {
+        // jME3 cutover: the fork stepped this card animation via a scene Controller on the BUI
+        // root node; jME3's BRootNode hosts no controllers, so drive it with a Node +
+        // AbstractControl attached to the interface node (the migrated WindowFader idiom).
+        final Node driver = new Node("cardfall");
+        driver.addControl(new AbstractControl() {
+            @Override protected void controlUpdate (float time) {
                 if ((_elapsed += time) >= CARD_FALL_DURATION + CARD_LINGER_DURATION +
                     CARD_FADE_DURATION) {
                     _ctx.getRootNode().removeWindow(window);
-                    _ctx.getRootNode().removeController(this);
+                    if (driver.getParent() != null) {
+                        driver.getParent().detachChild(driver);
+                    }
                 } else if (_elapsed >= CARD_FALL_DURATION +
                     CARD_LINGER_DURATION) {
                     window.setAlpha(1f - (_elapsed - CARD_FALL_DURATION - CARD_LINGER_DURATION) /
@@ -250,8 +257,11 @@ public class BangView extends BWindow
                     window.setLocation(ox, oy + (int)(height * (1f - alpha)));
                 }
             }
+            @Override protected void controlRender (RenderManager rm, ViewPort vp) {
+            }
             protected float _elapsed;
         });
+        _ctx.getInterface().attachChild(driver);
     }
 
     // documentation inherited from interface PlaceView
@@ -671,9 +681,11 @@ public class BangView extends BWindow
             // make sure we're not too late to the party
             if (_bangobj != null) {
                 int[] histo = _perfhisto.getBuckets().clone();
-                String driver = GL11.glGetString(GL11.GL_VENDOR) + ", " +
-                    GL11.glGetString(GL11.GL_RENDERER) + ", " +
-                    GL11.glGetString(GL11.GL_VERSION);
+                // TODO(phase3-host): the fork read the GL driver identity directly via LWJGL2
+                // GL11.glGetString(GL_VENDOR/RENDERER/VERSION) on the GL thread for the perf
+                // report. The LWJGL3/jME3 host exposes this through the Renderer's GL caps; wire
+                // the real driver string in at the host flip.
+                String driver = "unknown"; // TODO(phase3-host): GL vendor, renderer, version
                 _bangobj.service.reportPerformance(_boardId, driver, histo);
             }
 

@@ -15,14 +15,12 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Properties;
 
-import com.jme.image.Texture;
+import com.jme3.material.Material;
+import com.jme3.material.RenderState.BlendMode;
 import com.jme3.math.Vector3f;
 import com.jme3.math.ColorRGBA;
-import com.jme.renderer.Renderer;
-import com.jme.scene.state.MaterialState;
-import com.jme.scene.state.RenderState;
-import com.jme.scene.state.TextureState;
-import com.jme.util.TextureManager;
+import com.jme3.renderer.RenderManager;
+import com.jme3.texture.Texture;
 
 import com.jmex.bui.BButton;
 import com.jmex.bui.BComponent;
@@ -47,6 +45,7 @@ import com.samskivert.util.StringUtil;
 import com.threerings.jme.camera.CameraPath;
 import com.threerings.jme.camera.PanPath;
 import com.threerings.jme.sprite.Sprite;
+import com.threerings.jme.util.ImageCache;
 import com.threerings.util.MessageBundle;
 
 import com.threerings.presents.dobj.AttributeChangeListener;
@@ -98,8 +97,8 @@ public class TownView extends BWindow
         _bctx = ctx;
         _msgs = ctx.getMessageManager().getBundle("town");
 
-        int width = ctx.getDisplay().getWidth();
-        int height = ctx.getDisplay().getHeight();
+        int width = ctx.getCamera().getWidth();
+        int height = ctx.getCamera().getHeight();
         setBounds(0, 0, width, height);
 
         // load up our menu props
@@ -134,7 +133,7 @@ public class TownView extends BWindow
         gl.setGap(0);
         gl.setOffAxisJustification(GroupLayout.BOTTOM);
         add(_menu = new BContainer(gl) {
-            public void render (Renderer renderer) {
+            public void render (RenderManager renderer) {
                 if (_active) {
                     super.render(renderer);
                 }
@@ -319,10 +318,17 @@ public class TownView extends BWindow
                 }
             });
 
-            _hstate = _ctx.getRenderManager().createMaterialState();
-            _hstate.getAmbient().set(ColorRGBA.White);
-            _hstate.getDiffuse().set(ColorRGBA.White);
-            _hstate.getEmissive().set(ColorRGBA.White);
+            // jME3 cutover: the fork built a MaterialState (white ambient/diffuse/emissive) and
+            // applied it to the hovered prop sprite to brighten it. jME3 highlights through a
+            // Material override; we build a white-emissive Unshaded material.
+            // TODO(sprite-cluster reconcile): applying/clearing this via setMaterial overrides the
+            // sprite's textured model material wholesale. The *Sprite framework (cluster 1) should
+            // expose a highlight/colour-modulation seam; reconcile to it (so the prop texture is
+            // preserved and the clear path restores the original material).
+            _hstate = new Material(_ctx.getAssetManager(),
+                "Common/MatDefs/Misc/Unshaded.j3md");
+            _hstate.setColor("Color", new ColorRGBA(ColorRGBA.White));
+            _hstate.getAdditionalRenderState().setBlendMode(BlendMode.Alpha);
 
             // load up our hover cursor
             try {
@@ -519,8 +525,14 @@ public class TownView extends BWindow
 
             // clear our previous highlight
             if (_hsprite != null) {
-                _hsprite.clearRenderState(RenderState.RS_MATERIAL);
-                _hsprite.updateRenderState();
+                // jME3 cutover: the fork cleared the highlight by removing the hover MaterialState
+                // (clearRenderState(RS_MATERIAL) + updateRenderState). A jME3 Material override has
+                // no per-state clear and we have no handle to the sprite's original textured
+                // material here, so the visible un-highlight is deferred to the sprite framework.
+                // TODO(sprite-cluster reconcile): the *Sprite framework (cluster 1) owns the
+                // highlight seam; clear it through that (restoring the model material) once its
+                // render-state->Material port lands.
+                _hsprite = null;
             }
             _hsprite = null;
 
@@ -538,8 +550,9 @@ public class TownView extends BWindow
 
             // highlight the sprite
             _hsprite = (PieceSprite)hover;
-            _hsprite.setRenderState(_hstate);
-            _hsprite.updateRenderState();
+            // jME3 cutover: fork setRenderState(_hstate)+updateRenderState -> jME3 material
+            // override. See the reconcile TODO above (sprite-cluster highlight seam).
+            _hsprite.setMaterial(_hstate);
 
             updateCursor(_hcursor);
         }
@@ -606,16 +619,10 @@ public class TownView extends BWindow
                     return true;
                 }
                 public void handleResult () {
-                    // delete the old texture using a dummy state now that we're in the main thread
-                    int oldTextureId = _poptex.getTextureId();
-                    if (oldTextureId > 0) {
-                        TextureState tstate = _ctx.getRenderManager().createTextureState();
-                        Texture tex = new Texture();
-                        tex.setTextureId(oldTextureId);
-                        tstate.setTexture(tex);
-                        tstate.deleteAll();
-                    }
-                    _poptex.setTextureId(0);
+                    // jME3 cutover: the fork explicitly deleted the previous GL texture id via a
+                    // throwaway TextureState (getTextureId/deleteAll/setTextureId(0)). jME3 owns
+                    // texture GPU lifecycle (the old Image is released when the Texture's image is
+                    // replaced / GC'd), so the manual delete is dropped.
                     clearResolving(TownBoardView.this);
                 }
             });
@@ -650,12 +657,14 @@ public class TownView extends BWindow
             if (_poptex == null) {
                 _poptex = _ctx.getTextureCache().getTexture(path);
             }
-            RenderUtil.configureTexture(_poptex, TextureManager.loadImage(img, true));
+            // jME3 cutover: TextureManager.loadImage(BufferedImage,flip) -> the migrated
+            // app-side ImageCache.createImage (returns a jME3 com.jme3.texture.Image).
+            RenderUtil.configureTexture(_poptex, ImageCache.createImage(img, true));
         }
 
         protected BangContext _bctx;
 
-        protected MaterialState _hstate;
+        protected Material _hstate;
         protected PieceSprite _hsprite;
         protected ViewpointSprite _vpsprite;
         protected Vector3f _pos = new Vector3f();
@@ -696,7 +705,7 @@ public class TownView extends BWindow
             setLocation(x, y);
         }
 
-        @Override public void render (Renderer renderer) {
+        @Override public void render (RenderManager renderer) {
             if (_active) {
                 super.render(renderer);
             }

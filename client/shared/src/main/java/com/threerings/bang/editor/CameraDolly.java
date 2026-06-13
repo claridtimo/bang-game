@@ -9,7 +9,7 @@ import com.badlogic.gdx.Input.Keys;
 
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
-import com.jme.renderer.Camera;
+import com.jme3.renderer.Camera;
 
 import com.jmex.bui.event.KeyEvent;
 import com.jmex.bui.event.MouseEvent;

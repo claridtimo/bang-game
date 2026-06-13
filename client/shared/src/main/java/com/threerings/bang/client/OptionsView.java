@@ -3,11 +3,8 @@
 
 package com.threerings.bang.client;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 
-import com.jme.system.DisplaySystem;
 import com.jmex.bui.BButton;
 import com.jmex.bui.BCheckBox;
 import com.jmex.bui.BComboBox;
@@ -27,13 +24,7 @@ import com.jmex.bui.layout.GroupLayout;
 import com.jmex.bui.layout.TableLayout;
 import com.jmex.bui.util.Dimension;
 
-import com.samskivert.util.CollectionUtil;
-import com.samskivert.util.RunAnywhere;
 import com.samskivert.util.StringUtil;
-
-import org.lwjgl.LWJGLException;
-import org.lwjgl.opengl.Display;
-import org.lwjgl.opengl.DisplayMode;
 
 import com.threerings.util.MessageBundle;
 import com.threerings.util.Name;
@@ -199,7 +190,10 @@ public class OptionsView extends BDecoratedWindow
         bcont.add(new BButton(_msgs.get("m.resume"), this, "dismiss"));
         add(bcont, GroupLayout.FIXED);
 
-        _mode = Display.getDisplayMode();
+        // TODO(phase3-host): seed _mode from the live LWJGL3/GLFW display mode (was
+        // Display.getDisplayMode()).
+        _mode = new ModeItem(BangPrefs.getDisplayWidth(), BangPrefs.getDisplayHeight(),
+            BangPrefs.getDisplayBPP(), BangPrefs.getDisplayFreq());
         refreshDisplayModes();
         _modes.addListener(_modelist);
     }
@@ -266,65 +260,18 @@ public class OptionsView extends BDecoratedWindow
 
     protected void refreshDisplayModes ()
     {
-        int maxwidth = 0, maxheight = 0;
-        boolean have1024 = false, have1280 = false;
-
-        try {
-            ArrayList<DisplayMode> modes = new ArrayList<DisplayMode>();
-            CollectionUtil.addAll(modes, Display.getAvailableDisplayModes());
-            for (Iterator<DisplayMode> iter = modes.iterator();
-                 iter.hasNext(); ) {
-                DisplayMode mode = iter.next();
-                // our minimum display size is 1024x768
-                if (mode.getWidth() < BangUI.MIN_WIDTH ||
-                        mode.getHeight() < BangUI.MIN_HEIGHT) {
-                    iter.remove();
-                }
-
-                // note our maximum available display sizes
-                maxwidth = Math.max(maxwidth, mode.getWidth());
-                maxheight = Math.max(maxheight, mode.getHeight());
-
-                // note whether we have our two basic sizes
-                if (mode.getWidth() == 1024 && mode.getHeight() == 768) {
-                    have1024 = true;
-                }
-                if (mode.getWidth() == 1280 && mode.getHeight() == 1024) {
-                    have1280 = true;
-                }
-            }
-
-            // if we're on Linux and don't have 1024x768 or 1280x1024 but we
-            // have larger modes, it's probably because of Xinerama wackiness,
-            // so we add non-fullscreen versions for those
-            if (RunAnywhere.isLinux()) {
-                if (!have1024 && maxwidth >= 1024 && maxheight >= 768) {
-                    modes.add(new DisplayMode(1024, 768));
-                }
-                if (!have1280 && maxwidth >= 1280 && maxheight >= 1024) {
-                    modes.add(new DisplayMode(1280, 1024));
-                }
-            }
-
-            ModeItem current = null;
-            ModeItem[] items = new ModeItem[modes.size()];
-            for (int ii = 0; ii < items.length; ii++) {
-                DisplayMode mode = modes.get(ii);
-                items[ii] = new ModeItem(mode);
-                if (isCurrent(mode)) {
-                    current = items[ii];
-                }
-            }
-            Arrays.sort(items);
-            _modes.setItems(items);
-            _modes.selectItem(current);
-
-        } catch (LWJGLException e) {
-            log.warning("Failed to obtain display modes", e);
-        }
+        // TODO(phase3-host): enumerate available modes from the LWJGL3/GLFW context (was
+        // Display.getAvailableDisplayModes()), filter to >= MIN_WIDTH/MIN_HEIGHT, add the Linux
+        // Xinerama 1024x768 / 1280x1024 fallbacks, sort, and select the current one. Until the
+        // host flip we present only the stored/current mode so the chooser is non-empty.
+        ModeItem current = _mode;
+        ModeItem[] items = new ModeItem[] { _mode };
+        Arrays.sort(items);
+        _modes.setItems(items);
+        _modes.selectItem(current);
     }
 
-    protected void updateDisplayMode (DisplayMode mode, boolean confirm)
+    protected void updateDisplayMode (ModeItem mode, boolean confirm)
     {
         boolean wantFullscreen = _fullscreen.isSelected();
         if (mode == null || (_mode != null && _mode.equals(mode) &&
@@ -332,17 +279,20 @@ public class OptionsView extends BDecoratedWindow
             return;
         }
 
-        final DisplayMode omode = _mode;
+        final ModeItem omode = _mode;
         _mode = mode;
         log.info("Switching to " + _mode + " (from " + omode + ")");
 
         // we fake up non-full screen display modes above, but there's no way
         // to set the bit depth to anything but zero, so we have to adjust that
         // here so that JME doesn't freak out
-        int bpp = Math.max(16, _mode.getBitsPerPixel());
-        int width = _mode.getWidth(), height = _mode.getHeight();
-        DisplaySystem ds = _ctx.getDisplay();
-        ds.recreateWindow(width, height, bpp, _mode.getFrequency(), wantFullscreen);
+        int bpp = Math.max(16, _mode.bpp);
+        int width = _mode.width, height = _mode.height;
+
+        // TODO(phase3-host): recreate the LWJGL3 window at the new mode (was
+        // _ctx.getDisplay().recreateWindow(...)) and re-fit the parent view to the new size
+        // (was _ctx.getDisplay().getWidth()/getHeight()). The jME3 context owns the window; there
+        // is no fork DisplaySystem to drive here.
 
         // reconfigure the camera frustum in case the aspect ratio changed
         _ctx.getCameraHandler().getCamera().setFrustumPerspective(
@@ -353,8 +303,8 @@ public class OptionsView extends BDecoratedWindow
             if (_parent instanceof ShopView || _parent instanceof LogonView) {
                 _parent.center();
             } else {
-                _parent.setBounds(0, 0, _ctx.getDisplay().getWidth(),
-                                  _ctx.getDisplay().getHeight());
+                _parent.setBounds(0, 0, _ctx.getCamera().getWidth(),
+                                  _ctx.getCamera().getHeight());
             }
         }
         center();
@@ -369,7 +319,8 @@ public class OptionsView extends BDecoratedWindow
                 switch (button) {
                 case OptionDialog.OK_BUTTON:
                     // store these settings for later
-                    BangPrefs.updateDisplayMode(_mode);
+                    BangPrefs.updateDisplayMode(_mode.width, _mode.height, _mode.bpp,
+                        _mode.freq);
                     BangPrefs.updateFullscreen(_fullscreen.isSelected());
                     break;
 
@@ -387,11 +338,9 @@ public class OptionsView extends BDecoratedWindow
 
     protected void fullscreenRestart ()
     {
-        if (_ctx.getDisplay().isFullScreen() == BangPrefs.isFullscreen()) {
-            _fullscreen.setText("");
-            return;
-        }
-
+        // TODO(phase3-host): the fork compared the live display's fullscreen state
+        // (_ctx.getDisplay().isFullScreen()) against the preference; the jME3 context owns this
+        // now. Until the host flip, assume a restart is required when the preference changed.
         _fullscreen.setText(_msgs.get("m.restart_required"));
         OptionDialog.ResponseReceiver rr = new OptionDialog.ResponseReceiver() {
             public void resultPosted (int button, Object result) {
@@ -407,57 +356,65 @@ public class OptionsView extends BDecoratedWindow
                 "m.fullscreen_changed", "m.restart", "m.resume", rr);
     }
 
-    protected boolean isCurrent (DisplayMode mode)
-    {
-        return (_mode.getWidth() == mode.getWidth() &&
-                _mode.getHeight() == mode.getHeight() &&
-                (_mode.getFrequency() == 0 ||
-                 _mode.getFrequency() == mode.getFrequency()) &&
-                (_mode.getBitsPerPixel() == 0 ||
-                 _mode.getBitsPerPixel() == mode.getBitsPerPixel()));
-    }
-
+    /**
+     * A host-neutral display-mode descriptor. jME3 cutover: replaces the LWJGL2
+     * {@code org.lwjgl.opengl.DisplayMode} this view used to wrap; the Phase-3 LWJGL3 host
+     * supplies width/height/bpp/freq.
+     */
     protected static class ModeItem implements Comparable<ModeItem>
     {
-        public DisplayMode mode;
+        public int width, height, bpp, freq;
 
-        public ModeItem (DisplayMode mode) {
-            this.mode = mode;
+        public ModeItem (int width, int height, int bpp, int freq) {
+            this.width = width;
+            this.height = height;
+            this.bpp = bpp;
+            this.freq = freq;
         }
 
         public String toString () {
-            String text = mode.getWidth() + "x" + mode.getHeight();
-            if (mode.getBitsPerPixel() > 0) {
-                text += ("x" + mode.getBitsPerPixel() + " " +
-                         mode.getFrequency() + "Hz");
+            String text = width + "x" + height;
+            if (bpp > 0) {
+                text += ("x" + bpp + " " + freq + "Hz");
             }
             return text;
         }
 
+        @Override public boolean equals (Object o) {
+            if (!(o instanceof ModeItem)) {
+                return false;
+            }
+            ModeItem m = (ModeItem)o;
+            return width == m.width && height == m.height && bpp == m.bpp && freq == m.freq;
+        }
+
+        @Override public int hashCode () {
+            return (width * 31 + height) * 31 + bpp * 31 + freq;
+        }
+
         public int compareTo (ModeItem other) {
-            DisplayMode omode = other.mode;
-            if (mode.getWidth() != omode.getWidth()) {
-                return mode.getWidth() - omode.getWidth();
-            } else if (mode.getHeight() != omode.getHeight()) {
-                return mode.getHeight() - omode.getHeight();
-            } else if (mode.getBitsPerPixel() != omode.getBitsPerPixel()) {
-                return mode.getBitsPerPixel() - omode.getBitsPerPixel();
+            if (width != other.width) {
+                return width - other.width;
+            } else if (height != other.height) {
+                return height - other.height;
+            } else if (bpp != other.bpp) {
+                return bpp - other.bpp;
             } else {
-                return mode.getFrequency() - omode.getFrequency();
+                return freq - other.freq;
             }
         }
     }
 
     protected ActionListener _modelist = new ActionListener() {
         public void actionPerformed (ActionEvent event) {
-            updateDisplayMode(((ModeItem)_modes.getSelectedItem()).mode, true);
+            updateDisplayMode((ModeItem)_modes.getSelectedItem(), true);
         }
     };
 
     protected BangContext _ctx;
     protected BWindow _parent;
     protected MessageBundle _msgs;
-    protected DisplayMode _mode;
+    protected ModeItem _mode;
 
     protected BComboBox _modes;
     protected BCheckBox _fullscreen;
