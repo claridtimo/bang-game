@@ -1,4 +1,7 @@
-# jME3 cutover campaign
+# Epic 1 — jME3 cutover campaign
+
+_(Part of the [Epics](epics.md) roadmap. This is Epic 1; Three Rings code consolidation is
+[Epic 2](epic2-threerings-consolidation.md).)_
 
 The execution plan for Phase 5's **atomic** step: move the running game off the vendored 2005-era
 jME fork + LWJGL2 + libGDX onto jMonkeyEngine 3.9.0 + LWJGL3. Unlike the pre-cutover groundwork
