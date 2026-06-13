@@ -11,13 +11,13 @@ import java.util.List;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-import com.jme.util.export.JMEExporter;
-import com.jme.util.export.JMEImporter;
-import com.jme.util.export.InputCapsule;
-import com.jme.util.export.OutputCapsule;
-import com.jme.util.export.Savable;
-import com.jme.util.export.binary.BinaryExporter;
-import com.jme.util.export.binary.BinaryImporter;
+import com.jme3.export.JmeExporter;
+import com.jme3.export.JmeImporter;
+import com.jme3.export.InputCapsule;
+import com.jme3.export.OutputCapsule;
+import com.jme3.export.Savable;
+import com.jme3.export.binary.BinaryExporter;
+import com.jme3.export.binary.BinaryImporter;
 
 import com.threerings.io.Streamable;
 
@@ -93,7 +93,8 @@ public class BoardData
     }
 
     // from interface Savable
-    public void read (JMEImporter im)
+    @SuppressWarnings("unchecked")
+    public void read (JmeImporter im)
         throws IOException
     {
         InputCapsule capsule = im.getCapsule(this);
@@ -102,13 +103,14 @@ public class BoardData
     }
 
     // from interface Savable
-    public void write (JMEExporter ex)
+    public void write (JmeExporter ex)
         throws IOException
     {
         OutputCapsule capsule = ex.getCapsule(this);
         capsule.write(board, "board", null);
-        capsule.writeSavableArrayList(pieces, "pieces", NO_PIECES);
+        capsule.writeSavableArrayList(
+            pieces == null ? null : new ArrayList<Piece>(pieces), "pieces", NO_PIECES);
     }
 
-    protected static final List<Piece> NO_PIECES = new ArrayList<Piece>();
+    protected static final ArrayList<Piece> NO_PIECES = new ArrayList<Piece>();
 }

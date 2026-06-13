@@ -11,11 +11,11 @@ import java.util.List;
 import com.samskivert.util.ListUtil;
 import com.samskivert.util.ObjectUtil;
 
-import com.jme.util.export.InputCapsule;
-import com.jme.util.export.JMEExporter;
-import com.jme.util.export.JMEImporter;
-import com.jme.util.export.OutputCapsule;
-import com.jme.util.export.Savable;
+import com.jme3.export.InputCapsule;
+import com.jme3.export.JmeExporter;
+import com.jme3.export.JmeImporter;
+import com.jme3.export.OutputCapsule;
+import com.jme3.export.Savable;
 
 import com.threerings.crowd.client.PlaceController;
 import com.threerings.io.SimpleStreamableObject;
@@ -118,7 +118,7 @@ public class BangConfig extends GameConfig
         public int skill = 50;
 
         // from interface Savable
-        public void write (JMEExporter ex) throws IOException {
+        public void write (JmeExporter ex) throws IOException {
             OutputCapsule out = ex.getCapsule(this);
             out.write(bigShot, "bigShot", null);
             out.write(units, "team", null); // old name to avoid breakage
@@ -129,7 +129,7 @@ public class BangConfig extends GameConfig
         }
 
         // from interface Savable
-        public void read (JMEImporter im) throws IOException {
+        public void read (JmeImporter im) throws IOException {
             InputCapsule in = im.getCapsule(this);
             bigShot = in.readString("bigShot", null);
             units = in.readStringArray("team", null); // old name to avoid breakage
@@ -178,7 +178,7 @@ public class BangConfig extends GameConfig
         }
 
         // from interface Savable
-        public void write (JMEExporter ex) throws IOException {
+        public void write (JmeExporter ex) throws IOException {
             OutputCapsule out = ex.getCapsule(this);
             out.write(scenario, "scenario", null);
             out.write(board, "board", null);
@@ -187,7 +187,7 @@ public class BangConfig extends GameConfig
         }
 
         // from interface Savable
-        public void read (JMEImporter im) throws IOException {
+        public void read (JmeImporter im) throws IOException {
             InputCapsule in = im.getCapsule(this);
             scenario = in.readString("scenario", null);
             board = in.readString("board", null);
@@ -333,7 +333,7 @@ public class BangConfig extends GameConfig
     }
 
     // from interface Savable
-    public void write (JMEExporter ex) throws IOException
+    public void write (JmeExporter ex) throws IOException
     {
         OutputCapsule out = ex.getCapsule(this);
         out.write(rated, "rated", false);
@@ -342,13 +342,14 @@ public class BangConfig extends GameConfig
         out.write(speed.toString(), "speed", Speed.NORMAL.toString());
         out.write(minWeight, "minWeight", 0);
         out.write(respawnUnits, "respawnUnits", true);
-        out.writeSavableArrayList(rounds, "rounds", DEF_ROUNDS);
-        out.writeSavableArrayList(plist, "teams", DEF_PLAYERS); // old name to avoid breakage
-        out.writeSavableArrayList(criteria, "criteria", DEF_CRIT);
+        out.writeSavableArrayList(new ArrayList<Round>(rounds), "rounds", DEF_ROUNDS);
+        out.writeSavableArrayList(new ArrayList<Player>(plist), "teams", DEF_PLAYERS); // old name to avoid breakage
+        out.writeSavableArrayList(new ArrayList<Criterion>(criteria), "criteria", DEF_CRIT);
     }
 
     // from interface Savable
-    public void read (JMEImporter im) throws IOException
+    @SuppressWarnings("unchecked")
+    public void read (JmeImporter im) throws IOException
     {
         InputCapsule in = im.getCapsule(this);
         rated = in.readBoolean("rated", false);
