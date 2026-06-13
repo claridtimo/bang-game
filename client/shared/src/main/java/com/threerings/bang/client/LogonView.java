@@ -128,7 +128,7 @@ public class LogonView extends BWindow
         setStyleClass("logon_view");
 
         _ctx = ctx;
-        // TODO(phase3-host): set the main ViewPort background color (ColorRGBA.Black); host owns the viewport.
+        _ctx.getApp().setViewportBackground(com.jme3.math.ColorRGBA.Black);
 
         _msgs = ctx.getMessageManager().getBundle(BangAuthCodes.AUTH_MSGS);
         String username = BangPrefs.config.getValue("username", "");

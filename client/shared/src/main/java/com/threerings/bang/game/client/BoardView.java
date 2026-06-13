@@ -920,7 +920,7 @@ public class BoardView extends BComponent
         clearMarquee(0f);
 
         // restore the black background color
-        // TODO(phase3-host): set the main ViewPort background color (ColorRGBA.Black); host owns the viewport.
+        _ctx.getApp().setViewportBackground(com.jme3.math.ColorRGBA.Black);
 
         // let the child nodes know that they need to clean up any textures
         // they've created

@@ -501,11 +501,8 @@ public class BangUI
     {
         OggInputStream istream = new OggInputStream(new FileInputStream(file));
         Clip clip = new Clip();
-        // jME3 cutover: the fork set the OpenAL clip format from LWJGL2
-        // org.lwjgl.openal.AL10.AL_FORMAT_MONO16/STEREO16. The com.threerings.openal layer (and
-        // its AL binding) moves to LWJGL3 at the Phase-3 audio cutover; the AL_FORMAT_* token
-        // values are stable across LWJGL2/3, so we use the constant values here to stay off the
-        // LWJGL import until then. TODO(phase3-host): reference the LWJGL3 AL10 constants.
+        // The AL_FORMAT_* token values (0x1101/0x1103) are stable across the LWJGL2->LWJGL3 audio
+        // cutover; kept as local constants to avoid an AL10 import in this UI class.
         clip.format = (istream.getFormat() == OggInputStream.FORMAT_MONO16) ?
             AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
         clip.frequency = istream.getRate();

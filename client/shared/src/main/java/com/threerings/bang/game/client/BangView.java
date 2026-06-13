@@ -681,11 +681,8 @@ public class BangView extends BWindow
             // make sure we're not too late to the party
             if (_bangobj != null) {
                 int[] histo = _perfhisto.getBuckets().clone();
-                // TODO(phase3-host): the fork read the GL driver identity directly via LWJGL2
-                // GL11.glGetString(GL_VENDOR/RENDERER/VERSION) on the GL thread for the perf
-                // report. The LWJGL3/jME3 host exposes this through the Renderer's GL caps; wire
-                // the real driver string in at the host flip.
-                String driver = "unknown"; // TODO(phase3-host): GL vendor, renderer, version
+                // GL driver identity (vendor / renderer / version), read on the render thread.
+                String driver = _ctx.getApp().getGLRendererString();
                 _bangobj.service.reportPerformance(_boardId, driver, histo);
             }
 

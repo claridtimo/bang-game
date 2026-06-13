@@ -140,7 +140,7 @@ public class LobbyView extends BWindow
         super.wasAdded();
 
         // switch to a gray background
-        // TODO(phase3-host): set the main ViewPort background color (ColorRGBA.Gray); host owns the viewport.
+        _ctx.getApp().setViewportBackground(com.jme3.math.ColorRGBA.Gray);
     }
 
     @Override // documentation inherited
@@ -149,7 +149,7 @@ public class LobbyView extends BWindow
         super.wasRemoved();
 
         // restore the black background
-        // TODO(phase3-host): set the main ViewPort background color (ColorRGBA.Black); host owns the viewport.
+        _ctx.getApp().setViewportBackground(com.jme3.math.ColorRGBA.Black);
     }
 
     // documentation inherited from interface PlaceView

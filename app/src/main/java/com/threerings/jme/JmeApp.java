@@ -244,6 +244,60 @@ public class JmeApp extends SimpleApplication
         return _frameRate;
     }
 
+    /**
+     * Sets the main 3D ViewPort's clear/background color (the host owns the viewport; views that
+     * used to set the fork display background call through here).
+     */
+    public void setViewportBackground (ColorRGBA color)
+    {
+        if (viewPort != null) {
+            viewPort.setBackgroundColor(color);
+        }
+    }
+
+    /**
+     * Sets the window title (replaces the fork {@code Display.setTitle}).
+     */
+    public void setWindowTitle (String title)
+    {
+        com.jme3.system.JmeContext ctx = getContext();
+        if (ctx != null) {
+            ctx.setTitle(title);
+        }
+    }
+
+    /**
+     * Returns a GL driver identity string (vendor / renderer / version) for the perf report
+     * (replaces the fork's LWJGL2 {@code GL11.glGetString} reads). Best-effort; must be called on
+     * the render thread.
+     */
+    public String getGLRendererString ()
+    {
+        try {
+            String vendor = org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_VENDOR);
+            String renderer = org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_RENDERER);
+            String version = org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_VERSION);
+            return vendor + " / " + renderer + " / " + version;
+        } catch (Throwable t) {
+            return "unknown";
+        }
+    }
+
+    /**
+     * Requests a framebuffer screenshot be written to the local data dir on the next frame
+     * (replaces the fork {@code Renderer.takeScreenShot}). Uses a jME3 {@code ScreenshotAppState}.
+     */
+    public void takeScreenshot (String dir, String filename)
+    {
+        com.jme3.app.state.ScreenshotAppState shotter =
+            stateManager.getState(com.jme3.app.state.ScreenshotAppState.class);
+        if (shotter == null) {
+            shotter = new com.jme3.app.state.ScreenshotAppState(dir + java.io.File.separator);
+            stateManager.attach(shotter);
+        }
+        shotter.takeScreenshot();
+    }
+
     // from interface RunQueue
     public void postRunnable (Runnable r)
     {

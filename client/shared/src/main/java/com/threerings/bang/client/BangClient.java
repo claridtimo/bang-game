@@ -313,8 +313,7 @@ public class BangClient extends BasicClient
             return;
         }
 
-        // TODO(phase3-host): set window title on the jME3 context
-        // Display.setTitle(_ctx.xlate(BangCodes.BANG_MSGS, "m.app_title"));
+        _ctx.getApp().setWindowTitle(_ctx.xlate(BangCodes.BANG_MSGS, "m.app_title"));
 
         // upgrade getdown if appropriate
         File newgd = new File(localDataDir("code/getdown-pro-new.jar"));
@@ -894,9 +893,8 @@ public class BangClient extends BasicClient
         // update our title to contain our username
         PlayerObject user = _ctx.getUserObject();
         if (!user.tokens.isAnonymous()) {
-            // TODO(phase3-host): set window title on the jME3 context
-            // Display.setTitle(
-            //     _msgmgr.getBundle(BangCodes.BANG_MSGS).get("m.online_title", user.username));
+            _ctx.getApp().setWindowTitle(
+                _msgmgr.getBundle(BangCodes.BANG_MSGS).get("m.online_title", user.username));
         }
 
         // get a reference to the player service
