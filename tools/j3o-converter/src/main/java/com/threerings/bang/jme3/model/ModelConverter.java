@@ -34,13 +34,13 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.util.BufferUtils;
 
-import com.threerings.jme.model.Model;
+import com.threerings.jme.tools.model.Model;
 import com.threerings.jme.model.ModelTextureResolver;
-import com.threerings.jme.model.ModelAnimAccess;
-import com.threerings.jme.model.ModelMesh;
-import com.threerings.jme.model.ModelMeshAccess;
-import com.threerings.jme.model.ModelNode;
-import com.threerings.jme.model.SkinMesh;
+import com.threerings.jme.tools.model.ModelAnimAccess;
+import com.threerings.jme.tools.model.ModelMesh;
+import com.threerings.jme.tools.model.ModelMeshAccess;
+import com.threerings.jme.tools.model.ModelNode;
+import com.threerings.jme.tools.model.SkinMesh;
 
 /**
  * Converts a loaded fork {@link Model} (the vendored jME-fork scenegraph deserialized from

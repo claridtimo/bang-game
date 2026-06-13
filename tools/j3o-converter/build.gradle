@@ -7,9 +7,16 @@ plugins {
 }
 
 dependencies {
-  // the fork loader (app) plus the game-sprite emission controller classes that 61
-  // model.dat files reference by class name during deserialization
+  // the fork-free app facade (ModelTextureResolver) + the game-sprite emission controller
+  // classes that 61 model.dat files reference by class name during deserialization
   implementation project(":client:shared")
+
+  // the fork-coupled build-time model classes (com.threerings.jme.tools.model.{Model,ModelMesh,
+  // SkinMesh,ModelNode,...}) live in app's `modeltool` source set; the converter READS fork
+  // model.dat through them via the fork BinaryImporter. Pull the modeltool runtime classpath
+  // (which transitively carries the fork `jme` module + the fork model.dat format).
+  implementation project(":app").sourceSets.modeltool.output
+  implementation project(":app").sourceSets.modeltool.runtimeClasspath
 
   implementation "org.jmonkeyengine:jme3-core:${jme3Version}"
   // AWTLoader, for loading the .png textures referenced by converted materials
@@ -27,5 +34,14 @@ tasks.register("verifyCorpus", JavaExec) {
   group = "verification"
   classpath = sourceSets.main.runtimeClasspath
   mainClass = "com.threerings.bang.tools.j3o.VerifyCorpus"
+  args = [ rootProject.file("assets/build/staging/rsrc").absolutePath ]
+}
+
+// Phase 3: bake every staged model.dat to a sibling model.j3o that the runtime client loads
+// natively through the jME3 AssetManager (ModelCache). The assets module invokes this after
+// compileModels (see assets/build.gradle).
+tasks.register("bakeModels", JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = "com.threerings.bang.tools.j3o.BakeModels"
   args = [ rootProject.file("assets/build/staging/rsrc").absolutePath ]
 }

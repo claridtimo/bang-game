@@ -176,6 +176,15 @@ tasks.register("compileModels") {
 }
 processResources.dependsOn "compileModels"
 
+// Phase 3: bake each staged model.dat into a sibling model.j3o that the runtime client loads
+// natively through the jME3 AssetManager (ModelCache). The baker (tools:j3o-converter:bakeModels)
+// reads the fork model.dat via the retained fork reader and writes pure-jME3 .j3o, so no fork
+// dependency reaches the runtime. It must run after compileModels has staged the .dat files.
+def bakeModelsTask = project(":tools:j3o-converter").tasks.named("bakeModels")
+bakeModelsTask.configure { mustRunAfter "compileModels" }
+tasks.named("compileModels").configure { finalizedBy bakeModelsTask }
+processResources.dependsOn bakeModelsTask
+
 // generates lists of props, units, etc.
 tasks.register("updateLists", Exec) {
   // the list generation expects the staging area to have been populated

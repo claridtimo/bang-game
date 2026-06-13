@@ -1,7 +1,7 @@
 //
 // $Id$
 
-package com.threerings.jme.model;
+package com.threerings.jme.tools.model;
 
 import com.jme.math.Quaternion;
 import com.jme.math.Vector3f;

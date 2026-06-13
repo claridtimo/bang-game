@@ -1,7 +1,7 @@
 //
 // $Id$
 
-package com.threerings.jme.model;
+package com.threerings.jme.tools.model;
 
 /**
  * Read access to {@link ModelMesh}'s protected configuration fields for the j3o
