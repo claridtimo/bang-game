@@ -187,3 +187,153 @@ keep a runtime indirection between "texture name stored in the model" and "actua
 `Texture` instance" (variant remapping + colorization + detail scaling). A baked-in
 texture reference in `.j3o` covers the *default* look; colorized instances need a
 runtime re-resolve step regardless of format.
+
+## 5. The prototype converter and what it proves (Phase 5, step 2)
+
+`tools/j3o-converter` (an isolated module — the only one with jME3 deps, wired into
+`settings.gradle` as `tools:j3o-converter`, nothing depends on it) loads a compiled
+`model.dat` through the existing fork loader headless (`DummyDisplaySystem` +
+`Model.readFromFile`), walks the `ModelNode`/`ModelMesh` tree, and emits a jME3 `.j3o`:
+
+- geometry: position + normal + single UV set + indexed triangles, copied buffer-for-
+  buffer (no re-tessellation — the fork already did Forsyth cache optimization);
+- node hierarchy and per-node local TRS (fork `Vector3f`/`Quaternion` → jME3 equivalents);
+- texture path mapping mirroring `ModelCache.ModelTextureProvider` (model-relative unless
+  `/`-prefixed; `foo/../bar` normalized), baked onto a placeholder `Lighting.j3md` material
+  with the fork render flags carried as far as that material allows (face culling →
+  `FaceCullMode`, additive/transparent → `BlendMode` + `Transparent` bucket +
+  `AlphaDiscardThreshold`);
+- fork-only metadata preserved as jME3 user data so nothing is lost in the round trip:
+  the entire `model.properties` table (`bang.properties`), `bang.animations`, `bang.type`,
+  and per-geometry `bang.textureKey` / `bang.textures` (the latter is the multi-valued
+  random-pick / colorization list the runtime needs).
+
+Multi-valued texture properties bake the *first* entry as the default and keep the full
+list in user data. `SkinMesh` is converted as its base pose (weights dropped, reported).
+Animations and controllers are detected, counted, and dropped with a `NOTE`. Procedural
+`com.jmex.effects.particles.ParticleMesh` nodes (8 models) are skipped with a `NOTE`
+rather than crashing the walk.
+
+**Verification (the acceptance bar):** the converter re-imports its own `.j3o` through the
+stock jME3 `BinaryImporter` headless and asserts per-geometry mesh-stat parity — vertex
+count, triangle count, and resolved texture ref, in traversal order. Result over the
+**full 310-model corpus: 310/310 PASS**. Only 2 models emit a graceful "texture not found"
+warning (`extras/boom_town/barrel_fragment`'s texture name has a stray `rsrc/props/...`
+mid-path; `bonuses/ghost_town/plague` points at `units/gunslinger/pistol.png` via a path
+that doesn't normalize to an on-disk file) — both leave the material untextured rather
+than failing. Example (`frontier_town/saloon`): 9 geometries, 1169 vertices, 711 triangles,
+all texture refs — PARITY OK. `./gradlew build -x test` stays green with the module wired
+in. Run it via `./gradlew :tools:j3o-converter:run --args="<abs model.dat> <abs outDir>
+<abs rsrc root>"`.
+
+## 6. Scale-out assessment
+
+### 6.1 Coverage of the static-prop approach
+
+Categorizing all 310 models by source features (`model.properties` `animations`/
+`controllers` keys, `skinMesh` in the `.mxml`):
+
+| Class | Count | % | Prototype fidelity today |
+|---|---|---|---|
+| **Fully static** (no animation, no skin, no controller) | 237 | 76% | **Complete** — geometry, UVs, transforms, textures all round-trip |
+| Static geometry but with a controller | (subset of 61 ctrl) | — | Geometry complete; controller behavior dropped (see §6.2) |
+| Animated (rigid or skinned) | 36 | 12% | **Base pose only** — first-frame geometry round-trips; motion dropped |
+| Skinned meshes (bipeds/quadrupeds) | 27 | 9% | Base pose only; bone weights dropped |
+| Models with `ParticleMesh` effect nodes | 8 | 3% | Those nodes skipped; rest of the model converts |
+
+(Counts overlap: an animated unit is usually also skinned and may carry controllers and
+particle nodes.) So the static-prop pipeline as built covers **~76% of models at full
+fidelity today**, and produces a usable (motionless) `.j3o` for the remaining 24%. No
+model fails to convert. The visually-important gap is the **36 animated models** (21
+units, 9 extras, 3 bonuses, 3 props) and the **61 controller-driven models** — these are
+the units and effects the player actually watches move, so by *salience* the gap is larger
+than 24%.
+
+Layered avatars (§4) are **out of scope entirely** — 0 of the 310 models are avatars; they
+are a separate 2D paper-doll system. Nothing in this pipeline touches them. The only shared
+surface is texture/colorization resolution, which the `.j3o` already defers to runtime via
+the preserved `bang.textures` user data.
+
+### 6.2 What animation conversion needs
+
+The stored format is the easy case for jME3 (see §1.3, §3): **fully-sampled per-frame TRS
+keyframes on named nodes**, no curves, no morph targets. The fork's runtime
+SKIN/MORPH/FLIPBOOK modes are *runtime baking strategies* over that bone animation, not
+storage — a jME3 port only has to reproduce the node animation and let jME3's own skinning
+do the rest. jME3 3.9's modern `com.jme3.anim` system maps onto it almost 1:1:
+
+| Fork construct (in `model.dat`) | jME3 3.9 target | Notes |
+|---|---|---|
+| `Model.Animation` (frameRate + packed 10-float TRS × targets × frames) | one `AnimClip` per animation, holding one `TransformTrack` per moving node | times[] = frame/frameRate; translations/rotations/scales[] read straight from the packed buffer. Trivial unpack. |
+| `Model.Animation.transformTargets` (node refs) | the `TransformTrack` target (a `Joint`, or a `Spatial` for rigid anim) | resolve by the same node name used in the hierarchy |
+| `repeatType` (clamp/wrap/cycle) | `AnimComposer` action `LoopMode` (DontLoop/Loop/Cycle) | direct enum mapping |
+| `SkinMesh.weightGroups` (bones[] + interleaved weights, vertices pre-sorted into runs) | `BoneIndex` + `BoneWeight` vertex buffers (4-weight) + an `Armature`/`Joint` tree + `SkinningControl` | needs converting the named `ModelNode` bone tree to an `Armature`, and expanding the variable-width weight groups into jME3's fixed 4-influence-per-vertex layout (clamp/renormalize if any vertex has >4 — verify against the corpus) |
+| Rigid animation (mesh parented to animated node, no weights) | `TransformTrack` on the `Geometry`'s parent `Node` + `AnimComposer` on the root | no skinning control needed; this is the simpler ~half of the animated set |
+| `Rotator` / `Translator` (83 + small) | bake to a looping `TransformTrack`, **or** port as a small jME3 `Control` | constant-velocity spin/translate; a `Control` is faithful and cheap |
+| `BillboardController` (46) | jME3 `BillboardControl` | direct equivalent exists |
+| `TextureTranslator` / `TextureAnimator` (UV scroll / flipbook) | custom jME3 `Control` mutating the material's UV offset, or a small shader | no stock equivalent; small custom control |
+| `*Emission` game-event effects (Gunshot/DudShot/Misfire/Particle/SmokePlume/Transient, ~64 refs) | jME3 `ParticleEmitter` / effect controls wired to game events | **not a model-format problem** — these are gameplay effect spawners keyed to animation frames; they belong with the game-event/effects port (Phase 5 step 5), not the model converter. The `.j3o` just needs to preserve the emission-node marker and frame metadata (already in `bang.properties`). |
+
+Effort ranking: rigid keyframe animation is the cheapest win (no skinning); `TransformTrack`
+unpacking is mechanical. Skinning adds the `Armature` build + 4-weight clamp. Controllers
+split into "have a jME3 equivalent" (Rotator, Billboard — easy) and "custom small control"
+(texture scroll). The emission controllers are explicitly deferred to the effects port.
+
+### 6.3 Recommendation: build-time convert vs runtime loader
+
+**Recommendation: build a runtime jME3 `AssetLoader` that reads `model.dat` directly, and
+keep the `.j3o` exporter only as an optional build-time optimization / debugging aid.**
+
+Reasoning:
+
+- **We own both formats and the parser.** The fork's `BinaryImporter` already deserializes
+  every `model.dat` headlessly today (proven: all 310 load in this converter). The
+  conversion logic — fork `Spatial` tree → jME3 scenegraph — is identical whether it runs
+  at build time or inside `AssetManager.loadModel`. Wrapping the exact code this prototype
+  already runs in a `com.jme3.asset.AssetLoader<Model>` is a small delta and means
+  **`ModelCache` keeps loading `*/model.dat` with no new build step and no asset
+  duplication.** The 310 `.dat` files are already produced by the existing, untouched
+  `compileModels` task.
+- **Build-time `.j3o` adds a pipeline stage and a second copy of every model** (310 `.dat`
+  *and* 310 `.j3o` staged/shipped), plus up-to-date wiring, for no fidelity gain — the
+  geometry is byte-identical either way. It also fights the resource pipeline this plan is
+  explicitly told not to disturb.
+- **Fidelity is equal.** Both paths run the same conversion; neither can recover data the
+  `.dat` doesn't contain. The runtime-loader path is actually *better* for the dynamic
+  cases this codebase needs: colorization, multi-valued random texture pick, variant
+  re-filtering, and detail-level scaling are all **runtime re-resolve steps** today
+  (`Model.resolveTextures` / `ModelCache`). A baked `.j3o` would still have to defer those
+  to runtime (carried in user data) — so the runtime loader removes a redundant bake step
+  rather than adding one.
+- **The one build-time advantage** — parse/optimize cost moved off the client and load-
+  time `.j3o` being marginally faster to deserialize — is negligible here: `model.dat` is
+  already a pre-optimized binary, and the corpus is 310 small models, not thousands.
+- **Caveat:** a runtime loader pulls the fork's `com.jme.*` reader classes into the jME3
+  client at runtime (they coexist in different packages — no clash), and the
+  classpath-hazard from §2 stands: the 61 controller-referencing `model.dat` need the
+  `client:shared` emission classes on the classpath to deserialize. They already are at
+  runtime, so this is free for the runtime loader but would be an extra dependency for a
+  standalone build-time tool.
+
+Net: the runtime `AssetLoader` is less build complexity, equal fidelity, fewer moving
+parts, and aligns with the existing `ModelCache`/colorization indirection. Use this
+prototype's exporter for spot-checking and for any future "freeze a model to pure jME3"
+need, but make the loader the primary path.
+
+### 6.4 Effort estimate for full coverage
+
+Building on this prototype (geometry/UV/texture/static = done, 76% at full fidelity):
+
+| Work item | Estimate |
+|---|---|
+| Wrap the converter as a runtime `AssetLoader<Model>` + integrate with a jME3 `ModelCache` (texture re-resolve, colorization, variant filtering, multi-texture random pick) | 3–5 agent-days |
+| Rigid keyframe animation → `AnimClip`/`TransformTrack` + `AnimComposer` (the ~half of animated models with no skinning) | 2–3 agent-days |
+| Skinning: `ModelNode` bone tree → `Armature`/`Joint`, weight-group → 4-influence `BoneIndex`/`BoneWeight`, `SkinningControl`; verify max-influence clamp against the 27 skinned meshes | 4–6 agent-days |
+| Procedural controllers with jME3 equivalents (Rotator, Billboard, texture scroll/flipbook) | 2–3 agent-days |
+| Emission controllers (Gunshot/Misfire/SmokePlume/…) — **deferred to the effects/game-event port** (Phase 5 step 5), not counted here | (separate) |
+| Material upgrade beyond the placeholder (emissive/sphere-map/additive/translucent CPU-sort fidelity vs jME3 materials) + per-town visual regression pass | 3–5 agent-days |
+
+**Model pipeline to full coverage (excluding the effects port): ~2–3 agent-weeks**,
+gated by human visual review. The prototype has retired the format-and-parity risk for the
+bulk of the corpus; the remaining work is animation/skinning plumbing onto jME3's
+`com.jme3.anim` system, which the stored format maps onto cleanly.
