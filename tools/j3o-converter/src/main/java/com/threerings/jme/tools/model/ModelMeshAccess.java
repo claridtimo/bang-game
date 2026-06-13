@@ -69,6 +69,14 @@ public final class ModelMeshAccess
         return mesh._weightGroups;
     }
 
+    /** The inverse of the skin mesh's model-space reference (bind-pose) transform, computed by
+     * the fork's {@code setReferenceTransforms()}. The skin's stored vertices live in mesh-local
+     * space; {@code inverse(this)} is the mesh-local -> model(root) space transform at bind. */
+    public static com.jme.math.Matrix4f invRefTransform (SkinMesh mesh)
+    {
+        return mesh._invRefTransform;
+    }
+
     private ModelMeshAccess ()
     {
     }

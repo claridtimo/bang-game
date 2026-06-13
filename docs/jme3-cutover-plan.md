@@ -537,6 +537,40 @@ fidelity + Phase-3 input):
   clone. Next step: inspect the baked `.j3o`'s `Armature`/skin weights vs. the fork rig (compare a
   rest-pose `-Ptime=0` render to a posed frame; check bone bind matrices / weight assignment in
   `ModelConverter`/`ModelToJ3o`).
+
+  **FIXED (2026-06-14, Phase 6b).** Root cause was the skin bake in
+  `tools/j3o-converter/.../ModelConverter.java` — three compounding bugs, all confirmed by the
+  rest-pose (`-Ptime=0`) render being contorted (so: bind-matrix bugs, not anim tracks):
+  1. **Inverse-bind matrices were never computed.** The armature called only
+     `Armature.saveInitialPose()`, which sets the animation *reset* pose but does **not** fill
+     `Joint.inverseModelBindMatrix` — those defaulted to identity, so jME3's skinning offset
+     (`jointModel * inverseBind`) collapsed to the raw joint model transform and shattered the rig.
+     Now we call `armature.update(); armature.saveBindPose(); armature.saveInitialPose()` so the
+     inverse-bind matrices are `inverse(jointModelBind)` taken at the reference pose.
+  2. **Intermediate (non-bone) node transforms were dropped.** The armature parented each bone
+     under its *nearest bone ancestor* using the bone's *local* transform, but the fork accumulates
+     a bone's model transform through the **whole** ancestor chain (`ModelNode.updateWorldVectors`),
+     including non-bone nodes. We now build a `Joint` for every node in the bones' full ancestor
+     closure with the true parent links, so joint model transforms equal the fork node model
+     transforms.
+  3. **Skin vertices were in the wrong space.** The fork stores skin vertices in mesh-local space
+     and frames bone matrices by the mesh's inverse model-ref transform; jME3 skins in the
+     armature/model (root) frame. We now bake the skin vertices into model space
+     (`vertex' = inverse(skin._invRefTransform) * vertex`) and reparent the skinned `Geometry` to
+     the model root with an identity transform, so the geometry's own node-chain transform is not
+     re-applied on top of the already-model-space skinning.
+
+  Files changed: `tools/j3o-converter/.../jme3/model/ModelConverter.java` (the three fixes above),
+  `tools/j3o-converter/.../jme/tools/model/ModelMeshAccess.java` (expose `SkinMesh._invRefTransform`),
+  and the two parity verifiers `ModelToJ3o.java` / `VerifyCorpus.java` (match skinned geometry by
+  content rather than scene-graph path, since the reparenting deliberately changes the path).
+  Verified: full-corpus parity now 310/310 PASS (was 283 PASS / 27 FAIL — all 27 were the skinned
+  models). Rest + posed (`standing`, `walking_cycle`, `shooting`) renders of
+  `units/frontier_town/shotgunner`, `units/frontier_town/cavalry`, and
+  `units/indian_post/buffalo_rider` all show coherent, correctly-deformed armatures (cowboy /
+  mounted cowboy / buffalo + rider) instead of the previous contortion. Repro:
+  `./gradlew :assets:compileModels --rerun-tasks` then
+  `./gradlew :tools:j3o-converter:renderModelToPng -PmodelType=units/frontier_town/shotgunner -Panim=standing -Ptime=0 -Pout=/tmp/rest.png`.
 - **WASD camera panning doesn't work at all** (functional, not cosmetic). `GodViewHandler` is a jME3
   `AnalogListener`, but its `registerWith(InputManager)` was deferred at the Phase-3 host flip and is
   never called, so keyboard pan/zoom never reaches the camera. Wire it in the jME3 host
