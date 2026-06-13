@@ -1,6 +1,6 @@
 dependencies {
   api project(":app")
-  api "com.samskivert:samskivert:1.10"
+  api "com.samskivert:samskivert:1.11"
   api "com.threerings:narya:${naryaVersion}"
   api "com.threerings:nenya:${nenyaVersion}"
   api "com.threerings:vilya:1.7.1"
