@@ -28,9 +28,11 @@ public class BangPrefs
     /** Contains our client-side preferences. */
     public static PrefsConfig config = new PrefsConfig("bang");
 
-    /** When -Dsilent=true is passed, music and effects volumes report 0 (start muted). A dev
-     * convenience that does not touch the persisted volume preferences. */
-    public static final boolean SILENT = Boolean.getBoolean("silent");
+    /** Dev convenience during the jME3 cutover: the client starts MUTED by default (music and
+     * effects volumes report 0) so repeated test launches don't blast sound. Pass -Dsound=true
+     * to hear audio. Does not touch the persisted volume prefs. TODO(phase6): restore to
+     * opt-in (default audible) before this branch ships. */
+    public static final boolean SILENT = !Boolean.getBoolean("sound");
 
     /**
      * Returns true if no logon information is set.
