@@ -28,6 +28,10 @@ public class BangPrefs
     /** Contains our client-side preferences. */
     public static PrefsConfig config = new PrefsConfig("bang");
 
+    /** When -Dsilent=true is passed, music and effects volumes report 0 (start muted). A dev
+     * convenience that does not touch the persisted volume preferences. */
+    public static final boolean SILENT = Boolean.getBoolean("silent");
+
     /**
      * Returns true if no logon information is set.
      */
@@ -189,7 +193,8 @@ public class BangPrefs
      */
     public static int getMusicVolume ()
     {
-        return config.getValue("music_volume", 50);
+        // dev convenience: launch with -Dsilent=true to start muted (does not persist)
+        return SILENT ? 0 : config.getValue("music_volume", 50);
     }
 
     /**
@@ -205,7 +210,8 @@ public class BangPrefs
      */
     public static int getEffectsVolume ()
     {
-        return config.getValue("effects_volume", 100);
+        // dev convenience: launch with -Dsilent=true to start muted (does not persist)
+        return SILENT ? 0 : config.getValue("effects_volume", 100);
     }
 
     /**
