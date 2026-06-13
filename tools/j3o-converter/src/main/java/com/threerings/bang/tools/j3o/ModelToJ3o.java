@@ -143,7 +143,12 @@ public class ModelToJ3o
         return root;
     }
 
-    /** Recursively converts a fork spatial (ModelNode/ModelMesh tree) to jME3. */
+    /**
+     * Recursively converts a fork spatial (ModelNode/ModelMesh tree) to jME3. Returns
+     * {@code null} for spatials this prototype does not convert (e.g. procedural
+     * {@code ParticleMesh} effect geometry, present in 8 of the 310 models), which the
+     * caller skips rather than crashing on.
+     */
     protected Spatial convertSpatial (
         com.jme.scene.Spatial spatial, String path, List<GeoStats> stats)
     {
@@ -155,12 +160,18 @@ public class ModelToJ3o
         } else if (spatial instanceof com.jme.scene.Node fnode) {
             Node node = new Node(name);
             for (int ii = 0, nn = fnode.getQuantity(); ii < nn; ii++) {
-                node.attachChild(convertSpatial(fnode.getChild(ii), childPath, stats));
+                Spatial child = convertSpatial(fnode.getChild(ii), childPath, stats);
+                if (child != null) {
+                    node.attachChild(child);
+                }
             }
             converted = node;
         } else {
-            throw new IllegalStateException(
-                "Unexpected spatial in model.dat: " + spatial.getClass().getName());
+            // procedural effect geometry (ParticleMesh, etc.); reproduced at runtime
+            // from the model's controllers, not stored as convertible mesh data
+            System.out.println("NOTE: skipping " + childPath + " (" +
+                spatial.getClass().getName() + "; not convertible geometry).");
+            return null;
         }
         copyTransform(spatial, converted);
         return converted;
