@@ -6,10 +6,10 @@ package com.threerings.bang.bounty.data;
 import java.io.IOException;
 import java.util.HashSet;
 
-import com.jme.util.export.InputCapsule;
-import com.jme.util.export.JMEExporter;
-import com.jme.util.export.JMEImporter;
-import com.jme.util.export.OutputCapsule;
+import com.jme3.export.InputCapsule;
+import com.jme3.export.JmeExporter;
+import com.jme3.export.JmeImporter;
+import com.jme3.export.OutputCapsule;
 
 import com.samskivert.util.StringUtil;
 
@@ -89,7 +89,7 @@ public class IntStatCriterion extends Criterion
     }
 
     // from interface Savable
-    public void write (JMEExporter ex) throws IOException
+    public void write (JmeExporter ex) throws IOException
     {
         OutputCapsule out = ex.getCapsule(this);
         out.write(stat.toString(), "stat", null);
@@ -98,7 +98,7 @@ public class IntStatCriterion extends Criterion
     }
 
     // from interface Savable
-    public void read (JMEImporter im) throws IOException
+    public void read (JmeImporter im) throws IOException
     {
         InputCapsule in = im.getCapsule(this);
         stat = StatType.valueOf(in.readString("stat", null));
