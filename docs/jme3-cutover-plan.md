@@ -154,6 +154,13 @@ skeleton until then).
   `EmissionController` base remain only in `modeltool` (fork). The jME3 procedural-control
   equivalents are a cheap follow-up; the emission controllers are the effects port (Phase 4).
 
+> **Deferred validation (gated on Phase 2):** `assets:compileModels` — the fork→`model.dat`
+> pipeline now driven by app's `modeltool` source set — cannot run until client/shared compiles:
+> its taskdef classpath pulls `configurations.tools → :tools → :server → :client:shared`. So the
+> model pipeline (and a full `assets:deploy`) is re-verified at the END of Phase 2, not now. This
+> was always the case (the tools→server→client chain predates the cutover); it just surfaces now
+> because client/shared is mid-migration.
+
 ### Phase 2 — `client/shared` migration (the bulk: 164 fork-using files)
 
 **Concrete starting point (the app `Model` facade + the seam edits app's migration forces):**
