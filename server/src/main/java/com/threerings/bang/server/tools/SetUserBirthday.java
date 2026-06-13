@@ -32,8 +32,32 @@ public class SetUserBirthday
         Date birthday = Date.valueOf(args[1]);
 
         // connect to the user database exactly as the server does (db.userdb.url plus the
-        // shared db.default.* credentials)
+        // shared db.default.* credentials), always shutting the provider down afterward
+        boolean updated;
         ConnectionProvider conprov = new StaticConnectionProvider(ServerConfig.getJDBCConfig());
+        try {
+            updated = setBirthday(conprov, username, birthday);
+        } finally {
+            conprov.shutdown();
+        }
+
+        // report (and signal failure) only after the DB resources are released, so the exit
+        // never bypasses cleanup
+        if (updated) {
+            System.out.println("Set birthday for '" + username + "' to " + birthday + ".");
+        } else {
+            System.err.println("No such user '" + username + "'.");
+            System.exit(1);
+        }
+    }
+
+    /**
+     * Upserts the given user's {@code AUXDATA} birthday. Returns false if no such user exists.
+     */
+    protected static boolean setBirthday (
+        ConnectionProvider conprov, String username, Date birthday)
+        throws Exception
+    {
         Connection conn = conprov.getConnection(USER_DB_IDENT, false);
         try {
             // AUXDATA also carries NOT NULL gender/missive columns, so seed them on insert;
@@ -45,17 +69,12 @@ public class SetUserBirthday
             try {
                 stmt.setDate(1, birthday);
                 stmt.setString(2, username);
-                if (stmt.executeUpdate() == 0) {
-                    System.err.println("No such user '" + username + "'.");
-                    System.exit(1);
-                }
+                return stmt.executeUpdate() > 0;
             } finally {
                 stmt.close();
             }
-            System.out.println("Set birthday for '" + username + "' to " + birthday + ".");
         } finally {
             conprov.releaseConnection(USER_DB_IDENT, false, conn);
-            conprov.shutdown();
         }
     }
 
