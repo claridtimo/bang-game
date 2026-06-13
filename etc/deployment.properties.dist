@@ -9,7 +9,8 @@
 # The standard ports on which the server listens for client connections. These
 # may be overridden on a server by server basis below.
 
-server_ports = 47624, 443
+# (443 requires root privileges to bind; add it back for production deployments)
+server_ports = 47624
 
 #
 # The public hostname and ports for the various town lobby servers.
