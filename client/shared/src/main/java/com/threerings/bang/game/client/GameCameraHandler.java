@@ -7,7 +7,7 @@ import java.awt.Rectangle;
 
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
-import com.jme.renderer.Camera;
+import com.jme3.renderer.Camera;
 
 import com.threerings.jme.camera.CameraHandler;
 
@@ -162,7 +162,7 @@ public class GameCameraHandler extends CameraHandler
             result = new Vector3f();
         }
         float dist = -1f * (_camera.getLocation().z - _groundz) /
-            _ground.normal.dot(_camera.getDirection());
+            _ground.getNormal().dot(_camera.getDirection());
         result.scaleAdd(dist, _camera.getDirection(), _camera.getLocation());
         return result;
     }
