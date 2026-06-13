@@ -447,6 +447,43 @@ the bottleneck is coverage of a hard-to-assert app, not the runner). The two har
 2. **Headless Narya bot client + server-side dobj assertions.** A rendering-free client that logs in,
    drives gameplay through the service API, and asserts on distributed-object state — the closest
    thing to "Playwright for this game." Leans on the existing AI/`-autoplay`/bot + the Narya wire.
+   - **DONE.** New leaf module `tools:bot-client` (`tools/bot-client/`), entry point
+     `com.threerings.bang.tools.bot.BangBotClient`. It is a pure Presents network client: a bare
+     `new Client(BangCredentials, BasicRunQueue)` + a minimal hand-rolled `ParlorContext`
+     (Location/Occupant/Chat/Parlor directors only) driven by `rqueue.run()` — **no jME3/LWJGL/GL/
+     BUI**; it never touches `BangClient`/`BasicClient`/`JmeApp`. (jME3 jars sit inertly on the
+     classpath via `:server`→`:client:shared`, but no display is ever initialized.) Modelled on
+     narya's own `presents/crowd` `TestClient`s. How it works: logs in `test`/`yeehaw` (mirrors
+     `BangClient.createCredentials` incl. the `IdentUtil` machine ident — the server rejects a blank
+     one), calls `PlayerService.playComputer(players, scenarios, board, autoplay=true)` to spawn an
+     all-AI game (needs the admin token, which test/yeehaw holds), intercepts the `gameIsReady`
+     notification via a `GameReadyObserver`, and enters the place through the authorized
+     `LocationDirector.moveTo` path — but a subclassed `LocationDirector` hands back a trivial
+     headless `PlaceController` (null view) instead of the rendering `BangController`. It then
+     reproduces BangManager's all-AI pre-game handshake purely from dobj state
+     (`manager.invoke("playerReady")`, then `playerReadyFor(SKIP_SELECT_PHASE)`/`(IN_PLAY)` as the
+     state advances — for an all-AI game the *observing* client drives phase progression; the server
+     runs both `BangAI`s and ticks autonomously, no per-tick input or window-click needed).
+   - **Asserts (fail loudly, non-zero exit → CI-ready):** the `BangObject`/`GameObject` transitions
+     `PRE_GAME → SELECT_PHASE → IN_PLAY → GAME_OVER`; ticks advance past 0 (board simulated);
+     `players[]` has the expected count; a winner is flagged in `winners[]` at game over; and
+     `points[]` sums to a non-zero total (the AIs actually played, captured/scored). A hard
+     wall-clock watchdog fails the run if the game stalls.
+   - **Verified end-to-end** against a `bin/devtest --no-client` server (Cattle Rustling, 2 AIs):
+     reached `GAME_OVER`, `last tick = 47`, `winners = [true, false]`, `points = [291, 290]`,
+     "ALL DOBJ ASSERTIONS PASSED". Run: start the server (`bin/devtest --no-client`), then
+     `./gradlew :tools:bot-client:run` (tunables: `-Pplayers= -Pscenario= -Pboard= -Ptimeout=
+     -Phost=`; the run task `dependsOn :assets:processResources` so the staging `rsrc/` configs are
+     on the classpath — units/props/i18n must resolve as pieces stream in, exactly as
+     `bin/bangserver` puts staging on the server classpath).
+   - **Deferred:** per-piece (unit) tracking is *not* asserted. The server writes `BangObject.pieces`
+     as a direct field assignment (no dobj event) and the live client rebuilds the piece set from the
+     loaded `.board` file (rendering-adjacent, out of scope here), so `pieces` stays empty
+     client-side and its element-update events are dropped. The bot instead asserts on the
+     wire-synced attribute state (phases/ticks/winners/points) — `points > 0` is the attribute-backed
+     proxy that units fought and scored. A future extension could load the board via `BoardCache` to
+     get full per-unit assertions. Also: only the frontier_town node is exercised by default
+     (`-Pplayers`/`-Pscenario` cover the rest; indian_post needs the node running).
 
 Supporting, lower priority: fold the converter harnesses (j3o 310/310, board 364/364) + the 3 unit
 tests into a JUnit + CI gate (AssertJ for ergonomics; JUnit 5 optional, not the point); JFR for
