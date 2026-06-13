@@ -89,8 +89,8 @@ Two distinct representations, easy to conflate:
 
 What's in the Narya-streamed `BoardData`: `com.threerings.bang.*` piece/board classes,
 `com.threerings.util.StreamableHashMap`, `java.lang.String`, and primitive arrays. The
-largest single array is the town-board heightfield: **201×201 = 40,401 elements** (~162 KB
-payload) — comfortably under narya 1.19's default 65,536 container cap, but worth knowing if
+largest single array is the town-board heightfield: **201×201 = 40,401 elements** (a `byte[]`,
+~40 KB payload) — comfortably under narya 1.19's default 65,536 container cap, but worth knowing if
 boards ever get bigger (the cap is configurable via `com.threerings.io.maxContainerSize`).
 The terrain is splat-textured heightfield; water is a reflective `WaterNode` (GL-thread-only,
 see above); `rsrc/terrain/codes.txt` maps terrain type codes.
@@ -113,8 +113,8 @@ in-process server and does not need MySQL.
   streamed type appears outside `com.threerings./com.samskivert./java.lang./java.util.`,
   logon will mysteriously fail — check the whitelist first.
 - Client logon dev path: `-Dusername`/`-Dpassword` auto-logon lives in
-  `LogonView.progress()`; `-test`/`-autoplay` go through `PlayerService.playComputer`, which
-  is **admin-gated server-side** (`PlayerManager.java:560`).
+  `LogonView.progress()`; `-test`/`-autoplay` go through `PlayerService.playComputer`, where
+  only the autoplay variant is **admin-gated server-side** (`PlayerManager.java:559`).
 
 ## Client boot flow (dev)
 

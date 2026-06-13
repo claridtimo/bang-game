@@ -5,9 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 The source code and media for Bang! Howdy, a western-themed multiplayer tactics MMO created
-by Three Rings Design in 2004. It is a partially-completed port to libGDX; most rendering still
-goes through a forked jMonkeyEngine/LWJGL layer. Code is BSD-licensed; media (everything under
-`assets/rsrc/`) is CC Attribution-NonCommercial.
+by Three Rings Design in 2004. Rendering goes through a forked jMonkeyEngine/LWJGL 2 layer,
+with libGDX supplying window/input/lifecycle glue left over from an abandoned libGDX port —
+the plan is to upgrade the renderer to modern jMonkeyEngine instead (see `UPGRADE_PLAN.md`).
+Code is BSD-licensed; media (everything under `assets/rsrc/`) is CC Attribution-NonCommercial.
 
 ## Build and run
 
@@ -30,7 +31,7 @@ Local setup before running:
 
 Run via the shell scripts in `bin/`:
 - `./bin/bangclient` — dev client (flags: `-test=<board>`, `-autoplay`, `-tutorial=<name>`, `-go=<where>`;
-  add `-Dusername=test -Dpassword=yeehaw` to auto-logon; `-test`/`-autoplay` need the account to
+  add `-Dusername=test -Dpassword=yeehaw` to auto-logon; `-autoplay` needs the account to
   hold the admin token — see README — and the server caches session tokens across reconnects)
 - `./bin/bangserver` — server (creates DB tables on first run, listens on port 47624)
 - `./bin/bangeditor` — board editor
