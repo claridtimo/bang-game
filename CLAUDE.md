@@ -29,7 +29,9 @@ Local setup before running:
    `db.default.*` / `db.userdb.url` / `db.sitedb.url` in `etc/test/server.properties`.
 
 Run via the shell scripts in `bin/`:
-- `./bin/bangclient` — dev client (flags: `-test=<board>`, `-autoplay`, `-tutorial=<name>`, `-go=<where>`)
+- `./bin/bangclient` — dev client (flags: `-test=<board>`, `-autoplay`, `-tutorial=<name>`, `-go=<where>`;
+  add `-Dusername=test -Dpassword=yeehaw` to auto-logon; `-test`/`-autoplay` need the account to
+  hold the admin token — see README — and the server caches session tokens across reconnects)
 - `./bin/bangserver` — server (creates DB tables on first run, listens on port 47624)
 - `./bin/bangeditor` — board editor
 
@@ -47,6 +49,10 @@ Gradle modules (see `settings.gradle`), in dependency order:
 - `assets` — all media under `rsrc/`, plus heavyweight resource-processing tasks (model
   compilation, avatar component bundles, XML config compilation) run as part of `processResources`
 - `tools` — build-time ant tasks
+
+For non-obvious engine internals — the gdx/jME/LWJGL GL-context coupling, threading rules,
+model/board pipelines, and narya wire-protocol gotchas — read `docs/engine-notes.md` before
+touching rendering, assets, or streaming code.
 
 ## Architecture
 

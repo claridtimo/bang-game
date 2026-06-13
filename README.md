@@ -19,10 +19,11 @@ With that nay saying nelly warning out of the way, here are some basic build ins
 
 ## Building and running
 
-The game is (now) built with [Gradle], so you'll need that installed, and then you can run:
+The game builds with the included [Gradle] wrapper on a Java 21 toolchain (no other JDK or
+Gradle install needed):
 
 ```
-gradle deploy
+./gradlew deploy
 ```
 
 which will build everything, process all the resources and prepare things to be run locally.
@@ -71,7 +72,18 @@ db.sitedb.url = jdbc:mysql://USERDBHOST:3306/ooouser
 You need to change `DBHOST`, `USERNAME`, `PASSWORD` to the appropriate values for your MySQL server
 (and you can set `USERDBHOST` to the same value as `DBHOST` and keep that on the same server). Then
 you need to create a `bang` and `ooouser` database on your MySQL server (or change those names to
-database names that you prefer and which you have created).
+database names that you prefer and which you have created). On MySQL 8 create the user with the
+`mysql_native_password` auth plugin:
+
+```
+CREATE DATABASE bang; CREATE DATABASE ooouser;
+CREATE USER 'bang'@'localhost' IDENTIFIED WITH mysql_native_password BY 'yourpass';
+GRANT ALL PRIVILEGES ON bang.* TO 'bang'@'localhost';
+GRANT ALL PRIVILEGES ON ooouser.* TO 'bang'@'localhost';
+```
+
+Also set `server_root` in `etc/test/server.properties` to your checkout directory (audit logs and
+board data resolve relative to it).
 
 Then you can run the server like so:
 
@@ -96,10 +108,26 @@ Not to worry, there's a gradle target that will create a test user in your prist
 database. Just run:
 
 ```
-gradle server:createTestUser
+./gradlew server:createTestUser
 ```
 
 And now you can log into your local server with username `test` and password `yeehaw`.
+
+For development you can skip the login screen and jump straight into the action:
+
+```
+./bin/bangclient -Dusername=test -Dpassword=yeehaw            # auto-logon
+./bin/bangclient -test -autoplay -Dusername=test -Dpassword=yeehaw   # straight into a game vs AI
+```
+
+The `-test`/`-autoplay` modes require the account to hold the admin token, which you can grant
+with:
+
+```
+UPDATE ooouser.users SET tokens = CHAR(1) WHERE username = 'test';
+```
+
+(The server caches session credentials across reconnects, so restart the server after granting.)
 
 That's about it. You can now hack on your own private Bang! Howdy instance and implement all those
 features you always wanted. Good luck!
