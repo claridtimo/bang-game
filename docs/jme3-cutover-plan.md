@@ -37,7 +37,9 @@ migrated before the host flips — but nothing renders until Phase 3.
   swap (`Renderer`→`RenderManager`, fork `ColorRGBA`→jME3, `BImage extends Quad`).
 - **Checkpoint:** `app` and `bui` compile against jme3-core (game not yet runnable).
 
-**Status (2026-06-13): `bui` DONE; `app` NOT STARTED (blocked on the model-pipeline rebuild).**
+**Status (2026-06-13): `bui` DONE; `app` DONE — `./gradlew :app:compileJava` passes against
+jme3-core with the fork `jme` module off app's main compile path. See the app model-pipeline
+decision + execution status below.**
 `./gradlew :bui:compileJava` passes against jme3-core with the fork `jme` module off bui's
 compileClasspath (only jme3-core + gdx remain; gdx stays as a GL-free keycode-constant source
 until Phase 3). jME3 is now BUI's only render backend: `BackendProvider` requires an explicit
@@ -51,17 +53,14 @@ is retyped to jME3 `Spatial` with its 3D render deferred to a Phase-3 ViewPort; 
 input glue) was deleted in favour of the Phase-3 `Jme3RootNode`. The `tools:jme3-host` proof harness
 was updated to the new API and still compiles.
 
-`app` was deliberately **not** migrated: the `app` module compiles atomically and its model
-framework (`Model`/`ModelMesh`/`SkinMesh`/`ModelNode` + controllers, ~4.5k LOC, plus
-`CompileModelTask`) is the per-class table's REBUILD risk #1 — `TriMesh`→`Mesh`/`Geometry`,
-batches→`VertexBuffer`s, `GLSLShaderObjectsState` hardware skinning → jME3 anim
-(`SkinningControl`/`Armature`) or a custom skinning MatDef, and re-emission of the embedded
-`SpriteEmission` Savables. That is a design-bearing multi-week rebuild, not a localized type swap,
-and there is no independently-compilable slice of `app` to land first (the model package, `JmeApp`
-host loop, and `ShaderCache` all sit on the same compile unit). Per the campaign's "stop at a
-genuine wall rather than thrash" guidance, `app` is left for a dedicated model-pipeline rebuild
-pass. Note `tools/j3o-converter`'s `ModelConverter` already reads the fork model format into jME3
-spatials and should be the reference / shared code for that rebuild.
+`app` was initially recorded as blocked: its model framework (`Model`/`ModelMesh`/`SkinMesh`/
+`ModelNode` + controllers, ~4.5k LOC, plus `CompileModelTask`) is the per-class table's REBUILD
+risk #1 (fork `TriMesh`/batches/`GLSLShaderObjectsState` hardware skinning + embedded
+`SpriteEmission` Savables). The resolution — recorded as the decision below — was to recognise that
+this fork-format machinery is **build-time-only** (it compiles XML→`model.dat`; nothing runtime
+needs to read `model.dat` once the Phase-3 bake produces `.j3o`), so it was split off app's
+fork-free `main` into a `modeltool` source set rather than rebuilt. app `main` is now migrated and
+compiles against jme3-core; see the decision + execution status below.
 
 #### app model-pipeline rebuild — architecture decision (2026-06-13)
 
@@ -111,9 +110,84 @@ checkpoint and ships LWJGL2-era fork code into the LWJGL3 runtime. The chosen sp
 one that (i) reuses the corpus-verified converter unchanged, (ii) gets app fork-free, and
 (iii) keeps the client API shape for Phase 2.
 
-**Phase-1 execution status of this decision: see the running status block appended below.**
+#### app Phase-1 execution status (2026-06-13)
+
+**Checkpoint passing command:** `./gradlew :app:compileJava` → BUILD SUCCESSFUL, fork `jme`
+verified off app's `compileClasspath` (only `jme3-core` + the gdx keycode source from bui remain).
+`./gradlew :app:compileModeltoolJava` also passes (the relocated fork build-time compiler).
+
+**Module split implemented.** app gained a `modeltool` source set (`app/src/modeltool/java`,
+`modeltoolImplementation project(":jme")`, off `main`'s classpath). Moved there, fork-format and
+build-time-only, relocated to package `com.threerings.jme.tools.*`:
+- the model compiler: `tools/{CompileModelTask,CompileModel,ModelDef,AnimationDef,BuildSphereMap,
+  BuildSphereMapTask}`, `tools/xml/{ModelParser,AnimationParser}`;
+- the fork model classes: `tools/model/{Model,ModelNode,ModelMesh,SkinMesh,ModelSpatial,
+  ModelController,BillboardController,EmissionController,Rotator,Translator,TextureController,
+  TextureAnimator,TextureTranslator,TextureProvider}`;
+- the fork-only util: `util/{ShaderCache,ShaderConfig,BatchVisitor}` + fork-typed copies of
+  `util/{JmeUtil,SpatialVisitor}` (their jME3 versions live in `main`).
+`assets:compileModels`'s ant taskdef classpath was extended with
+`project(":app").sourceSets.modeltool.runtimeClasspath`, so the XML→`model.dat` pipeline is
+unchanged. **CompileModelTask's role is unchanged** (XML→fork `model.dat`); the *runtime* side
+shrinks: nothing runtime reads `model.dat` anymore — the Phase-3 bake (`ModelToJ3o`) turns each
+`model.dat` into a sibling `.j3o` that the client `AssetManager` loads natively.
+
+**app `main` migrated onto jME3** (compiles): `util` (JmeUtil/SpatialVisitor/ImageCache —
+ImageCache builds jME3 `texture.Image` RGBA8/RGB8), `sprite` (Path→`AbstractControl` + new
+`AnimationController` speed/active/repeat seam; Sprite→`addControl`; path subclasses DIRECT),
+`camera` (CameraHandler→jME3 `Camera`/`setAxes`/`Plane.getNormal`; GodViewHandler→jME3
+`AnalogListener` with a Phase-3 `registerWith(InputManager)`), `effect` (FadeInOutEffect/
+WindowSlider→`Geometry`+`Unshaded` Material in `Bucket.Gui`, `AbstractControl` stepping, screen
+size passed in), `chat` (ColorRGBA move), and the `JmeContext`/`JmeApp` host seam (retyped to
+`AssetManager`/`RenderManager`/`Camera`; `getRenderer`→`getRenderManager`, `getDisplay` dropped;
+the live LWJGL3 host loop/input/BUI-install is the Phase-3 flip — `JmeApp` is a jME3-typed
+skeleton until then).
+
+**NOT done (left for Phase 2/3, by design):**
+- The fork-free app-side **`Model` facade** is *not* written. The decision is to wrap the loaded
+  `.j3o` `Spatial` and re-expose the client API, but the loader (`BangModelLoader`/`ModelConverter`)
+  is fork-coupled and lives in `tools/j3o-converter`; the facade has no compile anchor until
+  `client/shared` is on jME3 (Phase 2) and the `.j3o` bake/load path is wired (Phase 3). Writing
+  it now would be speculative against code that cannot yet compile. **It is Phase 2's first task**
+  (shapes below).
+- The procedural controllers (`Rotator`/`Translator`/`BillboardController`/`Texture*`) and the
+  `EmissionController` base remain only in `modeltool` (fork). The jME3 procedural-control
+  equivalents are a cheap follow-up; the emission controllers are the effects port (Phase 4).
 
 ### Phase 2 — `client/shared` migration (the bulk: 164 fork-using files)
+
+**Concrete starting point (the app `Model` facade + the seam edits app's migration forces):**
+
+1. **Write the app `Model` facade** (`com.threerings.jme.model`, fork-free, in app `main`): a jME3
+   `Node` that wraps the `.j3o`-loaded content + its `AnimComposer`/`SkinningControl`, re-exposing
+   the surface client uses (measured): `getEmissionNode` (12), `getProperties` (8), `getAnimation`
+   (7, returns an `Animation` carrying `frameRate` + `getDuration()`), `pauseAnimation` (5),
+   `getControllers` (4), `startAnimation`/`stopAnimation`/`resolveTextures`/`createInstance` (3 each
+   — `createInstance`/`putClone`→jME3 `clone()`; `resolveTextures(TextureProvider)` re-resolves the
+   `bang.textures` user-data the converter preserves), `lockInstance`/`hasAnimation` (2 each),
+   `setAnimationMode`/`reverseAnimation`/`getVariantNames`/`fastForwardAnimation`/`createPrototype`
+   (1 each). Nested API shapes used: `Model.Animation` (`.frameRate`, `.getDuration()`),
+   `Model.CloneCreator` (passed to emission controllers' `putClone`), `Model.AnimationMode`,
+   `Model.AnimationObserver`. `ModelCache.getModel(...)` keeps returning this `Model`.
+2. **Re-point `client/util/ModelCache`** at `assetManager.loadModel(".j3o")` → wrap in the facade;
+   thread `variantIndex`/`Colorization[]`/detail into `ModelTextureResolver` (the indirection shape
+   exists in tools/j3o-converter — see docs/jme3-model-loader.md §5).
+3. **Edits app's `main` migration forces on client (the seam churn this commit created):**
+   - `SpatialVisitor<ModelMesh>` sites (`ModelCache`, `effect/HeroInfluenceViz`,
+     `effect/IronPlateViz`) → `SpatialVisitor<Geometry>` (the `.j3o` yields jME3 `Geometry`, not
+     `ModelMesh`).
+   - `JmeContext` consumers: `getRenderer()`→`getRenderManager()` (93 sites), `getDisplay()`
+     removed (31 sites — re-point to `getCamera()`/`getAssetManager()` or a screen-size accessor);
+     `getInputHandler()` removed (12 sites — Phase 3 input). Implementers `BangApp`/`EditorApp`/
+     `BasicContext` re-fit to the new seam.
+   - `IconConfig`/`ParticleUtil` fork `Controller.RT_*` → `com.threerings.jme.util.JmeUtil.RT_*`.
+   - `FadeInOutEffect`/`WindowSlider` constructors now take `AssetManager`/screen-size (were
+     `DisplaySystem`-global); their callers (`WindowFader` etc.) pass them through `BasicContext`.
+   - `GodViewHandler` is now an `AnalogListener`; `GameInputHandler`/`EditorController` wire it via
+     `registerWith(InputManager)` at the Phase-3 host.
+
+Then proceed with the rest of the per-class table (scene graph, render-state→Material across all
+sites, picking, camera, the `*Sprite`/effect framework, `BangBoardView`/`WaterNode`/sky).
 - Drive off the map's per-class table: scene graph, render-state→Material across all sites,
   picking/intersection, camera, the `*Sprite`/effect framework, `BangBoardView`/`WaterNode`/sky.
 - Regenerate nothing; this is hand work. **Checkpoint:** `client:shared` compiles against jme3.
