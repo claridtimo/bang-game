@@ -4,7 +4,7 @@
 package com.threerings.bang.game.client.sprite;
 
 import com.jme3.math.FastMath;
-import com.jme.scene.Spatial;
+import com.jme3.scene.Spatial;
 
 import com.threerings.openal.SoundGroup;
 
