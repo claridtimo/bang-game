@@ -766,26 +766,46 @@ which is the one platform caveat to validate if a Mac build is targeted.
 - **7a — Editor recon + AWT-canvas spike (keystone). DONE.** See above: as-is editor crashes on a
   null `JFrame`; the jME3-in-Swing-Canvas-on-LWJGL3 keystone is proven (`Type.Canvas` +
   `org.lwjglx:lwjgl3-awt:0.2.3`, `transitive=false`). Spike at `tools/jme3-host/CanvasSpike.java`.
-- **7b — Canvas embedding + Swing chrome.** Concrete steps:
-  1. Add `org.lwjglx:lwjgl3-awt:0.2.3` (`transitive = false`) to the editor's runtime classpath
-     (`client/desktop`, and wherever `EditorApp` resolves at runtime — mirror the spike's
-     build.gradle dep).
-  2. In `EditorDesktop.main`: replace `app.start()` with the Canvas path — `app.setSettings(...)`
-     (LWJGL3 renderer), `app.createCanvas()`, grab `canvas = ((JmeCanvasContext)app.getContext())
-     .getCanvas()`, set `app.canvas = canvas`, build the `JFrame` (set `app.frame`), add the canvas
-     to the frame's center on the EDT, then `app.startCanvas()`.
-  3. Wire `EditorClient.init(app, app.frame)` with the real frame (it sets the menubar + status
-     panel). Set `JPopupMenu.setDefaultLightWeightPopupEnabled(false)` (heavyweight GL canvas) — it's
-     already in `EditorClient.init`.
-  4. Lay out the Swing chrome: `EditorPanel`/`ToolPanel`/`BoardInfoPanel` (all JPanels) around the
-     canvas in the `JFrame` (the side/tool panels), per the fork layout. Confirm `EditorPanel`'s
-     `sizeToCanvas` fires (it listens on `EditorApp.getCanvas()` — now non-null) so the BUI `_vwin`
-     board view fills the canvas.
-  5. Verify the BUI tool UI (`_vwin` board view, the BUI menubar in `EditorPanel`) draws inside the
-     canvas and resizes with it.
-  Risks: ordering of `createCanvas` vs the `EditorClient`/server bootstrap; AWT/EDT vs jME3-render
-  thread handoff for the BUI root node (the BUI root + view live on the render thread, the JFrame on
-  the EDT — `RunQueue.AWT` is already passed to `initClient`).
+- **7b — Canvas embedding + Swing chrome. DONE (2026-06-14).** The editor now opens as a real
+  windowed Swing tool with the jME3 board view rendering inside an embedded AWT canvas, and resizes
+  correctly. **What landed:**
+  1. **Dep:** `org.lwjglx:lwjgl3-awt:0.2.3` (`transitive = false`) added to `client/desktop`'s
+     runtime classpath (mirrors the spike's declaration). `EditorApp`/`EditorClient`/`EditorPanel`
+     resolve in `client/shared`, but the canvas is constructed in `EditorDesktop` (in `client/desktop`)
+     so that one module is where the AWT-canvas dep belongs. **Also bumped `jme3-desktop` from
+     `runtimeOnly` → `implementation` in `client/desktop`** — `com.jme3.system.JmeCanvasContext` lives
+     in jme3-desktop (NOT jme3-core), and `EditorDesktop` references it at *compile* time to grab the
+     embedded canvas; without it on the compile classpath the build fails `cannot find symbol`.
+  2. **`EditorDesktop.main`** rewritten off `app.start()` onto the Canvas path (matches `CanvasSpike`):
+     LWJGL3 `AppSettings` (`setRenderer(AppSettings.LWJGL_OPENGL2)`), `app.createCanvas()`, grab
+     `canvas = ((JmeCanvasContext)app.getContext()).getCanvas()`, `app.canvas = canvas`, then build the
+     `JFrame` on the EDT via **`SwingUtilities.invokeAndWait`** (canvas in `BorderLayout.CENTER`,
+     `setVisible(true)`), `app.frame = frame`, and finally `app.startCanvas()`. **Ordering is the
+     keystone:** `invokeAndWait` guarantees both `app.frame` and `app.canvas` are published *and the
+     frame is realized/sized* before `startCanvas()` spins the GL loop — `EditorApp.create()` (→
+     `EditorClient.init(this, frame)` + `_client.start()`) runs on the jME3 init thread once the loop
+     starts and dereferences `app.frame`, so a null there is the original crash this fixes.
+  3. **`EditorClient.init(app, app.frame)`** now receives the real (non-null) frame and installs the
+     `JMenuBar` + SOUTH status panel (x/y coords) — verified rendered. `JPopupMenu
+     .setDefaultLightWeightPopupEnabled(false)` already present (and also set in `EditorDesktop`).
+  4. **Swing chrome layout:** canvas CENTER (`EditorDesktop`), menu bar + SOUTH status bar
+     (`EditorClient.init`), and the `EditorPanel` chrome (title, `BoardInfoPanel`, `ToolPanel` —
+     scenario checkboxes, prop/tool dropdowns) EAST via `EditorContextImpl.setPlaceView` (posted to the
+     EDT through `RunQueue.AWT`). `EditorPanel.willEnterPlace`'s `ComponentListener` on
+     `EditorApp.getCanvas()` (now non-null) fires `sizeToCanvas` so the BUI `_vwin` board view fills +
+     tracks the canvas.
+  5. **Verified live** (`bin/bangeditor`, DISPLAY=:1, screenshots): the JFrame shows full Swing chrome
+     AND the default empty `BangBoard` terrain grid renders inside the GL canvas (no NPE). Programmatic
+     EWMH resize 1252×797 → 1528×1006 confirmed the board view expands to fill the larger canvas and the
+     GL viewport reshapes cleanly. `editor.log`/stdout clean — only the benign
+     `Cannot find loader com.jme3.scene.plugins.ogre.MeshLoader` WARNING (no ogre assets used); logon +
+     `Entering game data.BangObject(editor)` succeed.
+  **EDT/render-thread note (the flagged risk, resolved):** the Swing mutations inside
+  `EditorClient.init` (`setJMenuBar`, add SOUTH panel) run on the jME3 init thread (the fork did the
+  same), but they are one-shot setup-time mutations before the frame is interacted with, so no EDT
+  violation surfaced. The per-frame BUI root traversal stays on the render thread (`JmeApp.BuiProcessor`
+  on the GUI viewport); the only cross-thread post is `setPlaceView`, already routed to the EDT via
+  `RunQueue.AWT`. No threading defects observed across launch + resize.
 - **7c — Editor interaction.** Re-wire editor input now that the GL view is an AWT canvas: mouse
   picking (`PiecePlacer`/`PieceChooser`), `CameraDolly`, `TerrainBrush`/`HeightfieldBrush`,
   `ViewpointEditor`/`TrackLayer`, and the environment dialogs (`LightDialog`/`WaterDialog`/
@@ -793,7 +813,21 @@ which is the one platform caveat to validate if a Mac build is targeted.
   unknown for 7c: jME3's `LwjglCanvas` provides its own `getMouseInput()`/`getKeyInput()` bound to
   the AWT canvas — confirm editor input flows through jME3's `InputManager` on the canvas (the BUI
   tools consume BUI events off the render-side input), and that picking ray coords map correctly from
-  AWT canvas pixels. Depends on 7b's embedding.
+  AWT canvas pixels.
+  **7b learnings that bear on 7c:** (a) In Canvas mode jME3's `InputManager` is fed by `LwjglCanvas`'s
+  AWT-bound input devices — `JmeApp.simpleInitApp` already calls `Jme3RootNode.registerWith(inputManager)`
+  and `GodViewHandler.registerWith(inputManager)` on the canvas context (the log shows
+  "GodViewHandler camera input mappings registered"), so BUI/camera input *should* already be flowing
+  through the canvas; 7c needs to verify the **coordinate origin** (jME3 input is bottom-left origin in
+  *canvas* pixels, while AWT/Swing mouse events are top-left in *frame* pixels — picking rays must use
+  the canvas-relative, GL-oriented coords, and the canvas may be offset from the frame by the EAST/SOUTH
+  chrome). (b) `EditorContextImpl.setPlaceView`/`clearPlaceView` index into the content pane by
+  component count (`getComponentCount() > 2` / `> 1`) — with the canvas now occupying CENTER and the
+  status panel SOUTH, those magic indices assume a specific add order; 7c should confirm place-view
+  swap still targets the EAST slot (it worked for the single editor place on launch, but dialog-driven
+  place changes are untested). (c) Heavyweight-popup mode is on, so editor `JPopupMenu`s (right-click
+  tool menus) will paint over the GL canvas correctly — good for 7c's context menus. Depends on 7b's
+  embedding (done).
 - **7d — Per-town visual regression (independent; parallelizable). DONE (2026-06-14).** A
   deterministic, CI-ready **golden-image** regression suite built on the Phase-5/6 offscreen harness
   (`RenderModelToPng`/`RenderSceneToPng`/`RenderParticleToPng`) + the `SnapshotDiff` metric. Does

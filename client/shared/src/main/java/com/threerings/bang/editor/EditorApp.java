@@ -22,7 +22,7 @@ import com.threerings.jme.JmeApp;
  * Sets up the necessary business for the Bang! editor.
  */
 @Singleton
-public class EditorApp extends JmeApp // TODO: use GDX's canvas stuffs
+public class EditorApp extends JmeApp
 {
     public static String[] appArgs;
 
@@ -33,9 +33,11 @@ public class EditorApp extends JmeApp // TODO: use GDX's canvas stuffs
         return canvas;
     }
 
-    // jME3 cutover (Phase 3): called by the SimpleApplication host from simpleInitApp. The
-    // AWT-canvas embedding of the editor (Swing JFrame + GL canvas) is a Phase-5 concern; for now
-    // the editor app boots on the same LWJGL3 window as the client.
+    // jME3 cutover (Phase 7b — editor canvas embedding): called by the SimpleApplication host from
+    // simpleInitApp, on the jME3 render thread, once startCanvas() spins the GL loop. By now
+    // EditorDesktop has built the Swing JFrame and the embedded AWT canvas and published both to
+    // this app (frame/canvas), so EditorClient.init installs the menu bar + status bar into the
+    // real (non-null) frame, and EditorPanel.willEnterPlace sizes the BUI board view to the canvas.
     @Override
     public void create ()
     {
