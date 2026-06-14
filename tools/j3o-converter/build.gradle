@@ -193,3 +193,41 @@ tasks.register("snapshotDiff", JavaExec) {
   }
   args = cmd
 }
+
+// Phase 7d: the per-town visual-regression GATE. VerifyVisuals reads the golden manifest
+// (src/test/resources/visual/golden-manifest.txt), re-renders each declared model/scene/particle
+// through the existing offscreen harness mains (RenderModelToPng/RenderSceneToPng/
+// RenderParticleToPng, each in a forked JVM on this isolated classpath), and diffs the result
+// against the committed golden PNG in src/test/resources/visual/golden/. It exits non-zero on any
+// regression (over the per-entry tolerance) or missing golden, so it slots straight into CI.
+//   ./gradlew :tools:j3o-converter:verifyVisuals
+// Goldens are deterministic offscreen renders, so this needs no live server/editor; it does need
+// the baked staging tree (./gradlew :assets:processResources populates assets/build/staging/rsrc).
+def visualGoldenDir = file("src/test/resources/visual/golden")
+def visualManifest = file("src/test/resources/visual/golden-manifest.txt")
+def visualForkCp = { (sourceSets.main.output + configurations.renderToPngRuntime).asPath }
+tasks.register("verifyVisuals", JavaExec) {
+  group = "verification"
+  description = "Per-town visual-regression gate: re-render goldens and diff (fails on regression)."
+  classpath = sourceSets.main.output + configurations.renderToPngRuntime
+  mainClass = "com.threerings.bang.tools.j3o.VerifyVisuals"
+  def rsrc = rootProject.file("assets/build/staging/rsrc").absolutePath
+  def tmp = project.hasProperty("visualTmp") ? project.property("visualTmp").toString() :
+      "${project.layout.buildDirectory.get().asFile}/visual-tmp"
+  doFirst { systemProperty "visual.forkClasspath", visualForkCp() }
+  args = [ "verify", rsrc, visualGoldenDir.absolutePath, visualManifest.absolutePath, tmp ]
+}
+
+// Phase 7d: (re)capture the golden PNGs declared in the manifest. Run this to seed a new golden or
+// to refresh goldens after an INTENDED render change, then commit src/test/resources/visual/golden/.
+//   ./gradlew :tools:j3o-converter:captureGoldens
+tasks.register("captureGoldens", JavaExec) {
+  group = "verification"
+  description = "(Re)render every golden in the manifest into src/test/resources/visual/golden/."
+  classpath = sourceSets.main.output + configurations.renderToPngRuntime
+  mainClass = "com.threerings.bang.tools.j3o.VerifyVisuals"
+  def rsrc = rootProject.file("assets/build/staging/rsrc").absolutePath
+  def tmp = "${project.layout.buildDirectory.get().asFile}/visual-tmp"
+  doFirst { systemProperty "visual.forkClasspath", visualForkCp() }
+  args = [ "capture", rsrc, visualGoldenDir.absolutePath, visualManifest.absolutePath, tmp ]
+}

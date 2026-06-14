@@ -717,10 +717,52 @@ via `lwjgl3awt`.
   `PieceChooser`), `CameraDolly`, `TerrainBrush`/`HeightfieldBrush`, viewpoint/track tools, and the
   environment dialogs (`LightDialog`/`WaterDialog`/`SkyDialog`), plus board save/load (now the
   Narya board format from Phase 3). Depends on 7b's input seam.
-- **7d — Per-town visual regression (independent; parallelizable).** Build on the Phase-5 offscreen
-  render harness + `SnapshotDiff`: render each town's representative boards/scenes headlessly and diff
-  against `baseline/fork-before/`, producing a pass/fail regression report (CI-ready). First establish
-  which pre-cutover baselines actually exist; capture/flag any missing. Does **not** need the editor.
+- **7d — Per-town visual regression (independent; parallelizable). DONE (2026-06-14).** A
+  deterministic, CI-ready **golden-image** regression suite built on the Phase-5/6 offscreen harness
+  (`RenderModelToPng`/`RenderSceneToPng`/`RenderParticleToPng`) + the `SnapshotDiff` metric. Does
+  **not** need the editor or a live server — it renders baked `.j3o` headlessly on the isolated
+  `renderToPngRuntime` classpath (jme3 + app only, no fork/gdx, no `org.lwjgl` sealing clash).
+
+  **What landed:**
+  - **A golden manifest** — `tools/j3o-converter/src/test/resources/visual/golden-manifest.txt` —
+    declaring 20 deterministic renders (pipe-separated `name | kind | tolerance | args`; kinds
+    `model`/`prop`/`scene`/`particle`), **10 per town**: per town 3 units (posed `standing@0`), 2
+    buildings, 2 natural props, 1 composed scene (2 units + a building), and 2 particle effects.
+    (frontier_town: shotgunner/cavalry/gunslinger, saloon/bank, tree_oak/cactus1, a town scene,
+    explosion+dust. indian_post: dogsoldier/revolutionary/stormcaller, saloon/sheriff,
+    pine/totem, a town scene, fireflies+rain.)
+  - **The committed goldens** — `tools/j3o-converter/src/test/resources/visual/golden/*.png` (20
+    PNGs, 800×600). They live under `src/test/resources` because `baseline/` is **gitignored** and
+    would not persist.
+  - **A driver** `VerifyVisuals` + two Gradle tasks. The gate:
+    `./gradlew :tools:j3o-converter:verifyVisuals` re-renders each manifest entry (each in a forked
+    JVM, the same main that captured it) and diffs against its golden, exiting **non-zero** on any
+    regression over the per-entry tolerance or a missing golden. To seed/refresh:
+    `./gradlew :tools:j3o-converter:captureGoldens` (then commit the PNGs).
+  - **Demonstrated:** PASS on the committed goldens (exit 0; models/props/scenes bit-exact
+    `meanDiff=0.000000`); a deliberately perturbed render FAILS with exit 1
+    (`meanDiff=0.052 -> FAIL`). `:tools:j3o-converter:verifyCorpus` still 310/310.
+
+  **Determinism finding (drove the tolerance design):** model/prop/scene renders are **bit-exact**
+  across runs (tight tolerance 0.005, mostly to absorb driver float noise). jME3 `ParticleEmitter`
+  uses an **unseeded RNG**, so *active* emitters vary run-to-run by ~0.01 mean diff (explosion
+  ~0.010, dust ~0.0006) — these get a loose tolerance (0.030) that still catches gross regressions
+  (effect missing / broken material / wrong framing); *steady* ambient emitters are effectively
+  deterministic (fireflies ~0.00004, kept tight at 0.005).
+
+  **Baseline-alignment finding (fork-before):** `baseline/fork-before/` holds **6 live game
+  screenshots**, not harness-reproducible references — `login.png` (1024×768, UI only),
+  `editor-frontier-town.png` (1252×797, editor chrome), `p3-{game-1,play-1,play-2}.png`
+  (4480×1440, ultra-wide live gameplay), `water.png` (1018×786, live board). None is 800×600, none
+  is an isolated-model framing, and all carry arbitrary live framing/lighting/UI, so direct
+  `SnapshotDiff` against them is **not apples-to-apples** (SnapshotDiff fails immediately on the size
+  mismatch — a deliberate regression signal). This matches the recon expectation; the golden suite
+  is the real deliverable and the fork-before shots remain useful only as human eyeball references.
+
+  **Deferred:** full live-board per-town regression (`bin/devtest --shot`) — feasible but out of
+  scope here; full-board offscreen rendering would drag client/shared onto the render classpath
+  (re-introducing the LWJGL2/`org.lwjgl` sealing clash), so the model/scene/golden approach is
+  preferred. Fork-before pixel alignment is likewise deferred (not apples-to-apples; see above).
 
 ### Phase 8 — Cleanup
 - Delete the `jme` fork module and the remaining cutover scaffolding once nothing references it.
