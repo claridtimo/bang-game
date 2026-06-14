@@ -267,7 +267,10 @@ public class ParticleConverter
             break;
         }
         com.jme.math.Vector3f off = geom.getOriginOffset();
-        return new EmitterPointShape(new Vector3f(off.x, off.y, off.z));
+        // originOffset (and the rectangle/ring/line above) can be null on a fork emitter; fall back
+        // to the origin rather than NPEing and failing the whole corpus bake.
+        return (off == null) ? new EmitterPointShape(new Vector3f(0, 0, 0))
+                             : new EmitterPointShape(new Vector3f(off.x, off.y, off.z));
     }
 
     protected void applyInfluences (ParticleGeometry geom, ParticleEmitter emitter, Result result)

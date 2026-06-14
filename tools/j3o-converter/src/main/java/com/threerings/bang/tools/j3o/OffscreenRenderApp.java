@@ -87,8 +87,7 @@ public abstract class OffscreenRenderApp extends SimpleApplication
 
     @Override public void simpleInitApp ()
     {
-        _scene = buildScene();
-        Node scene = _scene;
+        Node scene = buildScene();
         scene.updateGeometricState();
 
         Camera offCam = createCamera(scene);
@@ -130,23 +129,6 @@ public abstract class OffscreenRenderApp extends SimpleApplication
     protected ColorRGBA backgroundColor ()
     {
         return new ColorRGBA(0.45f, 0.5f, 0.55f, 1f);
-    }
-
-    /**
-     * The number of logical-state update frames to advance the scene before the snapshot is taken.
-     * Default 0 (capture the first rendered frame, as the static model harnesses do). Time-based
-     * content — particle emitters — overrides this to step the simulation a few frames so particles
-     * are alive and spread when captured. Each warmup frame advances the scene by {@link #warmupTpf}.
-     */
-    protected int warmupFrames ()
-    {
-        return 0;
-    }
-
-    /** The per-frame timestep (seconds) used while advancing {@link #warmupFrames}. */
-    protected float warmupTpf ()
-    {
-        return 1f / 30f;
     }
 
     /**
@@ -200,17 +182,6 @@ public abstract class OffscreenRenderApp extends SimpleApplication
             if (_captured) {
                 return;
             }
-            // advance time-based content (particle emitters) before capturing: step the scene's
-            // logical state warmupTpf seconds per frame until warmupFrames have elapsed, re-rendering
-            // each step. ParticleEmitter.updateFromControl runs off updateLogicalState.
-            if (_warmed < warmupFrames()) {
-                _warmed++;
-                if (_scene != null) {
-                    _scene.updateLogicalState(warmupTpf());
-                    _scene.updateGeometricState();
-                }
-                return; // capture on the frame after the last warmup step
-            }
             _captured = true;
             ByteBuffer buf = BufferUtils.createByteBuffer(WIDTH * HEIGHT * 4);
             renderer.readFrameBuffer(_fb, buf);
@@ -239,14 +210,9 @@ public abstract class OffscreenRenderApp extends SimpleApplication
 
         private RenderManager _rm;
         private boolean _captured;
-        private int _warmed;
     }
 
     protected final File _outPng;
-
-    /** The scene root built by {@link #buildScene}, retained so warmup can advance its logical
-     * state (for time-based content like particle emitters). */
-    protected Node _scene;
 
     protected FrameBuffer _fb;
     protected Texture2D _colorTex;

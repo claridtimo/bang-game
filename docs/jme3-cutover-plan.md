@@ -701,6 +701,13 @@ a silent-null misconfig path. Harden both so a fresh checkout/worktree "just run
 - Remove the Phase-6b WASD-verification log lines in `app/.../camera/GodViewHandler.java` (the
   one-shot `registerWith` + first-`onAnalog` logging added to prove the input fix — harmless but
   host-code noise once the fix is trusted).
+- **Verify the Phase-6a particle emission-mode mapping in a *live* render** (not just the warmed
+  snapshot). `ParticleConverter` maps every non-`controlFlow` fork effect to a continuous
+  steady-refill emitter (`setParticlesPerSec(count/mean)`), on the assumption that `ParticleCache`
+  clones a fresh instance per spawn and despawns it. One-shot bursts (explosions/impacts) will keep
+  emitting forever if that despawn assumption is wrong — confirm a burst effect (e.g.
+  `boom_town/barrel_explosion`) fires once and stops in the running client, and if not, distinguish
+  burst vs ambient effects at bake time (one-shot → emit the pool once, don't refill).
 - Update CLAUDE.md + docs/engine-notes.md for the new jME3 / LWJGL3 stack.
 
 ## Acceptance
