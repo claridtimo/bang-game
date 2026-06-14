@@ -10,7 +10,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenuBar;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
+import javax.swing.SwingUtilities;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -61,15 +61,22 @@ public class EditorClient extends BasicClient
     {
         // create our context
         _frame = frame;
-        _frame.setJMenuBar(new JMenuBar());
-        JPanel statusPanel = GroupLayout.makeHBox(GroupLayout.STRETCH);
-        statusPanel.add(_status = new JLabel(" "));
-        statusPanel.add(_coords = new JLabel("x:  , y:  "), GroupLayout.FIXED);
-        _frame.getContentPane().add(statusPanel, BorderLayout.SOUTH);
-
-        // we can't use lightweight popups because our OpenGL display is a
-        // heavyweight component
-        JPopupMenu.setDefaultLightWeightPopupEnabled(false);
+        // init() runs on the jME3 render thread and the frame is already realised/visible, so build
+        // the menu bar + status bar on the EDT. (The heavyweight-GL-canvas lightweight-popup toggle
+        // is set earlier, on the EDT, in EditorDesktop before the frame is built.)
+        try {
+            SwingUtilities.invokeAndWait(new Runnable() {
+                public void run () {
+                    _frame.setJMenuBar(new JMenuBar());
+                    JPanel statusPanel = GroupLayout.makeHBox(GroupLayout.STRETCH);
+                    statusPanel.add(_status = new JLabel(" "));
+                    statusPanel.add(_coords = new JLabel("x:  , y:  "), GroupLayout.FIXED);
+                    _frame.getContentPane().add(statusPanel, BorderLayout.SOUTH);
+                }
+            });
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to build editor chrome", e);
+        }
 
         initClient(_ctx, app, RunQueue.AWT);
 
