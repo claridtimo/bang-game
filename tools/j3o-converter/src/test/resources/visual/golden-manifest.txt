@@ -1,0 +1,50 @@
+# Phase 7d per-town visual-regression golden manifest.
+#
+# Each non-comment line declares one deterministic offscreen render that the
+# `verifyVisuals` Gradle task re-renders and diffs (SnapshotDiff) against a
+# committed golden PNG in golden/<name>.png, failing the build on regression.
+#
+# Format (pipe-separated, leading/trailing space trimmed per field):
+#   <name> | <kind> | <tolerance> | <args...>
+#
+# kinds + their args (these mirror the existing render harness mains):
+#   model    | <modelType> <anim> <time>      -> RenderModelToPng (posed character)
+#   prop     | <modelType>                    -> RenderModelToPng (static, bind pose)
+#   scene    | <spec[,spec...]>               -> RenderSceneToPng (modelType[@anim[:time]])
+#   particle | <effectKey> <frames>           -> RenderParticleToPng
+#
+# tolerance is the SnapshotDiff mean per-channel threshold (0..1). Model/prop/
+# scene renders are bit-exact in this harness, so they use a tight tolerance
+# (a hair of slack absorbs driver float noise). jME3 ParticleEmitters use an
+# UNSEEDED RNG, so active emitters (explosion/dust/rain) vary run-to-run by
+# ~0.01 mean diff and get a loose tolerance that still catches gross
+# regressions (effect missing / broken material / wrong framing); steady
+# ambient emitters (fireflies) are effectively deterministic.
+#
+# To add a golden: add a line here, then `./gradlew :tools:j3o-converter:captureGoldens`
+# (writes golden/<name>.png). To refresh after an INTENDED render change: rerun
+# captureGoldens and commit the updated PNGs. See docs/jme3-cutover-plan.md (7d).
+
+# ---- frontier_town -------------------------------------------------------
+ft_unit_shotgunner   | model    | 0.005 | units/frontier_town/shotgunner standing 0
+ft_unit_cavalry      | model    | 0.005 | units/frontier_town/cavalry standing 0
+ft_unit_gunslinger   | model    | 0.005 | units/frontier_town/gunslinger standing 0
+ft_bldg_saloon       | prop     | 0.005 | props/frontier_town/buildings/saloon
+ft_bldg_bank         | prop     | 0.005 | props/frontier_town/buildings/bank
+ft_prop_tree_oak     | prop     | 0.005 | props/frontier_town/natural/tree_oak
+ft_prop_cactus1      | prop     | 0.005 | props/frontier_town/natural/cactus1
+ft_scene_town        | scene    | 0.005 | units/frontier_town/shotgunner@standing,units/frontier_town/cavalry@standing,props/frontier_town/buildings/saloon
+ft_fx_explosion      | particle | 0.030 | frontier_town/explosion 40
+ft_fx_dust           | particle | 0.030 | frontier_town/dust 40
+
+# ---- indian_post ---------------------------------------------------------
+ip_unit_dogsoldier   | model    | 0.005 | units/indian_post/dogsoldier standing 0
+ip_unit_revolutionary| model    | 0.005 | units/indian_post/revolutionary standing 0
+ip_unit_stormcaller  | model    | 0.005 | units/indian_post/stormcaller standing 0
+ip_bldg_saloon       | prop     | 0.005 | props/indian_post/buildings/saloon
+ip_bldg_sheriff      | prop     | 0.005 | props/indian_post/buildings/sheriff
+ip_prop_pine         | prop     | 0.005 | props/indian_post/natural/tree_pine_green_tall
+ip_prop_totem        | prop     | 0.005 | props/indian_post/natural/tree_totem_brown
+ip_scene_town        | scene    | 0.005 | units/indian_post/dogsoldier@standing,units/indian_post/revolutionary@standing,props/indian_post/buildings/sheriff
+ip_fx_fireflies      | particle | 0.005 | indian_post/fireflies 40
+ip_fx_rain           | particle | 0.030 | indian_post/rain 40
