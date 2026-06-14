@@ -693,30 +693,107 @@ embedded in an AWT canvas; (B) a per-town visual-regression harness on the Phase
 renderer. (A) is gated by one keystone unknown, so it's sequenced 7a→7b→7c; (B) = 7d is independent
 and can run in parallel.
 
-**Current state (recon 2026-06-14):** the editor *compiles* and (per the Phase-3 deferral) boots on
-a **bare LWJGL3 window** — but `EditorApp` (`extends JmeApp extends SimpleApplication`) never sets its
-`frame`/`canvas`, and `EditorClient.init(app, frame)` is handed a **null JFrame**, so the Swing
-editing chrome (`ToolPanel`, `PieceChooser`, the `*Dialog`s) is unwired — you get a 3D view with no
-editor UI. `EditorBoardView extends BoardView`, so board *rendering* already rides the Phase-4 jME3
-path. `lwjgl3awt:0.2.3` is on the classpath but **used nowhere** — the AWT-canvas embedding is
-greenfield. The fork editor embedded a gdx `LwjglCanvas` in a `JFrame`; jME3's equivalent is a
-`JmeCanvasContext` (`AppSettings`+`createCanvas`/`JmeContext.Type.Canvas`) or `AwtPanel`, on LWJGL3
-via `lwjgl3awt`.
+**Current state (recon 2026-06-14, 7a complete):** the editor *compiles* and starts its in-JVM
+`EditorServer` cleanly, then **crashes its jME3 init thread with an NPE** — it does NOT boot to a
+usable bare window. `EditorDesktop` calls `app.start()` (default `JmeContext.Type.Display`, a
+LWJGL3 window); on the `jME3 Main` thread `JmeApp.simpleInitApp` → `EditorApp.create()` →
+`EditorClient.init(this, frame)` with **`frame == null`**, and `EditorClient.init` line 64 does
+`_frame.setJMenuBar(...)` → `NullPointerException`. `LegacyApplication.handleError` logs it and the
+render loop dies; the JVM stays alive only because `EditorServer`'s non-daemon `presents.Invoker`
+keeps it up, so the process lingers with **no window and no render loop** (verified via screenshot:
+empty desktop, and a thread dump showing `DestroyJavaVM` waiting, no `jME3 Main`/render thread). The
+log line:
 
-- **7a — Editor recon + AWT-canvas spike (keystone; do first).** Launch the editor as-is and record
-  exactly what it does. Then prove the keystone: a minimal spike that renders a jME3 scene into a
-  Swing `Canvas`/`AwtPanel` inside a `JFrame` on the **LWJGL3** context using `lwjgl3awt` (this is the
-  make-or-break for the whole editor — if `lwjgl3awt:0.2.3` can't host jME3-in-Swing, we pick another
-  path here). Output: a concrete, de-risked 7b/7c breakdown + the chosen canvas API. Mostly recon +
-  throwaway spike; low commitment.
-- **7b — Canvas embedding + Swing chrome.** Embed the jME3 render into the editor's AWT canvas inside
-  the `JFrame`; restore the `ToolPanel`/`BoardInfoPanel`/dialog layout; wire `EditorApp.frame`/`canvas`
-  and `EditorClient.init(app, frame)` properly so the editor opens as a real windowed tool. Scope
-  firmed up by 7a.
-- **7c — Editor interaction.** Re-wire editor input on the canvas: mouse picking (`PiecePlacer`/
-  `PieceChooser`), `CameraDolly`, `TerrainBrush`/`HeightfieldBrush`, viewpoint/track tools, and the
-  environment dialogs (`LightDialog`/`WaterDialog`/`SkyDialog`), plus board save/load (now the
-  Narya board format from Phase 3). Depends on 7b's input seam.
+```
+SEVERE LegacyApplication.handleError: Uncaught exception thrown in Thread[#44,jME3 Main,5,main]
+java.lang.NullPointerException: Cannot invoke "...JFrame.setJMenuBar(...)" because "this._frame" is null
+  at com.threerings.bang.editor.EditorClient.init(EditorClient.java:64)
+  at com.threerings.bang.editor.EditorApp.create(EditorApp.java:43)
+  at com.threerings.jme.JmeApp.simpleInitApp(JmeApp.java:176)
+```
+
+**Editor UI architecture (key for 7b).** The editor is a **Swing `JFrame` shell wrapping a GL
+canvas, with the board view drawn as a BUI window inside that canvas** — exactly the old
+gdx-`LwjglCanvas`-in-`JFrame` shape:
+- *Swing layer (the `JFrame` content pane):* a `JMenuBar` + a `SOUTH` status panel (`EditorClient`),
+  and `EditorPanel`/`ToolPanel`/`BoardInfoPanel` — all `javax.swing.JPanel`s — laid out around the
+  GL canvas in the center. These need the AWT `Canvas` from the jME3 context.
+- *BUI layer (drawn inside the GL canvas, already Phase-5-ported):* `EditorPanel` builds a BUI
+  `BWindow` (`_vwin`) holding the `EditorBoardView` (`extends BoardView`, so it rides the Phase-4
+  jME3 render path), adds it via `_ctx.getRootNode().addWindow(_vwin)`, and **sizes it to the AWT
+  canvas** via `((EditorApp)ctx.getApp()).getCanvas()` + a `ComponentListener` (`sizeToCanvas`). So
+  `EditorApp.getCanvas()` MUST return the real embedded AWT canvas for the BUI view to size itself.
+
+So the missing piece is purely the **embedding seam**: build a jME3 `Canvas` context, put its
+`java.awt.Canvas` in the `JFrame` and into `EditorApp.canvas`, set `EditorApp.frame`, and call
+`EditorClient.init(app, frame)` with a real frame. Rendering and the BUI tool UI are already done.
+
+**Keystone result — jME3-in-Swing on LWJGL3 WORKS (spike proven 2026-06-14).** A throwaway spike
+(`tools/jme3-host/CanvasSpike`, run task `:tools:jme3-host:runCanvasSpike`) renders a spinning cube
+into a Swing `JFrame` (Swing tool panel on the left + GL canvas in the center) on the LWJGL3 backend.
+Screenshot-confirmed: both the X11 grab of the live `JFrame` and the GL framebuffer screenshot show
+the cube + jME3 stats overlay inside the canvas. **The working API is `JmeContext.Type.Canvas`:**
+
+```java
+AppSettings settings = new AppSettings(true);
+settings.setRenderer(AppSettings.LWJGL_OPENGL2);  // LWJGL3 backend on this branch
+app.setSettings(settings);
+app.createCanvas();                                       // builds the Canvas context (no GL loop yet)
+JmeCanvasContext ctx = (JmeCanvasContext) app.getContext();
+java.awt.Canvas canvas = ctx.getCanvas();                // -> add to a Swing JFrame
+// ... add `canvas` to the JFrame on the EDT, then:
+app.startCanvas();                                        // spins the GL render loop against the canvas
+```
+
+On LWJGL3 the canvas context is `com.jme3.system.lwjgl.LwjglCanvas` (in `jme3-lwjgl3`, implements
+`com.jme3.system.JmeCanvasContext`), which bridges to `org.lwjgl.opengl.awt.AWTGLCanvas` from
+**`org.lwjglx:lwjgl3-awt:0.2.3`**. The earlier recon note ("`lwjgl3awt:0.2.3` on the classpath but
+used nowhere") was off on one point: the artifact is `org.lwjglx:lwjgl3-awt:0.2.3` and it was **not**
+declared in any gradle file — only cached. 7b must add it. The `AwtPanelsContext`/`AwtPanel` path
+also exists (`jme3-desktop`) as a fallback but is not needed; `Type.Canvas` matches the editor's
+existing `EditorApp.canvas`/`getCanvas()` field shape directly.
+
+**Gradle gotcha (multi-platform).** `lwjgl3-awt:0.2.3`'s POM declares an lwjgl dependency with an
+unresolved `${lwjgl.natives}` native classifier, which breaks resolution. Pull it in with
+`transitive = false` — `jme3-lwjgl3` already supplies the matching lwjgl 3.3.x core + the
+per-OS natives (Linux/Windows/macOS), so we only need lwjgl3-awt's `org.lwjgl.opengl.awt.*` classes
+(platform-specific glue: `PlatformLinuxGLCanvas`/`PlatformWin32GLCanvas`/`PlatformMacOSXGLCanvas` all
+ship in the one jar). The canvas path is cross-platform; the spike ran on Linux/X11. **Windows
+note:** `Type.Canvas`/`AWTGLCanvas` is the standard cross-platform jME3 embedding and works on
+Windows; macOS historically needs the AWT thread to be the main thread (`-XstartOnFirstThread`),
+which is the one platform caveat to validate if a Mac build is targeted.
+
+- **7a — Editor recon + AWT-canvas spike (keystone). DONE.** See above: as-is editor crashes on a
+  null `JFrame`; the jME3-in-Swing-Canvas-on-LWJGL3 keystone is proven (`Type.Canvas` +
+  `org.lwjglx:lwjgl3-awt:0.2.3`, `transitive=false`). Spike at `tools/jme3-host/CanvasSpike.java`.
+- **7b — Canvas embedding + Swing chrome.** Concrete steps:
+  1. Add `org.lwjglx:lwjgl3-awt:0.2.3` (`transitive = false`) to the editor's runtime classpath
+     (`client/desktop`, and wherever `EditorApp` resolves at runtime — mirror the spike's
+     build.gradle dep).
+  2. In `EditorDesktop.main`: replace `app.start()` with the Canvas path — `app.setSettings(...)`
+     (LWJGL3 renderer), `app.createCanvas()`, grab `canvas = ((JmeCanvasContext)app.getContext())
+     .getCanvas()`, set `app.canvas = canvas`, build the `JFrame` (set `app.frame`), add the canvas
+     to the frame's center on the EDT, then `app.startCanvas()`.
+  3. Wire `EditorClient.init(app, app.frame)` with the real frame (it sets the menubar + status
+     panel). Set `JPopupMenu.setDefaultLightWeightPopupEnabled(false)` (heavyweight GL canvas) — it's
+     already in `EditorClient.init`.
+  4. Lay out the Swing chrome: `EditorPanel`/`ToolPanel`/`BoardInfoPanel` (all JPanels) around the
+     canvas in the `JFrame` (the side/tool panels), per the fork layout. Confirm `EditorPanel`'s
+     `sizeToCanvas` fires (it listens on `EditorApp.getCanvas()` — now non-null) so the BUI `_vwin`
+     board view fills the canvas.
+  5. Verify the BUI tool UI (`_vwin` board view, the BUI menubar in `EditorPanel`) draws inside the
+     canvas and resizes with it.
+  Risks: ordering of `createCanvas` vs the `EditorClient`/server bootstrap; AWT/EDT vs jME3-render
+  thread handoff for the BUI root node (the BUI root + view live on the render thread, the JFrame on
+  the EDT — `RunQueue.AWT` is already passed to `initClient`).
+- **7c — Editor interaction.** Re-wire editor input now that the GL view is an AWT canvas: mouse
+  picking (`PiecePlacer`/`PieceChooser`), `CameraDolly`, `TerrainBrush`/`HeightfieldBrush`,
+  `ViewpointEditor`/`TrackLayer`, and the environment dialogs (`LightDialog`/`WaterDialog`/
+  `SkyDialog`/`BoardPropertiesDialog`), plus board save/load (Narya board format from Phase 3). Key
+  unknown for 7c: jME3's `LwjglCanvas` provides its own `getMouseInput()`/`getKeyInput()` bound to
+  the AWT canvas — confirm editor input flows through jME3's `InputManager` on the canvas (the BUI
+  tools consume BUI events off the render-side input), and that picking ray coords map correctly from
+  AWT canvas pixels. Depends on 7b's embedding.
 - **7d — Per-town visual regression (independent; parallelizable).** Build on the Phase-5 offscreen
   render harness + `SnapshotDiff`: render each town's representative boards/scenes headlessly and diff
   against `baseline/fork-before/`, producing a pass/fail regression report (CI-ready). First establish
