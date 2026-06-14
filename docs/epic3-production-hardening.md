@@ -50,7 +50,24 @@ Cash in the Phase-5 testability investment. Depends on Phases 1–2 + the Epic-1
 - Spin up the containerized server (Phase 2) in CI and run the headless **Narya bot** smoke test
   (`tools:bot-client`) to assert an AI-vs-AI game reaches `GAME_OVER` with a winner/points.
 - Render a fixed set of models/scenes via the offscreen harness and gate on **`SnapshotDiff`**
-  against checked-in `baseline/` PNGs; upload diff images as build artifacts on failure.
+  against checked-in `baseline/` PNGs; upload diff images as build artifacts on failure. The
+  Phase-7d `verifyVisuals` golden suite (`tools:j3o-converter`) already implements this gate — the
+  remaining work is hardening it for unattended CI (below).
+- **Harden `verifyVisuals` for CI** (review follow-ups from the Phase-7d landing):
+  - **Calibrate tolerances on the actual CI image.** The committed goldens were captured on one
+    host's GL driver; the deterministic model/prop/scene renders use a tight 0.005 mean tolerance
+    that a different CI GPU/Mesa version may exceed (MSAA sample pattern / float rounding). Validate
+    on the real CI runner and loosen per-entry tolerances only as far as needed to stay green on an
+    unchanged render.
+  - **Add a per-render timeout.** `VerifyVisuals.render()` does `Process.waitFor()` with no timeout;
+    a hung GL init on a headless agent hangs the whole gate. Use a bounded wait, then destroy the
+    child and count it as a failure.
+  - **Surface failure diagnostics.** The forked render's merged stdout/stderr is currently drained
+    and discarded; on `RENDER-FAIL` capture and print the tail so a CI failure is debuggable without
+    a local repro.
+  - **Dedup the diff metric.** `VerifyVisuals.diff()` copy-pastes the `SnapshotDiff` mean-per-channel
+    metric; extract a shared `SnapshotDiff.compare(...)` so the gate and the standalone tool can't
+    silently diverge.
 - Establish the baseline-refresh workflow (how a legitimate visual change re-blesses the baseline).
 
 ### Phase 4 — Transport & credential security

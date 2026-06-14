@@ -90,8 +90,14 @@ public class RenderParticleToPng extends OffscreenRenderApp
 
         // Particle emitters are time-based and empty at t=0, so step the simulation here — BEFORE
         // the base frames the camera on the scene's bounding box — so the camera frames the live
-        // particle cloud rather than a degenerate empty bound. We still render one more frame after
-        // this (warmupFrames defaults to 0 now), capturing the populated cloud.
+        // particle cloud rather than a degenerate empty bound. The base then renders one frame,
+        // capturing the populated cloud.
+        //
+        // jME3 ParticleEmitter draws emission position/velocity/lifetime from the process-wide,
+        // time-seeded FastMath.rand, so the same effect rendered twice yields different clouds. Seed
+        // it to a fixed value so the render is reproducible — that is what lets the Phase-7d visual-
+        // regression goldens diff a particle render against a committed PNG without flaking.
+        FastMath.rand.setSeed(PARTICLE_SEED);
         scene.updateGeometricState();
         float tpf = 1f / 30f;
         for (int ii = 0; ii < _frames; ii++) {
@@ -128,4 +134,8 @@ public class RenderParticleToPng extends OffscreenRenderApp
     protected final File _rsrcRoot;
     protected final String _effect;
     protected final int _frames;
+
+    /** Fixed seed for jME3's particle RNG ({@link FastMath#rand}) so warmed particle renders are
+     * reproducible — required for the Phase-7d golden diff to be stable run-to-run. */
+    protected static final long PARTICLE_SEED = 0xBA56BA11L;
 }

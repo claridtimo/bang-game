@@ -209,6 +209,9 @@ def visualForkCp = { (sourceSets.main.output + configurations.renderToPngRuntime
 tasks.register("verifyVisuals", JavaExec) {
   group = "verification"
   description = "Per-town visual-regression gate: re-render goldens and diff (fails on regression)."
+  // the goldens render from the baked staging tree, so make the gate self-contained: a fresh
+  // checkout / CI run would otherwise RENDER-FAIL every entry on a missing assets/build/staging/rsrc
+  dependsOn ":assets:processResources"
   classpath = sourceSets.main.output + configurations.renderToPngRuntime
   mainClass = "com.threerings.bang.tools.j3o.VerifyVisuals"
   def rsrc = rootProject.file("assets/build/staging/rsrc").absolutePath
@@ -224,6 +227,7 @@ tasks.register("verifyVisuals", JavaExec) {
 tasks.register("captureGoldens", JavaExec) {
   group = "verification"
   description = "(Re)render every golden in the manifest into src/test/resources/visual/golden/."
+  dependsOn ":assets:processResources"
   classpath = sourceSets.main.output + configurations.renderToPngRuntime
   mainClass = "com.threerings.bang.tools.j3o.VerifyVisuals"
   def rsrc = rootProject.file("assets/build/staging/rsrc").absolutePath

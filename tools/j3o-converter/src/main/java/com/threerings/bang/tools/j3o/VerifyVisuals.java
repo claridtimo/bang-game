@@ -103,8 +103,11 @@ public class VerifyVisuals
         }
 
         if (capture) {
-            System.out.println("Captured " + entries.size() + " goldens into " + goldenDir);
-            System.exit(0);
+            System.out.println("Captured " + (entries.size() - failures) + " of " + entries.size() +
+                " goldens into " + goldenDir +
+                (failures == 0 ? "" : " (" + failures + " FAILED to render)"));
+            // exit non-zero if any capture render failed, so a broken golden refresh can't pass silently
+            System.exit(failures == 0 ? 0 : 1);
         }
         System.out.println(failures == 0
             ? ("PASS: all " + entries.size() + " goldens within tolerance")
