@@ -15,11 +15,16 @@
 #
 # tolerance is the SnapshotDiff mean per-channel threshold (0..1). Model/prop/
 # scene renders are bit-exact in this harness, so they use a tight tolerance
-# (a hair of slack absorbs driver float noise). jME3 ParticleEmitters use an
-# UNSEEDED RNG, so active emitters (explosion/dust/rain) vary run-to-run by
-# ~0.01 mean diff and get a loose tolerance that still catches gross
-# regressions (effect missing / broken material / wrong framing); steady
-# ambient emitters (fireflies) are effectively deterministic.
+# (a hair of slack absorbs driver float noise). jME3 ParticleEmitters draw from a
+# process-wide RNG; RenderParticleToPng now SEEDS it (FastMath.rand) to a fixed
+# value, so particle renders are reproducible run-to-run too. The loose particle
+# tolerances (0.030) below predate that seeding and can be tightened once the
+# particle goldens are re-captured against the seeded render.
+#
+# !! STALE PARTICLE GOLDENS: the committed golden/*_fx_*.png were captured with the
+# !! OLD unseeded RNG, so they will NOT match the seeded render. Re-capture them
+# !! (captureGoldens) before wiring verifyVisuals into CI; until then the particle
+# !! entries may diff against pre-seed baselines. Tracked in jme3-cutover-plan Phase 8.
 #
 # To add a golden: add a line here, then `./gradlew :tools:j3o-converter:captureGoldens`
 # (writes golden/<name>.png). To refresh after an INTENDED render change: rerun

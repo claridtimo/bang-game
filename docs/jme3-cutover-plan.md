@@ -829,6 +829,13 @@ which is the one platform caveat to validate if a Mac build is targeted.
   (effect missing / broken material / wrong framing); *steady* ambient emitters are effectively
   deterministic (fireflies ~0.00004, kept tight at 0.005).
 
+  **Seeding follow-up (post-review):** the unseeded-RNG nondeterminism above is a flaky-gate risk, so
+  `RenderParticleToPng` now **seeds** `FastMath.rand` to a fixed value before warmup — particle
+  renders are reproducible run-to-run. ⚠️ **The committed particle goldens (`*_fx_*.png`) are stale**
+  (captured pre-seed) and will not match the seeded render; they must be re-captured
+  (`captureGoldens`) before `verifyVisuals` is wired into CI, after which the loose 0.030 particle
+  tolerances can be tightened. Tracked in **Phase 8 cleanup** below.
+
   **Baseline-alignment finding (fork-before):** `baseline/fork-before/` holds **6 live game
   screenshots**, not harness-reproducible references — `login.png` (1024×768, UI only),
   `editor-frontier-town.png` (1252×797, editor chrome), `p3-{game-1,play-1,play-2}.png`
@@ -861,6 +868,11 @@ which is the one platform caveat to validate if a Mac build is targeted.
   emitting forever if that despawn assumption is wrong — confirm a burst effect (e.g.
   `boom_town/barrel_explosion`) fires once and stops in the running client, and if not, distinguish
   burst vs ambient effects at bake time (one-shot → emit the pool once, don't refill).
+- **Re-capture the stale Phase-7d particle goldens.** `RenderParticleToPng` now seeds the particle
+  RNG (`FastMath.rand`), but the committed `golden/*_fx_*.png` were captured pre-seed and no longer
+  match. Run `./gradlew :tools:j3o-converter:captureGoldens`, commit the refreshed PNGs, then tighten
+  the loose 0.030 particle tolerances in `golden-manifest.txt` now that the renders are deterministic
+  — do this before `verifyVisuals` is wired into CI (Epic 3 Phase 3).
 - Update CLAUDE.md + docs/engine-notes.md for the new jME3 / LWJGL3 stack.
 
 ## Acceptance
