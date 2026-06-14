@@ -172,18 +172,30 @@ public class EditorClient extends BasicClient
         }
 
         public void setPlaceView (PlaceView view) {
+            // jME3 cutover (Phase 7c): the content pane is canvas=CENTER, status=SOUTH, and the
+            // place view chrome=EAST. Target the EAST slot explicitly rather than indexing by a
+            // magic component count (which broke once the canvas occupied CENTER): remove whatever
+            // currently holds EAST, then install the new view there.
             Container pane = _frame.getContentPane();
-            if (pane.getComponentCount() > 2) {
-                pane.remove(2);
+            BorderLayout layout = (BorderLayout)pane.getLayout();
+            Component prev = layout.getLayoutComponent(pane, BorderLayout.EAST);
+            if (prev != null) {
+                pane.remove(prev);
             }
             pane.add((Component)view, BorderLayout.EAST);
             _frame.validate();
         }
 
         public void clearPlaceView (PlaceView view) {
+            // Remove exactly the EAST place view, not whatever happens to live at index 1 (that was
+            // the SOUTH status panel once the canvas took CENTER — removing it blanked the status
+            // bar). Remove the passed-in component when it is the one in the EAST slot.
             Container pane = _frame.getContentPane();
-            if (pane.getComponentCount() > 1) {
-                pane.remove(1);
+            BorderLayout layout = (BorderLayout)pane.getLayout();
+            Component east = layout.getLayoutComponent(pane, BorderLayout.EAST);
+            if (east != null && east == view) {
+                pane.remove(east);
+                _frame.validate();
             }
         }
 
