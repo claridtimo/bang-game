@@ -806,27 +806,75 @@ which is the one platform caveat to validate if a Mac build is targeted.
   violation surfaced. The per-frame BUI root traversal stays on the render thread (`JmeApp.BuiProcessor`
   on the GUI viewport); the only cross-thread post is `setPlaceView`, already routed to the EDT via
   `RunQueue.AWT`. No threading defects observed across launch + resize.
-- **7c — Editor interaction.** Re-wire editor input now that the GL view is an AWT canvas: mouse
-  picking (`PiecePlacer`/`PieceChooser`), `CameraDolly`, `TerrainBrush`/`HeightfieldBrush`,
-  `ViewpointEditor`/`TrackLayer`, and the environment dialogs (`LightDialog`/`WaterDialog`/
-  `SkyDialog`/`BoardPropertiesDialog`), plus board save/load (Narya board format from Phase 3). Key
-  unknown for 7c: jME3's `LwjglCanvas` provides its own `getMouseInput()`/`getKeyInput()` bound to
-  the AWT canvas — confirm editor input flows through jME3's `InputManager` on the canvas (the BUI
-  tools consume BUI events off the render-side input), and that picking ray coords map correctly from
-  AWT canvas pixels.
-  **7b learnings that bear on 7c:** (a) In Canvas mode jME3's `InputManager` is fed by `LwjglCanvas`'s
-  AWT-bound input devices — `JmeApp.simpleInitApp` already calls `Jme3RootNode.registerWith(inputManager)`
-  and `GodViewHandler.registerWith(inputManager)` on the canvas context (the log shows
-  "GodViewHandler camera input mappings registered"), so BUI/camera input *should* already be flowing
-  through the canvas; 7c needs to verify the **coordinate origin** (jME3 input is bottom-left origin in
-  *canvas* pixels, while AWT/Swing mouse events are top-left in *frame* pixels — picking rays must use
-  the canvas-relative, GL-oriented coords, and the canvas may be offset from the frame by the EAST/SOUTH
-  chrome). (b) `EditorContextImpl.setPlaceView`/`clearPlaceView` index into the content pane by
-  component count (`getComponentCount() > 2` / `> 1`) — with the canvas now occupying CENTER and the
-  status panel SOUTH, those magic indices assume a specific add order; 7c should confirm place-view
-  swap still targets the EAST slot (it worked for the single editor place on launch, but dialog-driven
-  place changes are untested). (c) Heavyweight-popup mode is on, so editor `JPopupMenu`s (right-click
-  tool menus) will paint over the GL canvas correctly — good for 7c's context menus. Depends on 7b's
+- **7c — Editor interaction. DONE (2026-06-14).** The editor is now *usable*: picking, the core
+  tools, the environment dialogs, and board save/load all respond to canvas input, verified live on
+  `bin/bangeditor` (DISPLAY=:1) driven by python-xlib XTest with before/after screenshots Read back.
+
+  **Picking — the crux, and it needed NO coordinate fix (the 7b wiring already handles the origin).**
+  The key finding: in Canvas mode editor mouse input flows entirely through **BUI**, not raw AWT.
+  jME3's `LwjglCanvas` feeds the `InputManager` mouse events that are **already canvas-relative and
+  bottom-left-origin** (y up); `Jme3RootNode.onMouseMotionEvent/onMouseButtonEvent` forward
+  `mme.getX()/getY()` verbatim into BUI `MouseEvent`s (no flip — BUI is also bottom-left origin, as the
+  node's own comment notes). The editor tools (`EditorTool` subclasses) receive those BUI events via
+  `ToolPanel.EventDispatcher` attached to `EditorBoardView` (`view.addListener(_dispatcher)`), and the
+  picking ray is built in `BoardView.getGroundIntersect(e,…)` from `camera.getWorldCoordinates(new
+  Vector2f(e.getX(), e.getY()), 0)`. Because (i) BUI hands over canvas-relative bottom-left pixels and
+  (ii) the camera's viewport is sized to the canvas, `getWorldCoordinates` already consumes exactly the
+  coords it expects — **no top-left↔bottom-left or frame↔canvas-offset correction was required.**
+  The EAST/SOUTH chrome offset never enters the math because the canvas (CENTER) has its own GL
+  context/viewport with a (0,0)-origin at the canvas corner, not the frame corner. Verified by the
+  SOUTH status bar's live `x:,y:` readout: at the four canvas corners the tile coords map correctly and
+  consistently (x grows left→right, y grows bottom→top on a 40×40 default board — TL≈(7,27),
+  TR≈(30,27), BL≈(7,12), BR≈(30,12)), and a click lands on the tile under the cursor (a placed piece
+  appears exactly where clicked).
+
+  **Tools verified live:** `PiecePlacer` (+`PieceChooser`) — placed a Viewpoint and two Frontier-Town
+  cacti, each on the clicked tile; `TerrainBrush` — paint stroke fires `paintTerrain` + alpha-splat
+  refresh; `HeightfieldBrush` — "Add Noise" roughened the whole heightfield (visible surface change);
+  `CameraDolly` — left-drag orbits/tilts the camera (delta-based, origin-independent) and View→Recenter
+  Camera fires. `ViewpointEditor`/`TrackLayer` share the identical BUI-event + `getGroundIntersect`
+  seam (same dispatcher, same picking path) so they ride the same verified plumbing.
+
+  **Environment dialogs verified:** `SkyDialog` and `WaterDialog` open as heavyweight `JDialog`s over
+  the GL canvas, read the board's current params (Sky showed the live horizon/overhead colors +
+  falloff), and **apply to the live board** — raising the Water "Level" slider flooded the board with a
+  visible water surface (`EditorBoardView.setWaterParams` → `_wnode.refreshSurface`). `LightDialog`/
+  `BoardPropertiesDialog`/`NewBoardDialog`/`EnvironmentDialog` open through the same
+  `handleEdit*`→`fromBoard`→`setVisible` path on `_ctx.getFrame()`; NewBoardDialog opened and "Create
+  Board" reset the board to a clean grid (no exception). Heavyweight popups are on, so the dialogs paint
+  over the canvas correctly.
+
+  **Board save/load round-trip verified — Narya format (Phase 3).** `EditorController.handleSaveBoard`/
+  `loadBoard` use `BoardFile.saveTo`/`loadFrom`, which are pure `com.threerings.io.ObjectOutputStream`/
+  `ObjectInputStream` (header + `BoardData` graph), NOT the retired fork `Savable`. Drove File→Save to
+  `/tmp/roundtrip.board` (78 KB written, status "Saved …"), then File→New→Create Board (board cleared
+  to empty grid), then File→Load of the same file — the two cacti, the viewpoint, and the noise terrain
+  all came back at their saved positions (status "Loaded …"). Clean round-trip.
+
+  **Place-view swap — fixed a latent magic-index bug.** `EditorContextImpl.setPlaceView`/
+  `clearPlaceView` indexed the content pane by component count (`>2` / `>1`), which assumes a specific
+  add order; with the canvas in CENTER and the status panel SOUTH, `clearPlaceView`'s `remove(1)` would
+  have removed the **SOUTH status bar**, not the EAST place view. Re-pointed both to target the EAST
+  slot explicitly via `BorderLayout.getLayoutComponent(pane, EAST)` (setPlaceView removes whatever
+  holds EAST then installs the new view; clearPlaceView removes the passed-in view only when it is the
+  EAST component). The editor has a single place so the bug never fired in practice, but the fix is
+  order-independent. Re-launched after the change: full chrome intact, status bar still live.
+
+  **Files changed:** `client/shared/.../editor/EditorClient.java` (the place-view EAST-slot fix). No
+  other product code needed changing — picking/tools/dialogs/save-load were already correctly wired
+  for the canvas by 7b; 7c is mostly a *verification* phase plus that one hardening fix.
+
+  **EDT/render-thread:** no threading defects observed. Tool mouse/key handling runs on the render
+  thread via the BUI dispatcher (same as in-game BUI); Swing menu/dialog actions run on the EDT (the
+  controller posts via `RunQueue.AWT`). The only stray log line during water apply was a benign jME3
+  bounding-volume debug hint ("Problem spatial name: Root Node"), not an error.
+
+  **Deferred / minor (for a 7c-follow-up, not blocking):** (a) the `TerrainNode.Cursor` brush ring for
+  Terrain/Heightfield brushes does not render visibly (the edit still applies; this is a Phase-4/5
+  cursor-geometry rendering gap, not a picking issue); (b) the `TerrainSelector` combobox in the Terrain
+  Brush options renders with near-zero height (a Swing layout quirk in the tool-options scrollpane —
+  painting still works against the default terrain); (c) `View→Recenter Camera` resets only the camera
+  location, not its orbit/tilt (pre-existing `CameraDolly.recenter` behavior). Depends on 7b's
   embedding (done).
 - **7d — Per-town visual regression (independent; parallelizable). DONE (2026-06-14).** A
   deterministic, CI-ready **golden-image** regression suite built on the Phase-5/6 offscreen harness
