@@ -955,6 +955,19 @@ which is the one platform caveat to validate if a Mac build is targeted.
   match. Run `./gradlew :tools:j3o-converter:captureGoldens`, commit the refreshed PNGs, then tighten
   the loose 0.030 particle tolerances in `golden-manifest.txt` now that the renders are deterministic
   — do this before `verifyVisuals` is wired into CI (Epic 3 Phase 3).
+- **Add a `bin/shot` window-capture helper + a screenshot convention.** Live verification grabs the
+  whole `DISPLAY=:1` (`PIL ImageGrab`), which captures the entire multi-monitor desktop — leaking
+  whatever else is on screen (Discord, the other monitor) into shared/committed images, and needing a
+  lossy AI-crop afterward (see the one-off `baseline/fork-before/*-cropped` salvage). Fix it at
+  capture time: a small `bin/shot <out.png>` that finds the Bang window and grabs **only that
+  window's pixmap** (python-xlib `get_image`, or `xwd`/`import -window <id>`) — pixel-exact, no crop,
+  no desktop. Match the window **precisely**: exact title `Bang Editor`, or title starting with
+  `Bang! Howdy`, **and** WM_CLASS = the jME/Java app — and explicitly exclude browsers/terminals (a
+  loose `'bang! howdy' in title` substring match grabbed a Firefox tab titled with the repo
+  description during dev — don't repeat that). Then point `bin/devtest --shot` at it instead of the
+  full-display grab, and add the convention to CLAUDE.md / docs/running-the-game.md: **screenshots
+  capture only the Bang window, never a full-display grab** (privacy + relevance). Prefer the
+  offscreen render harness where a live window isn't needed (it's already window-only/deterministic).
 - Update CLAUDE.md + docs/engine-notes.md for the new jME3 / LWJGL3 stack.
 
 ## Acceptance
