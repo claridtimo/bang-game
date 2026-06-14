@@ -687,8 +687,40 @@ a silent-null misconfig path. Harden both so a fresh checkout/worktree "just run
   "Server listening" (MySQL was up as `bang`/`yeehaw`).
 
 ### Phase 7 — Editor + visual regression
-- `bangeditor` on a jME3 AWT canvas; per-town visual regression against pre-cutover screenshots,
-  driven by the Phase-5 offscreen render harness.
+
+Two largely separate efforts: (A) restore `bangeditor` as a usable Swing tool with the jME3 render
+embedded in an AWT canvas; (B) a per-town visual-regression harness on the Phase-5 offscreen
+renderer. (A) is gated by one keystone unknown, so it's sequenced 7a→7b→7c; (B) = 7d is independent
+and can run in parallel.
+
+**Current state (recon 2026-06-14):** the editor *compiles* and (per the Phase-3 deferral) boots on
+a **bare LWJGL3 window** — but `EditorApp` (`extends JmeApp extends SimpleApplication`) never sets its
+`frame`/`canvas`, and `EditorClient.init(app, frame)` is handed a **null JFrame**, so the Swing
+editing chrome (`ToolPanel`, `PieceChooser`, the `*Dialog`s) is unwired — you get a 3D view with no
+editor UI. `EditorBoardView extends BoardView`, so board *rendering* already rides the Phase-4 jME3
+path. `lwjgl3awt:0.2.3` is on the classpath but **used nowhere** — the AWT-canvas embedding is
+greenfield. The fork editor embedded a gdx `LwjglCanvas` in a `JFrame`; jME3's equivalent is a
+`JmeCanvasContext` (`AppSettings`+`createCanvas`/`JmeContext.Type.Canvas`) or `AwtPanel`, on LWJGL3
+via `lwjgl3awt`.
+
+- **7a — Editor recon + AWT-canvas spike (keystone; do first).** Launch the editor as-is and record
+  exactly what it does. Then prove the keystone: a minimal spike that renders a jME3 scene into a
+  Swing `Canvas`/`AwtPanel` inside a `JFrame` on the **LWJGL3** context using `lwjgl3awt` (this is the
+  make-or-break for the whole editor — if `lwjgl3awt:0.2.3` can't host jME3-in-Swing, we pick another
+  path here). Output: a concrete, de-risked 7b/7c breakdown + the chosen canvas API. Mostly recon +
+  throwaway spike; low commitment.
+- **7b — Canvas embedding + Swing chrome.** Embed the jME3 render into the editor's AWT canvas inside
+  the `JFrame`; restore the `ToolPanel`/`BoardInfoPanel`/dialog layout; wire `EditorApp.frame`/`canvas`
+  and `EditorClient.init(app, frame)` properly so the editor opens as a real windowed tool. Scope
+  firmed up by 7a.
+- **7c — Editor interaction.** Re-wire editor input on the canvas: mouse picking (`PiecePlacer`/
+  `PieceChooser`), `CameraDolly`, `TerrainBrush`/`HeightfieldBrush`, viewpoint/track tools, and the
+  environment dialogs (`LightDialog`/`WaterDialog`/`SkyDialog`), plus board save/load (now the
+  Narya board format from Phase 3). Depends on 7b's input seam.
+- **7d — Per-town visual regression (independent; parallelizable).** Build on the Phase-5 offscreen
+  render harness + `SnapshotDiff`: render each town's representative boards/scenes headlessly and diff
+  against `baseline/fork-before/`, producing a pass/fail regression report (CI-ready). First establish
+  which pre-cutover baselines actually exist; capture/flag any missing. Does **not** need the editor.
 
 ### Phase 8 — Cleanup
 - Delete the `jme` fork module and the remaining cutover scaffolding once nothing references it.
